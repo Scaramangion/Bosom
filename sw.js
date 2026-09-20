@@ -1,6 +1,6 @@
 /* Bosom service worker: the game page is fetched fresh whenever you are online (so every new build shows up),
    and the last good copy is kept for offline play. Fonts are cached the first time they load. */
-const VERSION = 'bosom-2.9.1';
+const VERSION = 'bosom-2.16';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
