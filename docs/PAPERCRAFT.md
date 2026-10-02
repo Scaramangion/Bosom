@@ -44,6 +44,17 @@ Frame of reference: x east, y south (tile rows grow downward), z up. A south-fac
 - **A one-off model:** see `paperCottage`. Reserve a strip of the sheet, give each face its pixel rect, and emit quads/triangles with explicit UVs. Mirror a face by reversing its points and UVs.
 - **Another project:** copy `24-papercraft.js` plus the `initPaper/drawPaper` logic (or just open the demo and read its harness: about 60 lines).
 
+## Sprites folded into paper (in progress)
+Goal: any sprite frame (hero, townsfolk, animals, props, the stalker) becomes a paper cut-out that stands in the depth-buffered world instead of a flat billboard.
+
+**Step 1, the tracer** `tools/sprite_poly.py` -> `assets/papercraft/sprite-polys.json` (+ contact sheets in `papercraft/shots/trace-*.png`).
+- Frame rects are read straight from the game's own tables (`FARM_ART.F`, `SUD_ART.F`, `HERO_FRAMES`), never copied by hand.
+- Per sprite: alpha >= 128 (the module's own cut) -> grow 1 px -> fill diagonal-only pinches -> trace pixel edges into rings -> Douglas-Peucker (1 px) -> put corners back until every painted pixel is inside (`hold`) -> ear clipping, fattest ear first.
+- Holes and specks under 12 px^2 are left to the shader's alpha cut (`discard` below 0.5): the polygon only has to hold the paint, the alpha keeps the edge pixel-exact.
+- JSON per sprite: `rect` [x,y,w,h] on its atlas, `anchor` [ax,ay] where it stands, `pts` flat integer sprite px (y down), `rings` point count per outline, `tris` flat index triples (counter-clockwise as the picture is seen), `ein` the nearest painted pixel to each point (the edge ribbon samples it).
+- Checks printed on every run: cover (share of painted pixels inside the cut, must be 1.0), air (cut area / painted area), and the `seal`, a hash salted with the prime 113. Same art in, same seal out.
+- First run: 424 sprites, ~21.5k vertices, cover 1.0000, air 1.14 on average, re-run byte-identical.
+
 ## Gotchas we hit
 - `//` comments inserted mid-line swallow the rest of the line in a minified or joined file; use `/* */`.
 - Inside-out faces mean the winding is mirrored: check `frontFace` before touching the geometry.
