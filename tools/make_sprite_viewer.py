@@ -43,7 +43,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 .tab{min-width:64px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
 .tab[aria-pressed="true"]{color:var(--tint);background:var(--fill)}
 .panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
-.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
+.panel.col{flex-direction:column;align-items:stretch}.panel .line{display:flex;align-items:center;gap:12px}.panel .seg{flex:none}.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
 .panel input[type=range]{flex:1;min-width:0;accent-color:var(--tint)}.small{font-size:13px;color:var(--label2)}
 .pill{height:32px;padding:0 14px;border-radius:16px;background:var(--fill);font-size:14px;font-weight:500}.pill.tinted{background:var(--tint);color:var(--tint-ink)}
 .seg{display:flex;flex:1;background:var(--fill);border-radius:9px;padding:2px;gap:2px}.seg button{flex:1;height:30px;border-radius:7px;font-size:13px;font-weight:500}
@@ -73,7 +73,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <input id="file" type="file" accept="image/*" hidden>
 <div class="top"><span class="word">Papercraft</span><button id="more" class="round glass" aria-label="Options">''' + svg('more') + '''</button></div>
 <div id="hello" class="hello glass" hidden><h1>Turn any picture into a paper model</h1><p>Choose a photo or a drawing. Papercraft cuts out the subject and folds it into 3D.</p><label class="primary" for="file">Choose Photo</label></div>
-<div id="pDepth" class="panel glass" hidden><span class="small">Flat</span><input id="thick" type="range" min="0" max="4" step="0.25" value="1" aria-label="Depth"><span class="small">Thick</span></div>
+<div id="pDepth" class="panel glass col" hidden><div class="seg" role="group" aria-label="Shape"><button data-shape="card" aria-pressed="false">Card</button><button data-shape="round" aria-pressed="true">Round</button></div><div class="line"><span class="small">Thin</span><input id="thick" type="range" min="0" max="4" step="0.25" value="2" aria-label="Depth"><span class="small">Full</span></div></div>
 <div id="pErase" class="panel glass" hidden><span class="hint" id="eraseHint">Tap the background to remove it.</span><button id="undo" class="pill">Undo</button><button id="done" class="pill tinted">Done</button></div>
 <div id="pLook" class="panel glass" hidden><div class="seg" role="group" aria-label="Look"><button data-look="clean" aria-pressed="true">Clean</button><button data-look="ps1" aria-pressed="false">PS1</button></div></div>
 <nav class="bar glass" aria-label="Tools">
@@ -110,8 +110,8 @@ const CAST = [['farm/f_elder', 24], ['farm/f_farmer', 24], ['farm/f_franz', 24],
 const STALKER = ['farm/f_farmer', 24 * 1.35]; // the tall one, at the back
 // ---------- state: everything the page shows comes from here ----------
 const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
-const ST = { mode: Q.get('mode') || (Q.get('s') ? 'one' : 'start'), sprite: Q.get('s') || 'sud/stand', tool: null, look: Q.get('ps1') === '1' ? 'ps1' : 'clean', detail: 256, tol: 48, one: true };
-const MINE = { img: null, S: null, w: 0, h: 0, seeds: [], ms: 0, fold: null };
+const ST = { shape: Q.get('shape') || 'round', mode: Q.get('mode') || (Q.get('s') ? 'one' : 'start'), sprite: Q.get('s') || 'sud/stand', tool: null, look: Q.get('ps1') === '1' ? 'ps1' : 'clean', detail: 256, tol: 48, one: true };
+const MINE = { img: null, px: null, S: null, w: 0, h: 0, seeds: [], ms: 0, fold: null };
 // ---------- a tiny renderer: an orbit camera, the SAME fragment shader as the game (PAPER_GLSL.frag) ----------
 const cv = $('c'), gl = cv.getContext('webgl', { antialias: false, preserveDrawingBuffer: true });
 const vsrc = `attribute vec3 aP;attribute vec2 aT;attribute vec2 aS;uniform mat4 uM;varying vec2 vT;varying vec3 vW;varying float vZ,vSh,vEm;
@@ -122,7 +122,7 @@ const prog = link(vsrc, PAPER_GLSL.frag), wprog = link('attribute vec3 aP;unifor
 const texOf = (src, rep, old) => { if (old) gl.deleteTexture(old); const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); const f = rep === 'smooth' ? gl.LINEAR : gl.NEAREST, wr = rep === true ? gl.REPEAT : gl.CLAMP_TO_EDGE;
   [[gl.TEXTURE_MIN_FILTER, f], [gl.TEXTURE_MAG_FILTER, f], [gl.TEXTURE_WRAP_S, wr], [gl.TEXTURE_WRAP_T, wr]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
   if (src.px) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, src.w, src.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(src.px.buffer)); else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); return t; };
-const TEX = {}; let loaded = 0; const names = Object.keys(SPRITE_POLYS.atlases);
+const TEX = {}, ATLAS_PX = {}; let loaded = 0; const names = Object.keys(SPRITE_POLYS.atlases);
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const rgb = c => { const m = c.match(/^#([0-9a-f]{6})$/i); if (m) return [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16) / 255); const n = c.match(/[\\d.]+/g) || [0, 0, 0]; return n.slice(0, 3).map(v => +v / 255); };
 const flags = () => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#5c5246'; g.fillRect(0, 0, 64, 64); // the town's flagstones, jittered by the prime (the PS1 look)
@@ -143,10 +143,10 @@ function stage(R, shadowW) { // the floor: studio disc (clean) or flagstones (PS
   gl.bindBuffer(gl.ARRAY_BUFFER, gbuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW); gN = V.length / 7; }
 const depth = () => +$('thick').value;
 function build() { // fold every piece on stage; one buffer per texture
-  const th = depth(), per = {}, put = (key, h, x, y, ang, flip) => { const S = SPRITE_POLYS.sprites[key]; if (!S) return 0; const at = key.split('/')[0];
-    paperSprite(per[at] || (per[at] = []), S, SPRITE_POLYS.atlases[at].size, { x, y, ang, flip, s: h / S.rect[3], thick: th * h / 24 }); return h * S.rect[2] / S.rect[3]; };
+  const th = depth(), round = ST.shape === 'round', per = {}, put = (key, h, x, y, ang, flip) => { const S = SPRITE_POLYS.sprites[key]; if (!S) return 0; const at = key.split('/')[0], A = SPRITE_POLYS.atlases[at].size, o = { x, y, ang, flip, s: h / S.rect[3], anchor: S.anchor };
+    if (round && ATLAS_PX[at]) paperPuff(per[at] || (per[at] = []), ATLAS_PX[at], A[0], A[1], S.rect, Object.assign(o, { depth: th * h * 0.05 })); else paperSprite(per[at] || (per[at] = []), S, A, Object.assign(o, { thick: th * h / 24 })); return h * S.rect[2] / S.rect[3]; };
   let shadow = 0, R = 120;
-  if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; MINE.fold = { s, hh, th: th * hh / 24 }; paperSprite(per.mine = [], S, [MINE.w, MINE.h], { s, thick: MINE.fold.th }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
+  if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; MINE.fold = { s, hh, th: round ? 0 : th * hh / 24 }; if (round) paperPuff(per.mine = [], MINE.px, MINE.w, MINE.h, [0, 0, MINE.w, MINE.h], { s, depth: th * hh * 0.05, anchor: S.anchor }); else paperSprite(per.mine = [], S, [MINE.w, MINE.h], { s, thick: MINE.fold.th }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
   else if (ST.mode === 'cast') { const n0 = 14, look = [150, 260]; // two arcs on the plaza, each piece turned toward the lens and nudged by the prime
     CAST.forEach(([key, h], i) => { const row = i < n0 ? 0 : 1, k = row ? i - n0 : i, n = row ? CAST.length - n0 : n0, x = (k - (n - 1) / 2) * (row ? 30 : 17) + (paperPrime(i) - 0.5) * 5, y = row ? -40 + Math.abs(k - (n - 1) / 2) * 5 : 10 + Math.abs(k - (n - 1) / 2) * 3;
       put(key, h, x, y, Math.atan2(-(look[0] - x), look[1] - y) + (paperPrime(i + 50) - 0.5) * 0.6, paperPrime(i + 99) < 0.3); });
@@ -219,6 +219,7 @@ function setTool(t) { if (ST.tool === t) t = null; ST.tool = t; for (const k in 
 $('tErase').onclick = () => setTool('erase'); $('tDepth').onclick = () => setTool('depth'); $('tLook').onclick = () => setTool('look'); $('done').onclick = () => setTool(null);
 $('undo').onclick = () => { MINE.seeds.pop(); makeMine(); $('undo').disabled = !MINE.seeds.length; };
 $('thick').oninput = build;
+for (const b of document.querySelectorAll('[data-shape]')) b.onclick = () => { ST.shape = b.dataset.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); };
 for (const b of document.querySelectorAll('[data-look]')) b.onclick = () => { ST.look = b.dataset.look; document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); };
 // ---------- Options sheet ----------
 function openSheet() { info(); $('sheet').hidden = $('scrim').hidden = false; } function closeSheet() { $('sheet').hidden = $('scrim').hidden = true; }
@@ -233,7 +234,7 @@ let toastT = 0; function toast(m) { const t = $('toast'); t.textContent = m; t.c
 function makeMine(first) { if (!MINE.img) return; const t0 = performance.now();
   const C = paperCutout(MINE.img, { max: ST.detail, tol: ST.tol, one: ST.one, seeds: MINE.seeds });
   MINE.S = paperTrace(C.px, C.w, [0, 0, C.w, C.h]); if (MINE.S) { const P = MINE.S.pts; let x0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < P.length; i += 2) { x0 = Math.min(x0, P[i]); x1 = Math.max(x1, P[i]); y1 = Math.max(y1, P[i + 1]); } MINE.S.anchor = [(x0 + x1) / 2, y1]; } // it stands on its lowest painted pixel
-  MINE.w = C.w; MINE.h = C.h; MINE.ms = performance.now() - t0; TEX.mine = texOf(C, false, TEX.mine);
+  MINE.w = C.w; MINE.px = C.px; MINE.h = C.h; MINE.ms = performance.now() - t0; TEX.mine = texOf(C, false, TEX.mine);
   let air = 0; for (let i = 3; i < C.px.length; i += 4) if (!C.px[i]) air++;
   if (!MINE.S) { toast('Everything was removed. Tap Undo, or turn Background removal down in Options.'); groups = []; tris = 0; return; }
   if (first && !air) toast('No background found. Tap Erase, then tap the background.');
@@ -244,9 +245,9 @@ $('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const i
 function refreshHello() { $('hello').hidden = !(ST.mode === 'start' && !MINE.img && !ST.tool); }
 // ---------- start ----------
 if (Q.get('t')) $('thick').value = Q.get('t'); $('wire').checked = Q.get('wire') === '1'; $('spin').checked = Q.get('spin') !== '0';
-document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x.dataset.look === ST.look));
+document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x.dataset.look === ST.look)); document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape));
 const retheme = () => { if (loaded === names.length) build(); }; matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme); new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); if (++loaded === names.length) { build(); refreshHello(); requestAnimationFrame(frame); window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }
+for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); ATLAS_PX[at] = g.getImageData(0, 0, im.width, im.height).data; } /* pixels, for Round */ if (++loaded === names.length) { build(); refreshHello(); requestAnimationFrame(frame); window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }
 </script></body></html>'''
 if '--artifact' in sys.argv:  # the same page without its own document wrapper (the artifact host adds one)
     body = re.sub(r'^<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport"[^>]*>', '', html).replace('</style></head><body>', '</style>', 1).replace('</body></html>', '')

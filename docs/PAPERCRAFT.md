@@ -21,6 +21,7 @@ The idea in one line: **the tile map is the blueprint, one painted sheet is the 
 - `paperGroundStep(ms)` paints the street texture in slices so loading never stalls.
 - `paperCottage(V)` an example of a hand-folded model that appends triangles to the mesh.
 - `paperCutout(img, o)` any picture -> a clean cut-out (shrunk, background keyed out, tap-to-erase seeds); `paperTrace(px, W, rect, o)` the tracer in the browser; `paperFlood` the flood fill they share.
+- `paperPuff(V, px, W, H, rect, o)` puffs a picture into a rounded, closed shape (the Round option); see step 7.
 - `paperSprite(V, S, A, o)` folds one traced sprite into a standing card and appends it to `V` (see below).
 - `PAPER_GLSL.vert / .frag` the shaders; the fragment shader is the paper look.
 
@@ -90,6 +91,15 @@ Goal: any sprite frame (hero, townsfolk, animals, props, the stalker) becomes a 
 - "Keep one piece" keeps one subject: the biggest piece plus any piece within ~2% of the picture's size of it (a handle split off by a dark seam comes along; a second figure standing apart does not).
 - Your picture stands on its lowest painted pixel, not on the bottom of the frame.
 - Checks: `node tools/check_cutout.js` (cut-outs contact sheet, `papercraft/shots/cutouts.png`), `node tools/shoot_upload.js` (phone-size: start, five pictures, Erase by tapping the model, Options, dark mode). GREEN.
+
+**Step 7, Round: from a cut-out slab to a volume** `paperPuff(V, px, W, H, rect, o)`.
+Extruding the outline (the card) gives every part the same thickness: arms as deep as the chest, flat striped sides. Round inflates the picture instead, like a pillow sewn round its outline:
+- A chamfer distance field (3-4) gives every painted pixel its distance to the air. A grid (about 56 cells across) covers the painted cells; each corner is raised by a quarter-circle of its distance (minus a seam band), so the fullest point gets `o.depth` and thin parts stay slim and round.
+- Front and back are the same grid, mirrored through the picture plane; they meet on a flat seam round the edge, so the shell is closed. The alpha cut keeps the outline pixel-exact.
+- Gouraud shading per corner from a light high on the left (the PS1 way); the back is lit from behind and dimmer.
+- Check: `node tools/check_paper_puff.js` puffs all 424 sprites twice (plain; mirrored and turned): every edge balanced by edges running the other way (on the seam, front and back sheets coincide), wound inward. GREEN.
+- Viewer: Depth has **Card / Round** (Round by default) and a Thin-Full slider. The cut-out also loses the 1 px fringe the background key leaves, which was where the grey stripes on card edges came from.
+- Planar projection, as on the card: seen from the side the paint stretches over the curve. Fine for PS1; a later step could paint the sides.
 
 **Next:** save what you made (the polygon + its cut-out as one file, and a .glb so it opens in other 3D apps); make the viewer an installable phone app (it is already one self-contained page); then the cast in the town demo, layer stacks, hinges and the Heads system.
 

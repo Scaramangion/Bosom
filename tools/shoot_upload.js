@@ -16,6 +16,10 @@ const TESTS = [['phone-sprite', 'art-source/characters/girl_front.png'], ['phone
       for (const [u, v] of taps) { const [x, y] = await p.evaluate(([u, v]) => screenOf(u, v), [u, v]); await p.mouse.click(x, y); await p.waitForTimeout(250); }
       console.log('  erased with', await p.evaluate(() => MINE.seeds.length), 'taps');
       await p.waitForTimeout(400); await p.screenshot({ path: R('papercraft/shots/' + name + '-tapping.png') }); await p.click('#done'); await p.waitForTimeout(900); }
+    if (name === 'phone-sprite' || name === 'phone-grid') { // Round vs Card, seen from the side
+      for (const [shape, yaw] of [['round', 1.25], ['round', 0.5], ['card', 1.25]]) { await p.click('#tDepth'); await p.click(`[data-shape=${shape}]`); await p.click('#tDepth');
+        await p.evaluate(y => { cam.to = null; cam.yaw = y; cam.pitch = 0.18; }, yaw); await p.waitForTimeout(500); await p.screenshot({ path: R(`papercraft/shots/${name}-${shape}-${yaw}.png`) }); }
+      await p.click('#tDepth'); await p.click('[data-shape=round]'); await p.click('#tDepth'); }
     const info = await p.$eval('#info', e => e.textContent); if (!/corners/.test(info)) errs.push(name + ': ' + info);
     await p.screenshot({ path: R('papercraft/shots/' + name + '.png') }); console.log('shot', name, '|', info);
   }

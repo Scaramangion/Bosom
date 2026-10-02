@@ -513,6 +513,9 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
                 const keys = [...bins.values()].sort((p, q) => q[0] - p[0] || p[4] - q[4]).filter((b, n) => n === 0 || (n < 6 && b[0] >= Math.max(3, border.length * 0.04))).map(b => [b[1] / b[0], b[2] / b[0], b[3] / b[0]]); // the border's palette: a plain backdrop has one colour, a grid or a pattern a few
                 const near = i => keys.some(c => (px[i * 4] - c[0]) ** 2 + (px[i * 4 + 1] - c[1]) ** 2 + (px[i * 4 + 2] - c[2]) ** 2 <= tol * tol);
                 const seen = paperFlood(px, w, h, border.filter(near), near); for (let i = 0; i < w * h; i++) px[i * 4 + 3] = seen[i] ? 0 : 255;
+                const rim = []; for (let i = 0; i < w * h; i++) { if (!px[i * 4 + 3]) continue; const x = i % w, y = (i / w) | 0; // trim the 1 px fringe the key leaves (half backdrop, half subject)
+                    if ((x > 0 && !px[(i - 1) * 4 + 3]) || (x < w - 1 && !px[(i + 1) * 4 + 3]) || (y > 0 && !px[(i - w) * 4 + 3]) || (y < h - 1 && !px[(i + w) * 4 + 3])) rim.push(i); }
+                for (const i of rim) px[i * 4 + 3] = 0;
             } else for (let i = 3; i < px.length; i += 4) px[i] = px[i] >= 128 ? 255 : 0;
             for (const [u, v] of o.seeds || []) { const i0 = Math.min(h - 1, Math.max(0, Math.floor(v * h))) * w + Math.min(w - 1, Math.max(0, Math.floor(u * w))); if (!px[i0 * 4 + 3]) continue; // tap to erase
                 const d2 = (i, j) => (px[i * 4] - px[j * 4]) ** 2 + (px[i * 4 + 1] - px[j * 4 + 1]) ** 2 + (px[i * 4 + 2] - px[j * 4 + 2]) ** 2, step = (0.6 * tol) ** 2, far = (3 * tol) ** 2;
@@ -555,6 +558,39 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
                 const out = [Rx * -dy * fl, Ry * -dy * fl, -dx]; /* the outline runs counter-clockwise as seen, so outward is to its right: (-dy, dx) in sprite px, z flips */
                 const f0 = at(i, th / 2), f1 = at(j, th / 2), b0 = at(i, -th / 2), b1 = at(j, -th / 2);
                 tri([f0, f1, b1], t, sh[2], out); tri([f0, b1, b0], t, sh[2], out); }
+            return V;
+        }
+
+        // ---- a picture puffed into a rounded shape instead of a flat card: like a pillow sewn round its outline. Thickness grows with the distance
+        // from the outline (a quarter-circle profile), so a torso comes out full and an arm comes out slim and round; a flat seam runs round the edge,
+        // where front and back meet, so the shell is closed. The alpha cut keeps the outline pixel-exact, as on a card. Shaded per corner (Gouraud,
+        // as the PS1 did) from a light high on the left. px: RGBA of the whole texture (W x H); rect [x, y, w, h] the part to puff.
+        // o: x, y, ang, flip, s (world units per px), depth (half-thickness at the fullest point, world units), step (grid px), anchor [ax, ay], back (shade of the back).
+        function paperPuff(V, px, W, H, rect, o = {}) {
+            const [X0, Y0, w, h] = rect, s = o.s || 0.25, D = o.depth == null ? 2 : o.depth, g = o.step || Math.max(2, Math.round(Math.max(w, h) / 56)), fl = o.flip ? -1 : 1, a = o.ang || 0;
+            const Rx = Math.cos(a), Ry = Math.sin(a), Nx = -Ry, Ny = Rx, ax = (o.anchor || [w / 2, h])[0], ay = (o.anchor || [w / 2, h])[1], em = o.glow || 0, back = o.back == null ? 0.62 : o.back;
+            const d = new Float32Array(w * h), BIG = 1e9; // chamfer distance (3-4) from every painted pixel to the nearest air, in px
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d[y * w + x] = px[((Y0 + y) * W + X0 + x) * 4 + 3] >= 128 ? BIG : 0;
+            const at = (x, y) => x < 0 || y < 0 || x >= w || y >= h ? 0 : d[y * w + x];
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (d[i]) d[i] = Math.min(d[i], at(x - 1, y) + 3, at(x, y - 1) + 3, at(x - 1, y - 1) + 4, at(x + 1, y - 1) + 4); }
+            for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; if (d[i]) d[i] = Math.min(d[i], at(x + 1, y) + 3, at(x, y + 1) + 3, at(x + 1, y + 1) + 4, at(x - 1, y + 1) + 4); }
+            const nx = Math.ceil(w / g), ny = Math.ceil(h / g), cx = i => Math.min(i * g, w), cy = j => Math.min(j * g, h), E = new Float32Array((nx + 1) * (ny + 1)); let R = 1;
+            for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const x = cx(i), y = cy(j), m = Math.min(at(x - 1, y - 1), at(x, y - 1), at(x - 1, y), at(x, y)) / 3; // the corner's distance to air, minus the seam
+                const e = Math.max(0, m - g); E[j * (nx + 1) + i] = e; if (e > R) R = e; }
+            const Hh = new Float32Array(E.length); for (let k = 0; k < E.length; k++) { const t = E[k] / R; Hh[k] = D * Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); } // quarter circle: full at the fullest point, steep at the seam
+            const hv = (i, j) => Hh[Math.max(0, Math.min(ny, j)) * (nx + 1) + Math.max(0, Math.min(nx, i))], L = [-0.35, 0.55, 0.76], Lb = [0.35, 0.55, -0.76];
+            const shadeAt = (i, j, side) => { const gx = (hv(i + 1, j) - hv(i - 1, j)) / (2 * g * s) * fl, gz = -(hv(i, j + 1) - hv(i, j - 1)) / (2 * g * s), n = [-gx * side, -gz * side, side], k = Math.hypot(n[0], n[1], n[2]), l = side > 0 ? L : Lb;
+                const lam = Math.max(0, (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]) / k); return (0.55 + 0.55 * lam) * (side > 0 ? 1 : back); };
+            const P = (i, j, side) => { const u = (cx(i) - ax) * s * fl, dd = side * hv(i, j); return [(o.x || 0) + Rx * u + Nx * dd, (o.y || 0) + Ry * u + Ny * dd, (ay - cy(j)) * s]; };
+            const UV = (i, j) => [(X0 + cx(i)) / W, (Y0 + cy(j)) / H];
+            const tri = (q, side) => { const p = q.map(([i, j]) => P(i, j, side)), out = [Nx * side, Ny * side, 0]; // a face is front when (B-A)x(C-A) points INTO it (left-handed world)
+                const ux = p[1][0] - p[0][0], uy = p[1][1] - p[0][1], uz = p[1][2] - p[0][2], vx = p[2][0] - p[0][0], vy = p[2][1] - p[0][1], vz = p[2][2] - p[0][2];
+                const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2];
+                for (const n of ord) { const [i, j] = q[n], t = UV(i, j); V.push(p[n][0], p[n][1], p[n][2], t[0], t[1], shadeAt(i, j, side), em); } };
+            for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { // every grid cell that holds any paint
+                let any = false; for (let y = cy(j); y < cy(j + 1) && !any; y++) for (let x = cx(i); x < cx(i + 1); x++) if (d[y * w + x]) { any = true; break; }
+                if (!any) continue; const A = [i, j], B = [i + 1, j], C = [i + 1, j + 1], Dd = [i, j + 1], flip = (i + j) & 1; // alternate the diagonal, so the shading has no grain
+                for (const side of [1, -1]) { if (flip) { tri([A, B, C], side); tri([A, C, Dd], side); } else { tri([A, B, Dd], side); tri([B, C, Dd], side); } } }
             return V;
         }
 
