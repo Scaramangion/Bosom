@@ -632,7 +632,7 @@
             const front = [Nx, Ny, 0], back = [-Nx, -Ny, 0], T = S.tris;
             for (let k = 0; k < T.length; k += 3) { const i = T[k], j = T[k + 1], m = T[k + 2], t = [uv(P[i * 2], P[i * 2 + 1]), uv(P[j * 2], P[j * 2 + 1]), uv(P[m * 2], P[m * 2 + 1])];
                 tri([at(i, th / 2), at(j, th / 2), at(m, th / 2)], t, sh[0], front);              // the painted front
-                tri([at(i, -th / 2), at(j, -th / 2), at(m, -th / 2)], t, sh[1], back); }          // the back: the same paint seen through, darker
+                tri([at(i, -th / 2), at(j, -th / 2), at(m, -th / 2)], o.backDU ? t.map(q => [q[0] + o.backDU, q[1]]) : t, sh[1], back); } // the back: the same paint seen through, darker (or o.backDU: a back view laid out beside the front in the texture)
             if (th > 0) for (let r = 0, b = 0; r < S.rings.length; b += S.rings[r++]) for (let n = S.rings[r], q = 0; q < n; q++) { // the card edge, one strip per outline segment
                 const i = b + q, j = b + (q + 1) % n, dx = P[j * 2] - P[i * 2], dy = P[j * 2 + 1] - P[i * 2 + 1], c = uv(E[i * 2] + 0.5, E[i * 2 + 1] + 0.5), t = [c, c, c];
                 const out = [Rx * -dy * fl, Ry * -dy * fl, -dx]; /* the outline runs counter-clockwise as seen, so outward is to its right: (-dy, dx) in sprite px, z flips */
@@ -663,16 +663,49 @@
             const shadeAt = (i, j, side) => { const gx = (hv(i + 1, j) - hv(i - 1, j)) / (2 * g * s) * fl, gz = -(hv(i, j + 1) - hv(i, j - 1)) / (2 * g * s), n = [-gx * side, -gz * side, side], k = Math.hypot(n[0], n[1], n[2]), l = side > 0 ? L : Lb;
                 const lam = Math.max(0, (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]) / k); return (0.55 + 0.55 * lam) * (side > 0 ? 1 : back); };
             const P = (i, j, side) => { const u = (cx(i) - ax) * s * fl, dd = side * hv(i, j); return [(o.x || 0) + Rx * u + Nx * dd, (o.y || 0) + Ry * u + Ny * dd, (ay - cy(j)) * s]; };
-            const UV = (i, j) => [(X0 + cx(i)) / W, (Y0 + cy(j)) / H];
+            const UV = (i, j, side) => [(X0 + cx(i)) / W + (side < 0 && o.backDU ? o.backDU : 0), (Y0 + cy(j)) / H]; // o.backDU: the back side samples a back view laid out beside the front
             const tri = (q, side) => { const p = q.map(([i, j]) => P(i, j, side)), out = [Nx * side, Ny * side, 0]; // a face is front when (B-A)x(C-A) points INTO it (left-handed world)
                 const ux = p[1][0] - p[0][0], uy = p[1][1] - p[0][1], uz = p[1][2] - p[0][2], vx = p[2][0] - p[0][0], vy = p[2][1] - p[0][1], vz = p[2][2] - p[0][2];
                 const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2];
-                for (const n of ord) { const [i, j] = q[n], t = UV(i, j); V.push(p[n][0], p[n][1], p[n][2], t[0], t[1], shadeAt(i, j, side), em); } };
+                for (const n of ord) { const [i, j] = q[n], t = UV(i, j, side); V.push(p[n][0], p[n][1], p[n][2], t[0], t[1], shadeAt(i, j, side), em); } };
             for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { // every grid cell that holds any paint
                 let any = false; for (let y = cy(j); y < cy(j + 1) && !any; y++) for (let x = cx(i); x < cx(i + 1); x++) if (d[y * w + x]) { any = true; break; }
                 if (!any) continue; const A = [i, j], B = [i + 1, j], C = [i + 1, j + 1], Dd = [i, j + 1], flip = (i + j) & 1; // alternate the diagonal, so the shading has no grain
                 for (const side of [1, -1]) { if (flip) { tri([A, B, C], side); tri([A, C, Dd], side); } else { tri([A, B, Dd], side); tri([B, C, Dd], side); } } }
             return V;
+        }
+
+        // ---- another view of the same figure (a back view, from an orthographic sheet), laid onto the front's own pixels: matched in height, feet
+        // together, centred, and mirrored left-right for a back view (seen from behind, the figure's right is on the picture's left). front: RGBA w x h
+        // (the cut-out; alpha says where the figure is); view: RGBA vw x vh (its cut-out). Returns RGBA w x h: for every front pixel, the view's colour
+        // there (alpha 255), or alpha 0 where the view has no paint (fill those from paperGuessBack).
+        function paperFitView(front, w, h, view, vw, vh, o = {}) {
+            const box = (px, W, H) => { let x0 = W, x1 = -1, y0 = H, y1 = -1; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (px[(y * W + x) * 4 + 3] >= 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } return [x0, x1, y0, y1]; };
+            const [fx0, fx1, fy0, fy1] = box(front, w, h), [vx0, vx1, vy0, vy1] = box(view, vw, vh), out = new Uint8ClampedArray(w * h * 4); if (fx1 < 0 || vx1 < 0) return out;
+            const k = (vy1 - vy0 + 1) / (fy1 - fy0 + 1), fc = (fx0 + fx1 + 1) / 2, vc = (vx0 + vx1 + 1) / 2, mir = o.mirror !== false;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (front[i * 4 + 3] < 128) continue;
+                const sx = Math.floor(vc + (mir ? -1 : 1) * (x + 0.5 - fc) * k), sy = Math.floor(vy1 + 1 - (fy1 + 1 - (y + 0.5)) * k); if (sx < 0 || sy < 0 || sx >= vw || sy >= vh) continue;
+                const j = (sy * vw + sx) * 4; if (view[j + 3] < 128) continue; out[i * 4] = view[j]; out[i * 4 + 1] = view[j + 1]; out[i * 4 + 2] = view[j + 2]; out[i * 4 + 3] = 255; }
+            return out;
+        }
+        // ---- a guess at the back of a figure, from its front (when no back view is given): the head turns to hair (each face pixel takes the colour of
+        // the nearest hair above it, so strands carry down), and the body keeps its colours with the small details (eyes, buttons, buckles) smoothed
+        // away. px: the front cut-out (RGBA w x h); head: a mask of the head (e.g. paperRig's), or null for the top fifth of the figure.
+        function paperGuessBack(px, w, h, head) {
+            const out = new Uint8ClampedArray(px), on = i => px[i * 4 + 3] >= 128; let top = h, bot = -1; for (let i = 0; i < w * h; i++) if (on(i)) { const y = (i / w) | 0; if (y < top) top = y; bot = y; }
+            if (bot < 0) return out; const H = bot - top + 1, inHead = i => head ? head[i] : ((i / w) | 0) < top + H * 0.2;
+            const hd = []; for (let i = 0; i < w * h; i++) if (on(i) && inHead(i)) hd.push(i); let hy0 = h, hy1 = -1; for (const i of hd) { const y = (i / w) | 0; hy0 = Math.min(hy0, y); hy1 = Math.max(hy1, y); }
+            const crown = hd.filter(i => ((i / w) | 0) < hy0 + (hy1 - hy0 + 1) * 0.3), med = c => { const v = crown.map(i => px[i * 4 + c]).sort((a, b) => a - b); return v.length ? v[v.length >> 1] : 0; }, hair = [med(0), med(1), med(2)];
+            const isHair = i => (px[i * 4] - hair[0]) ** 2 + (px[i * 4 + 1] - hair[1]) ** 2 + (px[i * 4 + 2] - hair[2]) ** 2 < 70 * 70;
+            const ch = Math.max(2, Math.round((hy1 - hy0 + 1) * 0.3)); // the crown's own texture, repeated down over the back of the head
+            for (const i of hd) { const x = i % w, y = (i / w) | 0; if (y < hy0 + ch && isHair(i)) continue; let src = -1;
+                for (let k = 0; k < ch && src < 0; k++) { const yy = hy0 + ((y - hy0 + k) % ch), j = yy * w + x; if (on(j) && inHead(j) && isHair(j)) src = j; }
+                for (let c = 0; c < 3; c++) out[i * 4 + c] = src >= 0 ? px[src * 4 + c] * 0.95 : hair[c] * 0.9; }
+            const r = Math.max(1, Math.round(Math.max(w, h) / 90)), tmp = new Uint8ClampedArray(out); // the body: a small blur within the figure, details smoothed away, a touch darker
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (!on(i) || inHead(i)) continue; let R = 0, G = 0, B = 0, n = 0;
+                for (let yy = Math.max(0, y - r); yy <= Math.min(h - 1, y + r); yy++) for (let xx = Math.max(0, x - r); xx <= Math.min(w - 1, x + r); xx++) { const j = yy * w + xx; if (!on(j) || inHead(j)) continue; R += tmp[j * 4]; G += tmp[j * 4 + 1]; B += tmp[j * 4 + 2]; n++; }
+                out[i * 4] = R / n * 0.94; out[i * 4 + 1] = G / n * 0.94; out[i * 4 + 2] = B / n * 0.94; }
+            return out;
         }
 
         // ---- a rig for a standing figure, found in its cut-out: head, torso, two arms, two legs, each with a pivot (Paper Mario's flaps, Minecraft's

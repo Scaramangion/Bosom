@@ -17,7 +17,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 .word{font-weight:600;font-size:17px;letter-spacing:-.01em;pointer-events:auto}
 .tr{display:flex;gap:8px}.round{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;pointer-events:auto}
 .bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:6px;border-radius:22px}
-.joint{position:fixed;width:12px;height:12px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid var(--tint);background:var(--material);pointer-events:none}.tab{min-width:58px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
+.joint{position:fixed;width:12px;height:12px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid var(--tint);background:var(--material);pointer-events:none}.tab{min-width:52px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
 .tab[aria-pressed="true"]{color:var(--tint);background:var(--fill)}
 .panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
 .panel.col{flex-direction:column;align-items:stretch}.panel .line{display:flex;align-items:center;gap:10px}.panel.col>.seg{flex:none}.panel .line .seg{flex:1}.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
@@ -54,11 +54,15 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <div id="pCut" class="panel glass col" hidden><div class="line"><div class="seg" role="group" aria-label="Tap to"><button data-mark="keep" aria-pressed="true">Keep</button><button data-mark="drop" aria-pressed="false">Remove</button></div><button id="undo" class="pill">Undo</button><button id="done" class="pill tinted">Done</button></div><span class="hint" id="cutHint">Tap the person or thing you want to keep.</span></div>
 <div id="pPose" class="panel glass col" hidden><div class="seg" role="group" aria-label="Move"><button data-anim="still" aria-pressed="false">Still</button><button data-anim="idle" aria-pressed="true">Idle</button><button data-anim="walk" aria-pressed="false">Walk</button><button data-anim="wave" aria-pressed="false">Wave</button></div><div class="line"><span class="hint" id="poseHint">Drag an arm, a leg or the head to pose it.</span><button id="reset" class="pill">Reset</button></div></div>
 <div id="joints" aria-hidden="true"></div>
+<div id="pViews" class="panel glass col" hidden><div class="line"><span class="small" style="width:34px">Back</span><div class="seg" role="group" aria-label="Back"><button data-back="mirror" aria-pressed="false">Mirror</button><button data-back="guess" aria-pressed="true">Guess</button><button data-back="picture" aria-pressed="false">Picture</button></div></div>
+<div class="line"><span class="hint" id="viewsHint">The back is guessed from the front. Choose Picture to use a back view.</span><button id="turn" class="pill">Turn</button></div></div>
+<input id="fileBack" type="file" accept="image/*" hidden>
 <div id="pLook" class="panel glass" hidden><div class="seg" role="group" aria-label="Look"><button data-look="clean" aria-pressed="true">Clean</button><button data-look="ps1" aria-pressed="false">PS1</button></div></div>
 <nav class="bar glass" aria-label="Tools">
 <label class="tab btn" for="file" id="tPhoto"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/></svg>Photo</label>
 <button class="tab" id="tCut" aria-pressed="false" disabled><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6.5" cy="7" r="2.6"/><circle cx="6.5" cy="17" r="2.6"/><path d="M8.6 8.6L20 18M8.6 15.4L20 6"/></svg>Cut</button>
 <button class="tab" id="tDepth" aria-pressed="false"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8l7-4 7 4v8l-7 4-7-4z"/><path d="M5 8l7 4 7-4M12 12v8"/></svg>Depth</button>
+<button class="tab" id="tViews" aria-pressed="false" disabled><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 0 1 13-5.1"/><path d="M17.8 3.6l-.3 3.4-3.4-.3"/><path d="M19.5 12a7.5 7.5 0 0 1-13 5.1"/><path d="M6.2 20.4l.3-3.4 3.4.3"/><circle cx="12" cy="12" r="2.2"/></svg>Views</button>
 <button class="tab" id="tPose" aria-pressed="false" disabled><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.6" r="2.1"/><path d="M12 7v7M12 9l-5 3M12 9l5-3.5M12 14l-3.5 6M12 14l3.5 6"/></svg>Pose</button>
 <button class="tab" id="tLook" aria-pressed="false"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16" fill="currentColor" stroke="none"/></svg>Look</button></nav>
 <div id="scrim" class="scrim" hidden></div>
@@ -724,7 +728,7 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
             const front = [Nx, Ny, 0], back = [-Nx, -Ny, 0], T = S.tris;
             for (let k = 0; k < T.length; k += 3) { const i = T[k], j = T[k + 1], m = T[k + 2], t = [uv(P[i * 2], P[i * 2 + 1]), uv(P[j * 2], P[j * 2 + 1]), uv(P[m * 2], P[m * 2 + 1])];
                 tri([at(i, th / 2), at(j, th / 2), at(m, th / 2)], t, sh[0], front);              // the painted front
-                tri([at(i, -th / 2), at(j, -th / 2), at(m, -th / 2)], t, sh[1], back); }          // the back: the same paint seen through, darker
+                tri([at(i, -th / 2), at(j, -th / 2), at(m, -th / 2)], o.backDU ? t.map(q => [q[0] + o.backDU, q[1]]) : t, sh[1], back); } // the back: the same paint seen through, darker (or o.backDU: a back view laid out beside the front in the texture)
             if (th > 0) for (let r = 0, b = 0; r < S.rings.length; b += S.rings[r++]) for (let n = S.rings[r], q = 0; q < n; q++) { // the card edge, one strip per outline segment
                 const i = b + q, j = b + (q + 1) % n, dx = P[j * 2] - P[i * 2], dy = P[j * 2 + 1] - P[i * 2 + 1], c = uv(E[i * 2] + 0.5, E[i * 2 + 1] + 0.5), t = [c, c, c];
                 const out = [Rx * -dy * fl, Ry * -dy * fl, -dx]; /* the outline runs counter-clockwise as seen, so outward is to its right: (-dy, dx) in sprite px, z flips */
@@ -755,16 +759,49 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
             const shadeAt = (i, j, side) => { const gx = (hv(i + 1, j) - hv(i - 1, j)) / (2 * g * s) * fl, gz = -(hv(i, j + 1) - hv(i, j - 1)) / (2 * g * s), n = [-gx * side, -gz * side, side], k = Math.hypot(n[0], n[1], n[2]), l = side > 0 ? L : Lb;
                 const lam = Math.max(0, (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]) / k); return (0.55 + 0.55 * lam) * (side > 0 ? 1 : back); };
             const P = (i, j, side) => { const u = (cx(i) - ax) * s * fl, dd = side * hv(i, j); return [(o.x || 0) + Rx * u + Nx * dd, (o.y || 0) + Ry * u + Ny * dd, (ay - cy(j)) * s]; };
-            const UV = (i, j) => [(X0 + cx(i)) / W, (Y0 + cy(j)) / H];
+            const UV = (i, j, side) => [(X0 + cx(i)) / W + (side < 0 && o.backDU ? o.backDU : 0), (Y0 + cy(j)) / H]; // o.backDU: the back side samples a back view laid out beside the front
             const tri = (q, side) => { const p = q.map(([i, j]) => P(i, j, side)), out = [Nx * side, Ny * side, 0]; // a face is front when (B-A)x(C-A) points INTO it (left-handed world)
                 const ux = p[1][0] - p[0][0], uy = p[1][1] - p[0][1], uz = p[1][2] - p[0][2], vx = p[2][0] - p[0][0], vy = p[2][1] - p[0][1], vz = p[2][2] - p[0][2];
                 const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2];
-                for (const n of ord) { const [i, j] = q[n], t = UV(i, j); V.push(p[n][0], p[n][1], p[n][2], t[0], t[1], shadeAt(i, j, side), em); } };
+                for (const n of ord) { const [i, j] = q[n], t = UV(i, j, side); V.push(p[n][0], p[n][1], p[n][2], t[0], t[1], shadeAt(i, j, side), em); } };
             for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { // every grid cell that holds any paint
                 let any = false; for (let y = cy(j); y < cy(j + 1) && !any; y++) for (let x = cx(i); x < cx(i + 1); x++) if (d[y * w + x]) { any = true; break; }
                 if (!any) continue; const A = [i, j], B = [i + 1, j], C = [i + 1, j + 1], Dd = [i, j + 1], flip = (i + j) & 1; // alternate the diagonal, so the shading has no grain
                 for (const side of [1, -1]) { if (flip) { tri([A, B, C], side); tri([A, C, Dd], side); } else { tri([A, B, Dd], side); tri([B, C, Dd], side); } } }
             return V;
+        }
+
+        // ---- another view of the same figure (a back view, from an orthographic sheet), laid onto the front's own pixels: matched in height, feet
+        // together, centred, and mirrored left-right for a back view (seen from behind, the figure's right is on the picture's left). front: RGBA w x h
+        // (the cut-out; alpha says where the figure is); view: RGBA vw x vh (its cut-out). Returns RGBA w x h: for every front pixel, the view's colour
+        // there (alpha 255), or alpha 0 where the view has no paint (fill those from paperGuessBack).
+        function paperFitView(front, w, h, view, vw, vh, o = {}) {
+            const box = (px, W, H) => { let x0 = W, x1 = -1, y0 = H, y1 = -1; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (px[(y * W + x) * 4 + 3] >= 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } return [x0, x1, y0, y1]; };
+            const [fx0, fx1, fy0, fy1] = box(front, w, h), [vx0, vx1, vy0, vy1] = box(view, vw, vh), out = new Uint8ClampedArray(w * h * 4); if (fx1 < 0 || vx1 < 0) return out;
+            const k = (vy1 - vy0 + 1) / (fy1 - fy0 + 1), fc = (fx0 + fx1 + 1) / 2, vc = (vx0 + vx1 + 1) / 2, mir = o.mirror !== false;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (front[i * 4 + 3] < 128) continue;
+                const sx = Math.floor(vc + (mir ? -1 : 1) * (x + 0.5 - fc) * k), sy = Math.floor(vy1 + 1 - (fy1 + 1 - (y + 0.5)) * k); if (sx < 0 || sy < 0 || sx >= vw || sy >= vh) continue;
+                const j = (sy * vw + sx) * 4; if (view[j + 3] < 128) continue; out[i * 4] = view[j]; out[i * 4 + 1] = view[j + 1]; out[i * 4 + 2] = view[j + 2]; out[i * 4 + 3] = 255; }
+            return out;
+        }
+        // ---- a guess at the back of a figure, from its front (when no back view is given): the head turns to hair (each face pixel takes the colour of
+        // the nearest hair above it, so strands carry down), and the body keeps its colours with the small details (eyes, buttons, buckles) smoothed
+        // away. px: the front cut-out (RGBA w x h); head: a mask of the head (e.g. paperRig's), or null for the top fifth of the figure.
+        function paperGuessBack(px, w, h, head) {
+            const out = new Uint8ClampedArray(px), on = i => px[i * 4 + 3] >= 128; let top = h, bot = -1; for (let i = 0; i < w * h; i++) if (on(i)) { const y = (i / w) | 0; if (y < top) top = y; bot = y; }
+            if (bot < 0) return out; const H = bot - top + 1, inHead = i => head ? head[i] : ((i / w) | 0) < top + H * 0.2;
+            const hd = []; for (let i = 0; i < w * h; i++) if (on(i) && inHead(i)) hd.push(i); let hy0 = h, hy1 = -1; for (const i of hd) { const y = (i / w) | 0; hy0 = Math.min(hy0, y); hy1 = Math.max(hy1, y); }
+            const crown = hd.filter(i => ((i / w) | 0) < hy0 + (hy1 - hy0 + 1) * 0.3), med = c => { const v = crown.map(i => px[i * 4 + c]).sort((a, b) => a - b); return v.length ? v[v.length >> 1] : 0; }, hair = [med(0), med(1), med(2)];
+            const isHair = i => (px[i * 4] - hair[0]) ** 2 + (px[i * 4 + 1] - hair[1]) ** 2 + (px[i * 4 + 2] - hair[2]) ** 2 < 70 * 70;
+            const ch = Math.max(2, Math.round((hy1 - hy0 + 1) * 0.3)); // the crown's own texture, repeated down over the back of the head
+            for (const i of hd) { const x = i % w, y = (i / w) | 0; if (y < hy0 + ch && isHair(i)) continue; let src = -1;
+                for (let k = 0; k < ch && src < 0; k++) { const yy = hy0 + ((y - hy0 + k) % ch), j = yy * w + x; if (on(j) && inHead(j) && isHair(j)) src = j; }
+                for (let c = 0; c < 3; c++) out[i * 4 + c] = src >= 0 ? px[src * 4 + c] * 0.95 : hair[c] * 0.9; }
+            const r = Math.max(1, Math.round(Math.max(w, h) / 90)), tmp = new Uint8ClampedArray(out); // the body: a small blur within the figure, details smoothed away, a touch darker
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (!on(i) || inHead(i)) continue; let R = 0, G = 0, B = 0, n = 0;
+                for (let yy = Math.max(0, y - r); yy <= Math.min(h - 1, y + r); yy++) for (let xx = Math.max(0, x - r); xx <= Math.min(w - 1, x + r); xx++) { const j = yy * w + xx; if (!on(j) || inHead(j)) continue; R += tmp[j * 4]; G += tmp[j * 4 + 1]; B += tmp[j * 4 + 2]; n++; }
+                out[i * 4] = R / n * 0.94; out[i * 4 + 1] = G / n * 0.94; out[i * 4 + 2] = B / n * 0.94; }
+            return out;
         }
 
         // ---- a rig for a standing figure, found in its cut-out: head, torso, two arms, two legs, each with a pivot (Paper Mario's flaps, Minecraft's
@@ -895,7 +932,7 @@ function build() { // fold every piece on stage; one buffer per texture
     paperSprite(per.cutview = [], MINE.fullS, [MINE.w, MINE.h], { s, thick: 0 }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.5; shadow = 0; R = Math.max(hh, S.rect[2] * s) * 4.2; }
   else if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3], D = th * hh * 0.05; MINE.fold = { s, hh, th: round ? 0 : th * hh / 24 };
     const RG = MINE.rig, P = RG.parts.length, Rg = round ? paperPuff([], MINE.px, MINE.w, MINE.h, [0, 0, MINE.w, MINE.h], { s, depth: D, anchor: S.anchor }).R : 0; // one fullest point for all parts: limbs puff thinner than the body
-    MINE.geo = RG.parts.map((pt, k) => { const V = []; if (round) paperPuff(V, MINE.rigPx, MINE.w, MINE.h * P, [0, k * MINE.h, MINE.w, MINE.h], { s, depth: D, anchor: S.anchor, R: Rg }); else if (MINE.rigS[k]) paperSprite(V, MINE.rigS[k], [MINE.w, MINE.h * P], { s, thick: MINE.fold.th });
+    MINE.geo = RG.parts.map((pt, k) => { const V = []; const bk = MINE.backDU ? { backDU: MINE.backDU, back: 0.92, shade: [1, 0.9, 0.74] } : {}; if (round) paperPuff(V, MINE.rigPx, MINE.rigW, MINE.h * P, [0, k * MINE.h, MINE.w, MINE.h], { s, depth: D, anchor: S.anchor, R: Rg, ...bk }); else if (MINE.rigS[k]) paperSprite(V, MINE.rigS[k], [MINE.rigW, MINE.h * P], { s, thick: MINE.fold.th, ...bk });
       return { V, name: pt.name, parent: pt.parent, dir: pt.dir, pv: [(pt.pivot[0] - S.anchor[0]) * s, 0, (S.anchor[1] - pt.pivot[1]) * s], n: V.length / 7 }; });
     per.rig = [].concat(...MINE.geo.map(g => g.V)); MINE.rest = Float32Array.from(per.rig); MINE.dyn = Float32Array.from(per.rig); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
   else if (ST.mode === 'cast') { const n0 = 14, look = [150, 260]; // two arcs on the plaza, each piece turned toward the lens and nudged by the prime
@@ -993,8 +1030,9 @@ window.screenOf = (U, V) => { // where a point of your picture's front face is o
   const s = MINE.fold.s, A = MINE.S.anchor, P = [(U * MINE.w - A[0]) * s, MINE.fold.th / 2, (A[1] - V * MINE.h) * s, 1], rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), o = [0, 1, 2, 3].map(j => P[0] * M[j] + P[1] * M[4 + j] + P[2] * M[8 + j] + P[3] * M[12 + j]);
   return [rc.left + (o[0] / o[3] + 1) / 2 * rc.width, rc.top + (1 - o[1] / o[3]) / 2 * rc.height]; };
 // ---------- the tools: Photo, Cut, Depth, Look (one panel at a time) ----------
-const PANELS = { cut: 'pCut', depth: 'pDepth', pose: 'pPose', look: 'pLook' }, TABS = { cut: 'tCut', depth: 'tDepth', pose: 'tPose', look: 'tLook' };
+const PANELS = { cut: 'pCut', depth: 'pDepth', views: 'pViews', pose: 'pPose', look: 'pLook' }, TABS = { cut: 'tCut', depth: 'tDepth', views: 'tViews', pose: 'tPose', look: 'tLook' };
 function setTool(t) { if (ST.tool === t) t = null; const was = ST.tool; ST.tool = t; for (const k in PANELS) { $(PANELS[k]).hidden = k !== t; $(TABS[k]).setAttribute('aria-pressed', k === t); }
+  if (t === 'views' && MINE.img && ST.mode !== 'mine') { ST.mode = 'mine'; build(); }
   if (t === 'pose' && MINE.img) { if (ST.mode !== 'mine') { ST.mode = 'mine'; build(); } cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.12 }; }
   if (t === 'cut' && MINE.img) { ST.mode = 'mine'; cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; $('undo').disabled = !MINE.marks.length; }
   if ((t === 'cut') !== (was === 'cut') && MINE.img) build(); // Cut shows the whole picture, with what is removed dimmed
@@ -1002,7 +1040,12 @@ function setTool(t) { if (ST.tool === t) t = null; const was = ST.tool; ST.tool 
 for (const b of document.querySelectorAll('[data-mark]')) b.onclick = () => { MINE.mark = b.dataset.mark; document.querySelectorAll('[data-mark]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('cutHint').textContent = MINE.mark === 'keep' ? 'Tap the person or thing you want to keep.' : 'Tap what you want removed.'; };
 $('tCut').onclick = () => setTool('cut'); $('tPose').onclick = () => setTool('pose');
 for (const b of document.querySelectorAll('[data-anim]')) b.onclick = () => { ST.anim = b.dataset.anim; document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x === b)); if (ST.anim === 'walk') { cam.zoom = 0; cam.to = { yaw: 0.9, pitch: 0.18 }; } };
-$('reset').onclick = () => { ST.pose = {}; }; $('tDepth').onclick = () => setTool('depth'); $('tLook').onclick = () => setTool('look'); $('done').onclick = () => setTool(null);
+$('reset').onclick = () => { ST.pose = {}; };
+$('tViews').onclick = () => setTool('views'); $('turn').onclick = () => { cam.zoom = 0; cam.to = { yaw: Math.cos(cam.yaw) > 0 ? Math.PI : 0, pitch: 0.12 }; };
+for (const b of document.querySelectorAll('[data-back]')) b.onclick = () => { if (b.dataset.back === 'picture' && !MINE.backC) { $('fileBack').click(); return; } MINE.backMode = b.dataset.back; rigMine(true); build(); };
+$('fileBack').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); im.onload = () => { toast('Fitting the back view…', true); setTimeout(() => {
+  MINE.backImg = im; MINE.backC = paperCutout(im, { max: ST.detail, tol: ST.tol, one: true, method: ST.method }); MINE.backMode = 'picture'; rigMine(true); build(); hideToast(); cam.zoom = 0; cam.to = { yaw: Math.PI, pitch: 0.12 }; window.BACK_DONE = (window.BACK_DONE || 0) + 1; }, 30); };
+  im.onerror = () => toast('That file could not be opened as a picture.'); im.src = URL.createObjectURL(f); e.target.value = ''; }; $('tDepth').onclick = () => setTool('depth'); $('tLook').onclick = () => setTool('look'); $('done').onclick = () => setTool(null);
 $('undo').onclick = () => { MINE.marks.pop(); $('undo').disabled = !MINE.marks.length; makeMine(); };
 $('thick').oninput = build;
 for (const b of document.querySelectorAll('[data-shape]')) b.onclick = () => { ST.shape = b.dataset.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); };
@@ -1017,9 +1060,18 @@ $('cast').onclick = () => { ST.mode = 'cast'; setTool(null); cam.zoom = 0; cam.t
 { const sel = $('spr'); for (const at of names) { const og = document.createElement('optgroup'); og.label = at; for (const k of Object.keys(SPRITE_POLYS.sprites)) if (k.startsWith(at + '/')) { const o = document.createElement('option'); o.value = k; o.textContent = k.split('/')[1]; og.appendChild(o); } sel.appendChild(og); }
   sel.value = ST.sprite; sel.onchange = () => { ST.sprite = sel.value; ST.mode = 'one'; setTool(null); cam.zoom = 0; build(); closeSheet(); }; }
 // ---------- the rig of your picture (paperRig): its parts, laid out one under another in a texture of their own ----------
-function rigMine() { const R = MINE.rig = paperRig(MINE.px, MINE.w, [0, 0, MINE.w, MINE.h]), P = R.parts.length, w = MINE.w, h = MINE.h, px = new Uint8ClampedArray(w * h * 4 * P);
-  R.parts.forEach((pt, k) => { for (let i = 0; i < w * h; i++) { const o = (k * w * h + i) * 4; px[o] = MINE.px[i * 4]; px[o + 1] = MINE.px[i * 4 + 1]; px[o + 2] = MINE.px[i * 4 + 2]; px[o + 3] = pt.mask[i] && MINE.px[i * 4 + 3] >= 128 ? 255 : 0; } });
-  MINE.rigPx = px; MINE.rigS = R.parts.map((pt, k) => paperTrace(px, w, [0, k * h, w, h])); TEX.rig = texOf({ px, w, h: h * P }, false, TEX.rig);
+function backNow() { // the back, in the front's own pixels: a back view fitted to the front (gaps filled by the guess), the guess, or none (Mirror)
+  if (MINE.backMode === 'mirror') return null; const head = MINE.rig && MINE.rig.humanoid ? MINE.rig.parts.find(q => q.name === 'head').mask : null, guess = paperGuessBack(MINE.px, MINE.w, MINE.h, head);
+  if (MINE.backMode !== 'picture' || !MINE.backC) return guess;
+  const fit = paperFitView(MINE.px, MINE.w, MINE.h, MINE.backC.px, MINE.backC.w, MINE.backC.h, { mirror: true }); let hit = 0, all = 0;
+  for (let i = 0; i < MINE.w * MINE.h; i++) { if (MINE.px[i * 4 + 3] < 128) continue; all++; if (fit[i * 4 + 3]) hit++; else for (let c = 0; c < 4; c++) fit[i * 4 + c] = guess[i * 4 + c]; } MINE.backFit = all ? hit / all : 0; return fit; }
+function rigMine(keepRig) { const R = MINE.rig = keepRig && MINE.rig ? MINE.rig : paperRig(MINE.px, MINE.w, [0, 0, MINE.w, MINE.h]), P = R.parts.length, w = MINE.w, h = MINE.h, W2 = 2 * w, px = new Uint8ClampedArray(W2 * h * 4 * P);
+  if (!keepRig) MINE.backMode = MINE.backMode || (R.humanoid ? 'guess' : 'mirror'); const B = backNow(); MINE.backDU = B ? 0.5 : 0; // texture: each part one row, front on the left half, back on the right
+  R.parts.forEach((pt, k) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, o = ((k * h + y) * W2 + x) * 4, ob = o + w * 4, a = pt.mask[i] && MINE.px[i * 4 + 3] >= 128 ? 255 : 0;
+    px[o] = MINE.px[i * 4]; px[o + 1] = MINE.px[i * 4 + 1]; px[o + 2] = MINE.px[i * 4 + 2]; px[o + 3] = a; const src = B || MINE.px; px[ob] = src[i * 4]; px[ob + 1] = src[i * 4 + 1]; px[ob + 2] = src[i * 4 + 2]; px[ob + 3] = a; } });
+  MINE.rigPx = px; MINE.rigW = W2; MINE.rigS = R.parts.map((pt, k) => paperTrace(px, W2, [0, k * h, w, h])); TEX.rig = texOf({ px, w: W2, h: h * P }, false, TEX.rig);
+  document.querySelectorAll('[data-back]').forEach(x => x.setAttribute('aria-pressed', x.dataset.back === MINE.backMode)); $('tViews').disabled = false;
+  $('viewsHint').textContent = MINE.backMode === 'mirror' ? 'The back shows the front, mirrored and darker.' : MINE.backMode === 'guess' ? 'The back is guessed from the front: hair over the head, clothes without the details.' : MINE.backC ? `Your back view, fitted to the front (${Math.round((MINE.backFit || 0) * 100)}% matched; the rest is guessed).` : 'Choose a back view: the same figure, from behind.';
   $('tPose').disabled = false; $('poseHint').textContent = R.humanoid ? 'Drag an arm, a leg or the head to pose it.' : 'No arms or legs found: it moves as one piece.'; ST.pose = {}; }
 // ---------- your picture: cut out (paperCutout), traced (paperTrace), folded (paperSprite), all on this device ----------
 let toastT = 0; function toast(m, stay) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); if (!stay) toastT = setTimeout(hideToast, 3400); } function hideToast() { $('toast').classList.remove('on'); }
@@ -1038,7 +1090,7 @@ function cutNow(first) { const t0 = performance.now();
   ST.mode = 'mine'; $('save').disabled = false; build(); }
 $('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); MINE.name = (f.name || 'papercraft').replace(/\.papercraft\.json$|\.[^.]+$/, '').replace(/[^\w-]+/g, '-').slice(0, 40) || 'papercraft';
   if (/json/.test(f.type) || /\.json$/i.test(f.name)) { f.text().then(t => { try { const r = JSON.parse(t); if (!r.picture) throw 0; im.src = r.picture; if (r.shape) { ST.shape = r.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim)); } if (r.depth != null) $('thick').value = r.depth; } catch (_) { toast('That is not a Papercraft file.'); } }); e.target.value = ''; }
-  im.onload = () => { MINE.img = im; MINE.marks = []; $('tCut').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
+  im.onload = () => { MINE.img = im; MINE.marks = []; MINE.backMode = null; MINE.backC = null; MINE.backImg = null; $('tCut').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
   im.onerror = () => toast('That file could not be opened as a picture.'); if (!im.src) im.src = URL.createObjectURL(f); e.target.value = ''; };
 function refreshHello() { $('hello').hidden = !(ST.mode === 'start' && !MINE.img && !ST.tool); }
 // ---------- Save: a 3D model (.zip: .glb + .obj/.mtl/.png), the cut-out (.png, full size) or a Papercraft file (.json) ----------
@@ -1053,7 +1105,7 @@ function zip(files) { // a plain .zip (stored, no compression): [{name, data: Ui
   return new Blob([...parts, ...cd, new Uint8Array(end.buffer)], { type: 'application/zip' }); }
 const pngOf = (px, w, h) => new Promise(res => { const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(px), w, h), 0, 0); c.toBlob(b => b.arrayBuffer().then(a => res(new Uint8Array(a))), 'image/png'); });
 function meshNow() { // the model on stage, as parts (each its rest mesh in the 7-float paper format, a pivot and a parent) with one texture
-  if (ST.mode === 'mine' && MINE.S && MINE.geo) return { parts: MINE.geo.map(g => ({ name: g.name, parent: g.parent, pv: g.pv, V: g.V })), hh: MINE.fold.hh, px: MINE.rigPx, w: MINE.w, h: MINE.h * MINE.rig.parts.length, name: MINE.name || 'papercraft', rig: true };
+  if (ST.mode === 'mine' && MINE.S && MINE.geo) return { parts: MINE.geo.map(g => ({ name: g.name, parent: g.parent, pv: g.pv, V: g.V })), hh: MINE.fold.hh, px: MINE.rigPx, w: MINE.rigW, h: MINE.h * MINE.rig.parts.length, name: MINE.name || 'papercraft', rig: true };
   if (ST.mode === 'one' || ST.mode === 'start') { const key = ST.sprite, S = SPRITE_POLYS.sprites[key], at = key.split('/')[0], A = SPRITE_POLYS.atlases[at].size, hh = 24 * S.rect[3] / 85, s = hh / S.rect[3], th = depth(), V = [];
     if (ST.shape === 'round') paperPuff(V, ATLAS_PX[at], A[0], A[1], S.rect, { s, depth: th * hh * 0.05, anchor: S.anchor }); else paperSprite(V, S, A, { s, thick: th * hh / 24, anchor: S.anchor });
     return { parts: [{ name: key.split('/')[1], parent: -1, pv: [0, 0, 0], V }], hh, px: ATLAS_PX[at], w: A[0], h: A[1], name: key.split('/')[1], rig: false }; }
