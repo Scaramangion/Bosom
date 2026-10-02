@@ -393,6 +393,32 @@
             return cv;
         }
 
+        // ---- sprites folded into paper: an outline traced by tools/sprite_poly.py (assets/papercraft/sprite-polys.json) becomes a standing
+        // cut-out with the sprite painted on the front, a darker mirror of it on the back and, when it has thickness, a card edge between them.
+        // S: one sprite record { rect, anchor, pts, rings, tris, ein }. A: its atlas size [w, h] (the UVs are for that texture, not the paper sheet).
+        // o: x, y = where it stands (world px), ang = the way it faces (0 = south, toward +y; PI/2 = west), s = world units per sprite px,
+        //    thick = card thickness in world units (0 = paper-thin), flip = mirrored left to right, shade = [front, back, edge], glow.
+        function paperSprite(V, S, A, o = {}) {
+            const s = o.s || 0.25, th = o.thick || 0, fl = o.flip ? -1 : 1, a = o.ang || 0, Rx = Math.cos(a), Ry = Math.sin(a), Nx = -Ry, Ny = Rx;
+            const sh = o.shade || [1, 0.62, 0.74], em = o.glow || 0, P = S.pts, E = S.ein, ax = S.anchor[0], ay = S.anchor[1], ox = S.rect[0], oy = S.rect[1];
+            const at = (i, d) => { const u = (P[i * 2] - ax) * s * fl; return [(o.x || 0) + Rx * u + Nx * d, (o.y || 0) + Ry * u + Ny * d, (ay - P[i * 2 + 1]) * s]; };
+            const uv = (x, y) => [(ox + x) / A[0], (oy + y) / A[1]];
+            const tri = (p, t, shade, out) => { // the world is left-handed (x east, y south, z up): a face is front when (B-A)x(C-A) points INTO it
+                const ux = p[1][0] - p[0][0], uy = p[1][1] - p[0][1], uz = p[1][2] - p[0][2], vx = p[2][0] - p[0][0], vy = p[2][1] - p[0][1], vz = p[2][2] - p[0][2];
+                const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2];
+                for (const i of ord) V.push(p[i][0], p[i][1], p[i][2], t[i][0], t[i][1], shade, em); };
+            const front = [Nx, Ny, 0], back = [-Nx, -Ny, 0], T = S.tris;
+            for (let k = 0; k < T.length; k += 3) { const i = T[k], j = T[k + 1], m = T[k + 2], t = [uv(P[i * 2], P[i * 2 + 1]), uv(P[j * 2], P[j * 2 + 1]), uv(P[m * 2], P[m * 2 + 1])];
+                tri([at(i, th / 2), at(j, th / 2), at(m, th / 2)], t, sh[0], front);              // the painted front
+                tri([at(i, -th / 2), at(j, -th / 2), at(m, -th / 2)], t, sh[1], back); }          // the back: the same paint seen through, darker
+            if (th > 0) for (let r = 0, b = 0; r < S.rings.length; b += S.rings[r++]) for (let n = S.rings[r], q = 0; q < n; q++) { // the card edge, one strip per outline segment
+                const i = b + q, j = b + (q + 1) % n, dx = P[j * 2] - P[i * 2], dy = P[j * 2 + 1] - P[i * 2 + 1], c = uv(E[i * 2] + 0.5, E[i * 2 + 1] + 0.5), t = [c, c, c];
+                const out = [Rx * -dy * fl, Ry * -dy * fl, -dx]; /* the outline runs counter-clockwise as seen, so outward is to its right: (-dy, dx) in sprite px, z flips */
+                const f0 = at(i, th / 2), f1 = at(j, th / 2), b0 = at(i, -th / 2), b1 = at(j, -th / 2);
+                tri([f0, f1, b1], t, sh[2], out); tri([f0, b1, b0], t, sh[2], out); }
+            return V;
+        }
+
         // ---- the GPU half: the shaders that draw the folded mesh (the game's camera in the vertex stage, the paper look in the fragment stage) ----
         // Vertex layout, 7 floats: aP = x y z (world px, z up), aT = u v (sheet), aS = shade, glow. Drawn with a depth buffer, back faces culled, sheet on texture unit 7, NEAREST filtering.
         const PAPER_GLSL = {
