@@ -342,34 +342,8 @@
             initPaper(gl) { // third program: the folded town, real geometry with a depth buffer
                 const mk = (t, src) => { const sh = gl.createShader(t); gl.shaderSource(sh, src); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
                 const pp = gl.createProgram();
-                gl.attachShader(pp, mk(gl.VERTEX_SHADER, `attribute vec3 aP;attribute vec2 aT;attribute vec2 aS;uniform vec2 uA,uCS;uniform float uMag,uZ0,uHY;varying vec2 vT;varying vec3 vW;varying float vZ,vSh,vEm;
-                    void main(){vec2 d=aP.xy-uA;float lx=d.x*uCS.x+d.y*uCS.y,ly=-d.x*uCS.y+d.y*uCS.x,z=uZ0-ly;
-                      float n=3.,F=1400.,A=(F+n)/(F-n),B=-2.*F*n/(F-n);
-                      gl_Position=vec4(lx*uMag*110./80.,z*(1.-uHY/72.)-((112.-uHY)*uZ0-uMag*110.*aP.z)/72.,A*z+B,z);
-                      vT=aT;vW=aP;vZ=z;vSh=aS.x;vEm=aS.y;}`));
-                gl.attachShader(pp, mk(gl.FRAGMENT_SHADER, `precision mediump float;uniform sampler2D uSheet;uniform float uAmb,uFogD,uZc,uGlow,uGrade,uDS,uDesat,uTime;uniform vec3 uFogC,uTint;uniform vec3 uLW[8];uniform vec2 uRes;
-                    varying vec2 vT;varying vec3 vW;varying float vZ,vSh,vEm;
-                    float b2(vec2 a){a=floor(a);return fract(dot(a,vec2(.5,a.y*.75)));}float bayer(vec2 a){return b2(.5*a)*.25+b2(a);}
-                    void main(){
-                      vec4 t=texture2D(uSheet,vT);if(t.a<.5)discard;
-                      vec2 gp=vec2(gl_FragCoord.x/uRes.x*160.,(1.-gl_FragCoord.y/uRes.y)*144.);float hd=length((gp-vec2(80.,90.))/vec2(44.,58.)),by=bayer(gl_FragCoord.xy/uDS);
-                      if(vZ<uZc-8.&&by<clamp((1.-hd)*2.4,0.,1.)+(vZ<uZc*.6?.35:0.))discard; // anything between the lens and the hero fades away round him (and thins everywhere close to the lens)
-                      if(vZ<uZc*.45&&by<.5)discard;                                       // right up against the lens: stippled away
-                      float glass=step(t.a,.85),lantern=step(1.5,vEm),lamp=glass*min(vEm,1.)*uGlow;
-                      vec2 sUv=vec2(gl_FragCoord.x/uRes.x,1.-gl_FragCoord.y/uRes.y);
-                      vec3 c=t.rgb*vSh*mix(vec3(1.04,.98,.9),vec3(.9,.95,1.),sUv.y);
-                      vec3 lit=vec3(0.);
-                      for(int i=0;i<8;i++){vec3 L=uLW[i];if(L.z>0.){float f=smoothstep(L.z*1.3,0.,distance(vW,vec3(L.xy,i==7?14.:27.)));lit+=vec3(1.,.74,.38)*f*f;}}
-                      lit*=mix(.3,1.,uGlow);                                              // lamps and the lantern only really tell on walls after dark
-                      c=c*(vec3(uAmb)+lit*1.15)+lit*.05;
-                      c=mix(c,vec3(1.,.76,.42)*(.9+.3*t.g)*(1.+lantern*.7),lamp);c+=vec3(1.,.7,.35)*.35*lantern*uGlow*(1.-glass); // a lamp behind the glass; street lanterns blaze
-                      float zf=vZ-uZc+110.;
-                      c=mix(c,uFogC,clamp(.10+(1.-uFogD)*.5+smoothstep(110.*1.02*uFogD,110.*3.4*uFogD,zf)*.95,0.,1.)*(1.-lamp*.55));
-                      if(uGrade>.5){float l=dot(c,vec3(.299,.587,.114));c=mix(c,vec3(l)*vec3(.94,.98,1.04),uDesat);c*=uTint;c=pow(max(c,0.),vec3(1.12));
-                        float g=fract(sin(dot(floor(sUv*vec2(480.,432.))+floor(uTime*24.)*vec2(7.,13.),vec2(12.9898,78.233)))*43758.5453);c+=(g-.5)*.055;}
-                      c*=1.-smoothstep(.36,.86,distance(sUv,vec2(.5)))*mix(.35,.62,uGrade);
-                      if(uGrade>.5)c=floor(clamp(c,0.,1.)*31.+bayer(gl_FragCoord.xy/uDS))/31.;
-                      gl_FragColor=vec4(c,1.);}`));
+                gl.attachShader(pp, mk(gl.VERTEX_SHADER, PAPER_GLSL.vert));
+                gl.attachShader(pp, mk(gl.FRAGMENT_SHADER, PAPER_GLSL.frag));
                 gl.bindAttribLocation(pp, 0, 'aP'); gl.bindAttribLocation(pp, 1, 'aT'); gl.bindAttribLocation(pp, 2, 'aS'); gl.linkProgram(pp);
                 if (!gl.getProgramParameter(pp, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pp));
                 this.pp = pp; this.ppU = {};
@@ -488,7 +462,7 @@
                 if (PAPER.on && !GEN_CACHE.overworld && gameStarted && currentMapName !== 'overworld') paperGroundStep(4); // paint the town's street in the background, a sliver a frame
                 const mode = !playing ? 0 : z ? (z.dungeon ? 2 : 1) : currentMapName === 'overworld' || currentMapName === 'wolf_hollow' ? 1 : roomOfMap(currentMapName) ? 3 : 0;
                 this.useBg(currentMapName === 'wolf_hollow' || (z && z.dungeon) || (currentMapName === 'overworld' && PAPER.on && mode === 1 && paperGroundStep(currentMapName === 'overworld' ? 10 : 6)) ? 'gen:' + currentMapName : z && z.photo && BG_IDS[currentMapName] ? currentMapName : mode === 3 ? 'emporium' : 'town');
-                this.ambient += ((mode === 2 ? 0.28 : mode === 3 ? 0.72 : night ? 0.32 : currentMapName === 'overworld' && PAPER.on ? 0.8 : 0.64) - this.ambient) * 0.02; // slow dusk/dawn blend (kept low: the eerie look leans on the hero's own light)
+                this.ambient += ((mode === 2 ? (z && z.home ? 0.5 : 0.28) : mode === 3 ? 0.72 : night ? 0.42 : currentMapName === 'overworld' && PAPER.on ? 0.8 : 0.64) - this.ambient) * 0.02; // slow dusk/dawn blend (kept low: the eerie look leans on the hero's own light)
                 if (this.texReady) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvas); // update in place, no reallocation
                 else { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas); this.texReady = true; }
                 gl.uniform2f(this.u('uCam'), lastCamX, lastCamY);

@@ -24,3 +24,8 @@
 - The cottage is now a real folded 3D house in the paper-model style (front/back gables, wings, hip roofs, shed, chimney), textured from the orthographic sheet (tools/make_cottage_tex.py -> assets/atlases/cottage-tex.webp, drawn into the paper sheet at y=780). The flat cutout remains as the fallback for the flat camera.
 - Collision follows the new footprint (house body + shed).
 - build.py strips Content Credentials (C2PA) blocks from webp assets (metadata only).
+
+## 2.94
+- Brighter nights (outdoor ambient 0.32 -> 0.42; farmhouse interior 0.5).
+- Papercraft isolated: 24-papercraft.js is now only the paper module (config, prime hash, sheet, folder, street painter, cottage, shaders as PAPER_GLSL); the world-state code that shared the file moved to 24b-world-state.js.
+- docs/PAPERCRAFT.md explains the concept and algorithm; papercraft/paper-demo.html runs the real module on its own (tools/make_papercraft_demo.py).
