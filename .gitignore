@@ -3,3 +3,4 @@ __pycache__/
 papercraft/shots/export/
 papercraft/shots/export-rig/
 papercraft/shots/export-views/
+papercraft/shots/export-facets/

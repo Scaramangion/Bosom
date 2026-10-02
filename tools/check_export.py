@@ -74,7 +74,8 @@ if anims:
     anames = [a['name'] for a in anims]; print('rig:', ', '.join(nd['name'] for nd in g['nodes']), '| animations:', ', '.join(anames))
     wk = next(a for a in anims if a['name'] == 'Walk'); T = acc(wk['samplers'][0]['input'])[:, 0]; check(abs(T[-1] - 0.9) < 0.01, 'walk loops in 0.9 s')
     Pw, Uw, Cw = world(sample(wk, T[-1] / 4)); feet = Pw[Pw[:, 1] < Pw[:, 1].min() + 0.08]; spread = feet[:, 2].max() - feet[:, 2].min()
-    check(spread > 0.12, 'walking legs part front to back (feet %.2f m apart)' % spread); print('walk: feet %.2f m apart at a quarter cycle' % spread)
+    legs = any(nd['name'].endswith('legL') or nd['name'] == 'legL' for nd in g['nodes'])  # a one-part rig (no legs found) only bobs and sways
+    if legs: check(spread > 0.12, 'walking legs part front to back (feet %.2f m apart)' % spread); print('walk: feet %.2f m apart at a quarter cycle' % spread)
     wv = next(a for a in anims if a['name'] == 'Wave'); Pv, Uv_, Cv = world(sample(wv, 0.35)); check(Pv[:, 1].max() > P[:, 1].max() - 0.02 or Pv[:, 0].max() > P[:, 0].max() + 0.1, 'waving arm rises')
     shots += [render('side', P=Pw, UV=Uw, C=Cw), render('front', P=Pv, UV=Uv_, C=Cv)]
 cut = [f for f in os.listdir(D) if f.endswith('.png') and not f.startswith('render')]

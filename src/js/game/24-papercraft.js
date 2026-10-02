@@ -396,7 +396,7 @@
         // ---- the tracer, in the browser: the same cut as tools/sprite_poly.py, step for step (so any picture can be traced on a phone, and the
         // same picture traced here or there gives the same polygon). px: RGBA bytes of a whole image W px wide; rect [x, y, w, h] the part to trace.
         // Returns one sprite record { rect, anchor, pts, rings, tris, ein } (the format paperSprite folds), or null if the rect holds no paint.
-        const PAPER_TRACE = { ALPHA: 128, GROW: 1, EPS: 1, MIN_AREA: 12, NEAR: 4 };
+        const PAPER_TRACE = { ALPHA: 128, GROW: 1, EPS: 1, MIN_AREA: 12, NEAR: 4 }; // (o.HOLD: false skips putting corners back, for a looser outline)
         function paperTrace(px, W, rect, o = {}) {
             const C = Object.assign({}, PAPER_TRACE, o), [X0, Y0, w, h] = rect, a = new Uint8Array(w * h), cxs = [], cys = [];
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[((Y0 + y) * W + X0 + x) * 4 + 3] >= C.ALPHA) { a[y * w + x] = 1; cxs.push(x + 0.5); cys.push(y + 0.5); } // painted pixel centres, row by row
@@ -458,7 +458,7 @@
                 ring = ring.filter((b, i) => cr(ring[(i - 1 + ring.length) % ring.length], b, ring[(i + 1) % ring.length]) !== 0); // drop straight-through corners
                 const ins = outside(ring, cxs, cys), X = [], Y = []; for (let k = 0; k < cxs.length; k++) if (ins[k]) { X.push(cxs[k]); Y.push(cys[k]); }
                 let s = null, t = null;
-                for (const eps of [C.EPS, C.EPS * 0.75, C.EPS * 0.5, 0]) { s = hold(ring, simplify(ring, eps), X, Y).map(i => ring[i]); t = s.length >= 3 && area2(s) < 0 && simple(s) ? earclip(s) : null; if (t) break; }
+                for (const eps of [C.EPS, C.EPS * 0.75, C.EPS * 0.5, 0]) { s = (C.HOLD === false ? simplify(ring, eps) : hold(ring, simplify(ring, eps), X, Y)).map(i => ring[i]); /* o.HOLD false: a looser outline that may cut corners */ t = s.length >= 3 && area2(s) < 0 && simple(s) ? earclip(s) : null; if (t) break; }
                 if (!t) return null;
                 const b = pts.length / 2; for (const p of s) { pts.push(p[0], p[1]); const e = near(p[0], p[1]); ein.push(e[0], e[1]); } rings.push(s.length); for (const q of t) tris.push(b + q[0], b + q[1], b + q[2]);
             }
@@ -677,6 +677,90 @@
             return V;
         }
 
+        // ---- facets: a picture made into a low-poly shape with a polygon budget (PS1 Low ~40, PS1 ~100, PS2 Low ~300, PS2 ~800 triangles, front and back).
+        // The budget is spent where it shows: the outline's main corners first (the traced outline simplified until it fits), then points inside, chosen by
+        // importance (colour boundaries in the painting, and where the depth bends; a little everywhere), kept apart by a spacing that shrinks where the
+        // importance is high. All of them are joined by a Delaunay triangulation that keeps every outline edge (an edge that goes missing gets a point
+        // in its middle, until none does), then raised into depth like the Round shape (front and back meet on the outline: a closed shell) and shaded
+        // per face (o.flat !== false: the crystalline PS1 look) or per corner. o: as paperPuff (s, depth, anchor, x, y, ang, flip, field, R, backDU, back,
+        // depthRow, sideUV, glow) plus budget (triangles), flat, hold (true: the outline holds every painted pixel; the default below PS2 Low lets it cut corners), grow (px: trace the outline
+        // round a grown silhouette; the alpha cut still trims the paint exactly, and neighbouring rig parts overlap instead of leaving a slit), cover (0..1: the outline must hold that share of
+        // the paint; it may spend more corners to do so). Deterministic.
+        function paperFacet(V, px, W, H, rect, o = {}) {
+            const [X0, Y0, w, h] = rect, s = o.s || 0.25, D = o.depth == null ? 2 : o.depth, fl = o.flip ? -1 : 1, a = o.ang || 0, em = o.glow || 0, back = o.back == null ? 0.62 : o.back;
+            const Rx = Math.cos(a), Ry = Math.sin(a), Nx = -Ry, Ny = Rx, ax = (o.anchor || [w / 2, h])[0], ay = (o.anchor || [w / 2, h])[1], perSide = Math.max(4, (o.budget || 300) / 2);
+            const F = o.field || { px, W, rect }, own = new Uint8Array(w * h), d = new Float32Array(w * h), BIG = 1e9; let area = 0;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; d[i] = F.px[((F.rect[1] + y) * F.W + F.rect[0] + x) * 4 + 3] >= 128 ? BIG : 0; own[i] = px[((Y0 + y) * W + X0 + x) * 4 + 3] >= 128 ? 1 : 0; area += own[i]; }
+            if (!area) return V;
+            const at = (x, y) => x < 0 || y < 0 || x >= w || y >= h ? 0 : d[y * w + x];
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (d[i]) d[i] = Math.min(d[i], at(x - 1, y) + 3, at(x, y - 1) + 3, at(x - 1, y - 1) + 4, at(x + 1, y - 1) + 4); }
+            for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; if (d[i]) d[i] = Math.min(d[i], at(x + 1, y) + 3, at(x, y + 1) + 3, at(x + 1, y + 1) + 4, at(x - 1, y + 1) + 4); }
+            const seam = o.seam == null ? Math.max(1, Math.round(Math.max(w, h) / 80)) : o.seam; let R = 1; for (let i = 0; i < w * h; i++) if (own[i]) R = Math.max(R, d[i] / 3 - seam); if (o.R) R = o.R; V.R = R;
+            const dist = (x, y) => { const fx = x - 0.5, fy = y - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0; // bilinear, in px
+                return ((at(x0, y0) * (1 - tx) + at(x0 + 1, y0) * tx) * (1 - ty) + (at(x0, y0 + 1) * (1 - tx) + at(x0 + 1, y0 + 1) * tx) * ty) / 3; };
+            const prof = (x, y) => { const t = Math.min(1, Math.max(0, dist(x, y) - seam) / R); return Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); };
+            const DRow = y => o.depthRow ? o.depthRow(y) : [D, D];
+            // 1) the outline, simplified until it fits its share of the budget (about 45% of the corners)
+            const Bt = Math.max(4, Math.min(600, Math.round(perSide * 0.45))), It = Math.max(0, Math.round((perSide - Bt + 2) / 2)), HOLD = o.hold != null ? o.hold : perSide >= 150; let T = null; // PS1 budgets let the outline cut corners
+            const covers = t => { if (!o.cover) return true; let n = 0, hit = 0; for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) { if (!own[y * w + x]) continue; n++; let ins = false, b = 0; // o.cover: the share of the paint the outline must hold (Painting look)
+                for (const m of t.rings) { for (let q = 0; q < m; q++) { const ax2 = t.pts[(b + q) * 2], ay2 = t.pts[(b + q) * 2 + 1], bx2 = t.pts[(b + (q + 1) % m) * 2], by2 = t.pts[(b + (q + 1) % m) * 2 + 1]; if ((ay2 > y + 0.5) !== (by2 > y + 0.5) && x + 0.5 < ax2 + (y + 0.5 - ay2) * (bx2 - ax2) / (by2 - ay2)) ins = !ins; } b += m; }
+                if (ins) hit++; } return !n || hit / n >= o.cover; };
+            { const tr = e => paperTrace(px, W, rect, { EPS: e, HOLD, GROW: 1 + (o.grow || 0) }); let lo = 0.5, hi = 64, eB = 64; // eB: the finest outline within the budget; eC: the coarsest that still holds the paint
+              for (let it = 0; it < 12; it++) { const mid = (lo + hi) / 2, t = tr(mid); if (t && t.pts.length / 2 <= Bt) { hi = mid; eB = mid; } else lo = mid; }
+              let eC = 64; if (o.cover) { lo = 0.5; hi = 64; eC = 0.5; for (let it = 0; it < 12; it++) { const mid = (lo + hi) / 2, t = tr(mid); if (t && covers(t)) { lo = mid; eC = mid; } else hi = mid; } }
+              T = tr(Math.min(eB, eC)) || tr(0.5); } // the paint wins over the budget
+            if (!T || !T.rings.length) return V;
+            const P = [], segs = [], ringsIdx = []; { let b = 0; for (const n of T.rings) { const ids = []; for (let q = 0; q < n; q++) { ids.push(P.length); P.push([T.pts[(b + q) * 2], T.pts[(b + q) * 2 + 1], 1]); } ringsIdx.push(ids); b += n; } } // [x, y, onOutline]
+            const inPoly = (x, y) => { let ins = false; for (const ids of ringsIdx) for (let q = 0; q < ids.length; q++) { const A = P[ids[q]], B = P[ids[(q + 1) % ids.length]]; if ((A[1] > y) !== (B[1] > y) && x < A[0] + (y - A[1]) * (B[0] - A[0]) / (B[1] - A[1])) ins = !ins; } return ins; };
+            // 2) points inside, by importance: colour boundaries and depth bends, kept apart by a spacing that shrinks where they matter
+            const lum = (x, y) => { x = Math.max(0, Math.min(w - 1, x)); y = Math.max(0, Math.min(h - 1, y)); const j = ((Y0 + y) * W + X0 + x) * 4; return [px[j], px[j + 1], px[j + 2]]; };
+            const cand = [], step = Math.max(1, Math.round(Math.sqrt(w * h) / 90)); let smax = 1e-9;
+            for (let y = 1; y < h - 1; y += step) for (let x = 1; x < w - 1; x += step) { if (!own[y * w + x] || d[y * w + x] / 3 < seam + 1.5) continue; /* inside the seam band a point would lie flat: no use */
+                let g = 0; const c = lum(x, y); for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { const q = lum(x + dx, y + dy); g += Math.abs(q[0] - c[0]) + Math.abs(q[1] - c[1]) + Math.abs(q[2] - c[2]); }
+                const pc = prof(x + 0.5, y + 0.5), lap = Math.abs(prof(x + 2.5, y + 0.5) + prof(x - 1.5, y + 0.5) + prof(x + 0.5, y + 2.5) + prof(x + 0.5, y - 1.5) - 4 * pc);
+                const sc = g / 1530 + 6 * lap + 0.35 * pc; cand.push([x + 0.5, y + 0.5, sc]); if (sc > smax) smax = sc; }
+            cand.sort((p, q) => q[2] - p[2] || p[1] - q[1] || p[0] - q[0]);
+            { let top = -1, tv = -1; cand.forEach((c, i) => { const v = d[Math.floor(c[1]) * w + Math.floor(c[0])]; if (v > tv) { tv = v; top = i; } }); if (top > 0) cand.unshift(cand.splice(top, 1)[0]); } // the fullest point first: every part gets its crown, whatever the budget
+            let r0 = It ? 0.95 * Math.sqrt(area / It) : 0; const inner = [];
+            for (let pass = 0; pass < 6 && inner.length < It; pass++, r0 *= 0.8) { const cell = Math.max(1, r0 / 2), grid = new Map(), key = (gx, gy) => gx * 73856093 ^ gy * 19349663;
+                const put = p => { const k = key(Math.floor(p[0] / cell), Math.floor(p[1] / cell)); (grid.get(k) || grid.set(k, []).get(k)).push(p); };
+                for (const p of P) put([p[0], p[1], 0.6]); for (const p of inner) put([p[0], p[1], 1]);
+                for (const c of cand) { if (inner.length >= It) break; const r = r0 / Math.sqrt(1 + 4 * c[2] / smax), gx = Math.floor(c[0] / cell), gy = Math.floor(c[1] / cell), n = Math.ceil(r / cell); let ok = true;
+                    for (let yy = gy - n; yy <= gy + n && ok; yy++) for (let xx = gx - n; xx <= gx + n && ok; xx++) for (const q of grid.get(key(xx, yy)) || []) if ((q[0] - c[0]) ** 2 + (q[1] - c[1]) ** 2 < (r * q[2]) ** 2) { ok = false; break; }
+                    if (ok && !inner.some(q => q[0] === c[0] && q[1] === c[1])) { inner.push(c); put([c[0], c[1], 1]); } } }
+            inner.forEach((c, i) => P.push([c[0] + ((i * 0.6180339887) % 1 - 0.5) * 0.3, c[1] + ((i * 0.7548776662) % 1 - 0.5) * 0.3, 0])); // a hair of jitter: no four points on one circle
+            // 3) Delaunay (Bowyer-Watson), then 4) keep every outline edge (split a missing one at its middle, again and again)
+            const big = 4 * Math.max(w, h) + 10; let tris = []; const pts = [[-big, -big], [3 * big, -big], [-big, 3 * big]]; for (const p of P) pts.push([p[0], p[1]]);
+            const circ = (a, b, c) => { const A = pts[a], B = pts[b], C = pts[c], dd = 2 * (A[0] * (B[1] - C[1]) + B[0] * (C[1] - A[1]) + C[0] * (A[1] - B[1])); if (Math.abs(dd) < 1e-12) return [0, 0, Infinity];
+                const a2 = A[0] ** 2 + A[1] ** 2, b2 = B[0] ** 2 + B[1] ** 2, c2 = C[0] ** 2 + C[1] ** 2, ux = (a2 * (B[1] - C[1]) + b2 * (C[1] - A[1]) + c2 * (A[1] - B[1])) / dd, uy = (a2 * (C[0] - B[0]) + b2 * (A[0] - C[0]) + c2 * (B[0] - A[0])) / dd;
+                return [ux, uy, (A[0] - ux) ** 2 + (A[1] - uy) ** 2]; };
+            const add = (a, b, c) => tris.push([a, b, c, circ(a, b, c)]);
+            const insert = pi => { const p = pts[pi], bad = [], keep = []; for (const t of tris) ((p[0] - t[3][0]) ** 2 + (p[1] - t[3][1]) ** 2 < t[3][2] - 1e-9 ? bad : keep).push(t);
+                const ec = new Map(); for (const t of bad) for (const [u, v] of [[t[0], t[1]], [t[1], t[2]], [t[2], t[0]]]) { const k = u < v ? u + ',' + v : v + ',' + u; ec.set(k, ec.has(k) ? null : [u, v]); }
+                tris = keep; for (const e of ec.values()) if (e) add(e[0], e[1], pi); };
+            add(0, 1, 2); for (let i = 0; i < P.length; i++) insert(i + 3);
+            for (let round = 0; round < 8; round++) { const have = new Set(); for (const t of tris) for (const [u, v] of [[t[0], t[1]], [t[1], t[2]], [t[2], t[0]]]) have.add(u < v ? u + ',' + v : v + ',' + u);
+                let split = 0; for (const ids of ringsIdx) for (let q = 0; q < ids.length; q++) { const u = ids[q] + 3, v = ids[(q + 1) % ids.length] + 3; if (have.has(u < v ? u + ',' + v : v + ',' + u)) continue;
+                    const A = P[ids[q]], B = P[ids[(q + 1) % ids.length]], m = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, 1]; P.push(m); pts.push([m[0], m[1]]); ids.splice(q + 1, 0, P.length - 1); insert(pts.length - 1); split++; q++; }
+                if (!split) break; }
+            const faces = tris.filter(t => t[0] > 2 && t[1] > 2 && t[2] > 2 && inPoly((pts[t[0]][0] + pts[t[1]][0] + pts[t[2]][0]) / 3, (pts[t[0]][1] + pts[t[1]][1] + pts[t[2]][1]) / 3)).map(t => [t[0] - 3, t[1] - 3, t[2] - 3]);
+            // 5) raise into depth, shade, emit front and back
+            const Hv = P.map(p => p[2] && !o.field ? 0 : prof(p[0], p[1])), /* the outline sits at zero (a closed shell); a rig part's outline takes the body's depth where it meets its neighbour */ L = [-0.35, 0.55, 0.76], Lb = [0.35, 0.55, -0.76];
+            const local = (i, side) => { const p = P[i], dr = DRow(p[1]); return [(p[0] - ax) * s * fl, (ay - p[1]) * s, side * Hv[i] * dr[side > 0 ? 0 : 1]]; }; // (right, up, out)
+            const world = q => [(o.x || 0) + Rx * q[0] + Nx * q[2], (o.y || 0) + Ry * q[0] + Ny * q[2], q[1]];
+            const shadeN = (n, side) => { const l = side > 0 ? L : Lb, k = Math.hypot(n[0], n[1], n[2]) || 1, lam = Math.max(0, (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]) / k); return (0.55 + 0.55 * lam) * (side > 0 ? 1 : back); };
+            const fN = (A, B, C, side) => { const u = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], v = [C[0] - A[0], C[1] - A[1], C[2] - A[2]], n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; return n[2] * side < 0 ? n.map(x => -x) : n; }; // outward
+            const vn = o.flat === false ? [1, -1].map(side => { const acc = P.map(() => [0, 0, 0]); for (const f of faces) { const q = f.map(i => local(i, side)), n = fN(q[0], q[1], q[2], side); for (const i of f) for (let c = 0; c < 3; c++) acc[i][c] += n[c]; } return acc; }) : null;
+            for (const side of [1, -1]) for (const f of faces) {
+                const q = f.map(i => local(i, side)), n = fN(q[0], q[1], q[2], side), pw = q.map(world), out = [Nx * side, Ny * side, 0];
+                const ux = pw[1][0] - pw[0][0], uy = pw[1][1] - pw[0][1], uz = pw[1][2] - pw[0][2], vx = pw[2][0] - pw[0][0], vy = pw[2][1] - pw[0][1], vz = pw[2][2] - pw[0][2];
+                const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2]; // a face is front when (B-A)x(C-A) points INTO it (left-handed world)
+                const nh = Math.hypot(n[0], n[1], n[2]) || 1, sideways = o.sideUV && Math.abs(n[0]) > 1.2 * Math.abs(n[2]) + 0.2 * Math.abs(n[1]), east = n[0] > 0, sh = shadeN(n, side);
+                for (const j of ord) { const i = f[j], p = P[i], t = sideways ? o.sideUV(p[0], p[1], q[j][2], east) : [(X0 + p[0]) / W + (side < 0 && o.backDU ? o.backDU : 0), (Y0 + p[1]) / H];
+                    V.push(pw[j][0], pw[j][1], pw[j][2], t[0], t[1], vn ? shadeN(vn[side > 0 ? 0 : 1][i], side) : sh, em); } }
+            return V;
+        }
+
         // ---- another view of the same figure (a back view, from an orthographic sheet), laid onto the front's own pixels: matched in height, feet
         // together, centred, and mirrored left-right for a back view (seen from behind, the figure's right is on the picture's left). front: RGBA w x h
         // (the cut-out; alpha says where the figure is); view: RGBA vw x vh (its cut-out). Returns RGBA w x h: for every front pixel, the view's colour
@@ -757,6 +841,7 @@
             let legX = cx; if (J.legL && J.legR) legX = (J.legL[0] + J.legR[0]) / 2; else if (crotch >= 0) { const r = runs(crotch); const c = Math.round(cx); let l = 0, rr = w - 1; for (const q of r) { if (q[1] < c) l = Math.max(l, q[1]); if (q[0] > c) rr = Math.min(rr, q[0]); } legX = (l + rr) / 2; }
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!a[y * w + x]) continue; const i = y * w + x;
                 lab[i] = !humanoid ? 0 : y <= neck ? 1 : y > hip && x >= cx - coreL * 1.15 && x <= cx + coreR * 1.15 ? (x < legX ? 4 : 5) : x < cx - coreL ? 2 : x > cx + coreR ? 3 : y > hip ? (x < legX ? 4 : 5) : 0; }
+            if (humanoid) for (let y = hip + 1; y <= bot; y++) for (const r of runs(y)) if (r[1] >= cx - coreL * 1.15 && r[0] <= cx + coreR * 1.15) for (let x = r[0]; x <= r[1]; x++) lab[y * w + x] = x < legX ? 4 : 5; // below the hips, a run that reaches the legs is all leg: a wide boot or trouser is not an arm
             if (humanoid) for (const arm of [2, 3]) { // an "arm" pixel must hang from the shoulder: flood from the upper torso band; the rest goes to the torso or a leg
                 const seen = new Uint8Array(w * h), q = []; for (let y = neck + 1; y < neck + 1 + Math.max(2, (hip - neck) * 0.35); y++) for (let x = 0; x < w; x++) if (lab[y * w + x] === arm) { seen[y * w + x] = 1; q.push(y * w + x); }
                 for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy, j = yy * w + xx; if (xx >= 0 && yy >= 0 && xx < w && yy < h && lab[j] === arm && !seen[j]) { seen[j] = 1; q.push(j); } } }
