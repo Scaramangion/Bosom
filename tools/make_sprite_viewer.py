@@ -17,6 +17,7 @@ ICON = { # 24 px line icons, drawn in currentColor
     'cut': '<circle cx="6.5" cy="7" r="2.6"/><circle cx="6.5" cy="17" r="2.6"/><path d="M8.6 8.6L20 18M8.6 15.4L20 6"/>',
     'depth': '<path d="M5 8l7-4 7 4v8l-7 4-7-4z"/><path d="M5 8l7 4 7-4M12 12v8"/>',
     'look': '<circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16" fill="currentColor" stroke="none"/>',
+    'save': '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/>',
     'more': '<circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/>',
 }
 svg = lambda k: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">%s</svg>' % ICON[k]
@@ -38,7 +39,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 .glass{background:var(--material);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border:.5px solid var(--hair)}
 .top{position:fixed;left:16px;right:16px;top:calc(10px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;pointer-events:none}
 .word{font-weight:600;font-size:17px;letter-spacing:-.01em;pointer-events:auto}
-.round{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;pointer-events:auto}
+.tr{display:flex;gap:8px}.round{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;pointer-events:auto}
 .bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:6px;border-radius:22px}
 .tab{min-width:64px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
 .tab[aria-pressed="true"]{color:var(--tint);background:var(--fill)}
@@ -63,15 +64,15 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 .switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:16px;background:var(--fill);position:relative;cursor:pointer;flex:none;margin:0;transition:background .2s}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:transform .2s}
 .switch:checked{background:#34c759}.switch:checked::after{transform:translateX(20px)}
-.info{margin:10px 4px 0;font-size:13px;color:var(--label2);font-variant-numeric:tabular-nums}
+.act{width:100%;text-align:left;font:inherit;color:inherit}.act b{font-weight:600}.info{margin:10px 4px 0;font-size:13px;color:var(--label2);font-variant-numeric:tabular-nums}
 .toast{position:fixed;left:50%;top:calc(56px + env(safe-area-inset-top,0px));transform:translate(-50%,-8px);max-width:calc(100vw - 32px);box-sizing:border-box;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;text-align:center}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .ripple{position:fixed;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:2px solid var(--tint);pointer-events:none;animation:rip .5s ease-out forwards}
 @keyframes rip{from{transform:scale(.3);opacity:1}to{transform:scale(1.4);opacity:0}}
 @media (prefers-reduced-motion:reduce){.toast,.switch,.switch::after{transition:none}.ripple{animation:none;opacity:0}}
 </style></head><body><canvas id="c" aria-label="3D view of the paper model"></canvas>
-<input id="file" type="file" accept="image/*" hidden>
-<div class="top"><span class="word">Papercraft</span><button id="more" class="round glass" aria-label="Options">''' + svg('more') + '''</button></div>
+<input id="file" type="file" accept="image/*,.json,application/json" hidden>
+<div class="top"><span class="word">Papercraft</span><span class="tr"><button id="save" class="round glass" aria-label="Save" disabled>''' + svg('save') + '''</button><button id="more" class="round glass" aria-label="Options">''' + svg('more') + '''</button></span></div>
 <div id="hello" class="hello glass" hidden><h1>Turn any picture into a paper model</h1><p>Choose a photo or a drawing. Papercraft cuts out the subject and folds it into 3D.</p><label class="primary" for="file">Choose Photo</label></div>
 <div id="pDepth" class="panel glass col" hidden><div class="seg" role="group" aria-label="Shape"><button data-shape="card" aria-pressed="false">Card</button><button data-shape="round" aria-pressed="true">Round</button></div><div class="line"><span class="small">Thin</span><input id="thick" type="range" min="0" max="4" step="0.25" value="2" aria-label="Depth"><span class="small">Full</span></div></div>
 <div id="pCut" class="panel glass col" hidden><div class="line"><div class="seg" role="group" aria-label="Tap to"><button data-mark="keep" aria-pressed="true">Keep</button><button data-mark="drop" aria-pressed="false">Remove</button></div><button id="undo" class="pill">Undo</button><button id="done" class="pill tinted">Done</button></div><span class="hint" id="cutHint">Tap the person or thing you want to keep.</span></div>
@@ -95,6 +96,12 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <div class="row"><span>The whole cast</span><button id="cast" class="link" style="font-size:15px">Show</button></div>
 <div class="row"><span>One sprite</span><select id="spr" aria-label="Sprite"></select></div></div>
 <p class="info" id="info"></p></div>
+<div id="saveSheet" class="sheet" role="dialog" aria-label="Save" hidden><div class="grab"></div><header><h2>Save</h2><button id="saveClose" class="link">Cancel</button></header>
+<div class="group">
+<button class="row act" data-save="model"><span><b>3D model</b><br><span class="small">.zip with a .glb (most 3D apps and engines) and an .obj with its texture</span></span></button>
+<button class="row act" data-save="png"><span><b>Cut-out picture</b><br><span class="small">.png at the photo's full size, background transparent</span></span></button>
+<button class="row act" data-save="json"><span><b>Papercraft file</b><br><span class="small">.json: the outline and picture, to open here again or load in the game</span></span></button></div>
+<p class="info" id="saveInfo"></p></div>
 <div id="toast" class="toast glass" role="status"></div>
 ''' + atlases + '''<script>
 // ---------- harness: the handful of globals the paper module expects from the game (none of the town is built here) ----------
@@ -249,15 +256,81 @@ function cutNow(first) { const t0 = performance.now();
   let air = 0; for (let i = 3; i < C.px.length; i += 4) if (!C.px[i]) air++;
   if (!MINE.S) { toast('Everything was removed. Tap Undo, or tap Keep on what you want.'); groups = []; tris = 0; return; }
   if (first && (!air || C.method === 'photo')) setTimeout(() => toast(C.method === 'photo' ? 'Not quite right? Tap Cut, then tap what to keep or remove.' : 'No background found. Tap Cut, then Remove, and tap it.'), 400);
-  ST.mode = 'mine'; build(); }
-$('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image();
+  ST.mode = 'mine'; $('save').disabled = false; build(); }
+$('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); MINE.name = (f.name || 'papercraft').replace(/\\.papercraft\\.json$|\\.[^.]+$/, '').replace(/[^\\w-]+/g, '-').slice(0, 40) || 'papercraft';
+  if (/json/.test(f.type) || /\\.json$/i.test(f.name)) { f.text().then(t => { try { const r = JSON.parse(t); if (!r.picture) throw 0; im.src = r.picture; if (r.shape) { ST.shape = r.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); } if (r.depth != null) $('thick').value = r.depth; } catch (_) { toast('That is not a Papercraft file.'); } }); e.target.value = ''; }
   im.onload = () => { MINE.img = im; MINE.marks = []; $('tCut').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
-  im.onerror = () => toast('That file could not be opened as a picture.'); im.src = URL.createObjectURL(f); e.target.value = ''; };
+  im.onerror = () => toast('That file could not be opened as a picture.'); if (!im.src) im.src = URL.createObjectURL(f); e.target.value = ''; };
 function refreshHello() { $('hello').hidden = !(ST.mode === 'start' && !MINE.img && !ST.tool); }
+// ---------- Save: a 3D model (.zip: .glb + .obj/.mtl/.png), the cut-out (.png, full size) or a Papercraft file (.json) ----------
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function zip(files) { // a plain .zip (stored, no compression): [{name, data: Uint8Array}]
+  const enc = new TextEncoder(), parts = [], cd = []; let off = 0;
+  for (const f of files) { const nm = enc.encode(f.name), d = f.data; let c = 0xffffffff; for (let i = 0; i < d.length; i++) c = CRC[(c ^ d[i]) & 255] ^ (c >>> 8); c = (c ^ 0xffffffff) >>> 0;
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint32(14, c, true); h.setUint32(18, d.length, true); h.setUint32(22, d.length, true); h.setUint16(26, nm.length, true);
+    const e = new DataView(new ArrayBuffer(46)); e.setUint32(0, 0x02014b50, true); e.setUint16(4, 20, true); e.setUint16(6, 20, true); e.setUint32(16, c, true); e.setUint32(20, d.length, true); e.setUint32(24, d.length, true); e.setUint16(28, nm.length, true); e.setUint32(42, off, true);
+    parts.push(new Uint8Array(h.buffer), nm, d); cd.push(new Uint8Array(e.buffer), nm); off += 30 + nm.length + d.length; }
+  const cdl = cd.reduce((n, a) => n + a.length, 0), end = new DataView(new ArrayBuffer(22)); end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cdl, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...cd, new Uint8Array(end.buffer)], { type: 'application/zip' }); }
+const pngOf = (px, w, h) => new Promise(res => { const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(px), w, h), 0, 0); c.toBlob(b => b.arrayBuffer().then(a => res(new Uint8Array(a))), 'image/png'); });
+function meshNow() { // the model on stage, in the 7-float paper format, with its texture: your picture, or one sprite
+  if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3], th = depth(), V = [];
+    if (ST.shape === 'round') paperPuff(V, MINE.px, MINE.w, MINE.h, [0, 0, MINE.w, MINE.h], { s, depth: th * hh * 0.05, anchor: S.anchor }); else paperSprite(V, S, [MINE.w, MINE.h], { s, thick: th * hh / 24 });
+    return { V, hh, px: MINE.px, w: MINE.w, h: MINE.h, name: MINE.name || 'papercraft' }; }
+  if (ST.mode === 'one' || ST.mode === 'start') { const key = ST.sprite, S = SPRITE_POLYS.sprites[key], at = key.split('/')[0], A = SPRITE_POLYS.atlases[at].size, hh = 24 * S.rect[3] / 85, s = hh / S.rect[3], th = depth(), V = [];
+    if (ST.shape === 'round') paperPuff(V, ATLAS_PX[at], A[0], A[1], S.rect, { s, depth: th * hh * 0.05, anchor: S.anchor }); else paperSprite(V, S, A, { s, thick: th * hh / 24, anchor: S.anchor });
+    return { V, hh, px: ATLAS_PX[at], w: A[0], h: A[1], name: key.split('/')[1] }; }
+  return null; }
+async function modelZip(m) { // glTF: y up, metres (the model is 1 m tall), front toward +z; world (x east, y south, z up) -> (x, z, y), which also turns left- into right-handed
+  const n = m.V.length / 7, k = 1 / m.hh, pos = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * 3), mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+  for (let i = 0; i < n; i++) { const V = m.V, o = i * 7, p = [V[o] * k, V[o + 2] * k, V[o + 1] * k]; for (let a = 0; a < 3; a++) { pos[i * 3 + a] = p[a]; mn[a] = Math.min(mn[a], p[a]); mx[a] = Math.max(mx[a], p[a]); }
+    uv[i * 2] = V[o + 3]; uv[i * 2 + 1] = V[o + 4]; const sh = Math.min(1, V[o + 5]); col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = sh; }
+  const png = await pngOf(m.px, m.w, m.h), pad4 = x => (x + 3) & ~3, bin = [pos, uv, col].map(a => new Uint8Array(a.buffer)), offs = []; let off = 0; for (const b of bin) { offs.push(off); off = pad4(off + b.length); } const pngOff = off; off = pad4(off + png.length);
+  const gltf = { asset: { version: '2.0', generator: 'Papercraft (Saga of Koto)' }, extensionsUsed: ['KHR_materials_unlit'], scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0, name: m.name }],
+    meshes: [{ name: m.name, primitives: [{ attributes: { POSITION: 0, TEXCOORD_0: 1, COLOR_0: 2 }, material: 0 }] }],
+    materials: [{ name: 'paper', pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0, roughnessFactor: 1 }, alphaMode: 'MASK', alphaCutoff: 0.5, extensions: { KHR_materials_unlit: {} } }],
+    textures: [{ source: 0, sampler: 0 }], samplers: [{ magFilter: 9728, minFilter: 9728, wrapS: 33071, wrapT: 33071 }], images: [{ bufferView: 3, mimeType: 'image/png' }],
+    buffers: [{ byteLength: off }], bufferViews: [{ buffer: 0, byteOffset: offs[0], byteLength: bin[0].length, target: 34962 }, { buffer: 0, byteOffset: offs[1], byteLength: bin[1].length, target: 34962 }, { buffer: 0, byteOffset: offs[2], byteLength: bin[2].length, target: 34962 }, { buffer: 0, byteOffset: pngOff, byteLength: png.length }],
+    accessors: [{ bufferView: 0, componentType: 5126, count: n, type: 'VEC3', min: mn, max: mx }, { bufferView: 1, componentType: 5126, count: n, type: 'VEC2' }, { bufferView: 2, componentType: 5126, count: n, type: 'VEC3' }] };
+  let js = new TextEncoder().encode(JSON.stringify(gltf)); const jl = pad4(js.length), glb = new Uint8Array(12 + 8 + jl + 8 + off), dv = new DataView(glb.buffer);
+  dv.setUint32(0, 0x46546c67, true); dv.setUint32(4, 2, true); dv.setUint32(8, glb.length, true); dv.setUint32(12, jl, true); dv.setUint32(16, 0x4e4f534a, true); glb.set(js, 20); for (let i = js.length; i < jl; i++) glb[20 + i] = 32;
+  const b0 = 20 + jl; dv.setUint32(b0, off, true); dv.setUint32(b0 + 4, 0x004e4942, true); bin.forEach((b, i) => glb.set(b, b0 + 8 + offs[i])); glb.set(png, b0 + 8 + pngOff);
+  const L = [`# Papercraft (Saga of Koto): ${m.name}, ${n / 3} triangles, 1 m tall, y up`, `mtllib ${m.name}.mtl`, `o ${m.name}`]; // .obj: same mesh, unshaded (the shading is in the .glb's vertex colours)
+  for (let i = 0; i < n; i++) L.push(`v ${pos[i * 3].toFixed(5)} ${pos[i * 3 + 1].toFixed(5)} ${pos[i * 3 + 2].toFixed(5)}`); for (let i = 0; i < n; i++) L.push(`vt ${uv[i * 2].toFixed(5)} ${(1 - uv[i * 2 + 1]).toFixed(5)}`);
+  L.push('usemtl paper'); for (let i = 0; i < n; i += 3) L.push(`f ${i + 1}/${i + 1} ${i + 2}/${i + 2} ${i + 3}/${i + 3}`);
+  const t = s => new TextEncoder().encode(s);
+  return zip([{ name: m.name + '.glb', data: glb }, { name: m.name + '.obj', data: t(L.join('\\n') + '\\n') }, { name: m.name + '.mtl', data: t(`newmtl paper\\nKd 1 1 1\\nmap_Kd ${m.name}.png\\nmap_d ${m.name}.png\\n`) }, { name: m.name + '.png', data: png },
+    { name: 'README.txt', data: t(`${m.name}: made with Papercraft (Saga of Koto).\\n${m.name}.glb  - open in any glTF viewer, Blender, Unity, Godot, three.js. Unlit, texture with alpha cut-out, 1 m tall, y up, front toward +z.\\n${m.name}.obj  - the same mesh for apps that prefer OBJ (+ .mtl and .png).\\n`) }]); }
+async function cutoutPng() { // your subject at the photo's own size (up to 2048 px): the cut's mask, scaled up smoothly, applied to the original
+  const im = MINE.img, W0 = im.naturalWidth, H0 = im.naturalHeight, k = Math.min(1, 2048 / Math.max(W0, H0)), W = Math.round(W0 * k), H = Math.round(H0 * k);
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(im, 0, 0, W, H); const big = g.getImageData(0, 0, W, H);
+  const mc = document.createElement('canvas'); mc.width = MINE.w; mc.height = MINE.h; const mp = new ImageData(MINE.w, MINE.h); for (let i = 0; i < MINE.w * MINE.h; i++) mp.data[i * 4 + 3] = MINE.px[i * 4 + 3]; mc.getContext('2d').putImageData(mp, 0, 0);
+  const sc = document.createElement('canvas'); sc.width = W; sc.height = H; const sg = sc.getContext('2d'); sg.imageSmoothingEnabled = true; sg.imageSmoothingQuality = 'high'; sg.drawImage(mc, 0, 0, W, H); const m = sg.getImageData(0, 0, W, H).data;
+  for (let i = 0; i < W * H; i++) big.data[i * 4 + 3] = Math.min(big.data[i * 4 + 3], m[i * 4 + 3] >= 128 ? 255 : 0); // a hard edge, like the paper
+  let x0 = W, y0 = H, x1 = -1, y1 = -1; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (big.data[(y * W + x) * 4 + 3]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return null; g.putImageData(big, 0, 0); const o = document.createElement('canvas'); o.width = x1 - x0 + 1; o.height = y1 - y0 + 1; o.getContext('2d').drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height); // trimmed to the subject
+  return new Promise(res => o.toBlob(res, 'image/png')); }
+async function offer(filename, data) { // the viewer's own save (with its confirmation) inside Claude; a plain download anywhere else
+  const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+  if (dl) { try { await dl.save({ filename, data }); toast('Saved ' + filename + '.'); } catch (e) { if (e && e.code === 'declined') return; toast(e && e.code === 'rate_limited' ? 'One save at a time: try again in a moment.' : 'This view cannot save files.'); } return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data])); a.download = filename; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast('Saved ' + filename + '.'); }
+function openSave() { const m = meshNow(); $('saveInfo').textContent = m ? `${m.name}: ${m.V.length / 21} triangles, ${ST.shape === 'round' ? 'round' : 'card'}.` : '';
+  document.querySelector('[data-save=png]').disabled = document.querySelector('[data-save=json]').disabled = !(ST.mode === 'mine' && MINE.S); document.querySelector('[data-save=model]').disabled = !m;
+  closeSheet(); setTool(null); $('saveSheet').hidden = $('scrim').hidden = false; }
+function closeSave() { $('saveSheet').hidden = true; if ($('sheet').hidden) $('scrim').hidden = true; }
+$('save').onclick = openSave; $('saveClose').onclick = closeSave; $('scrim').addEventListener('click', closeSave);
+for (const b of document.querySelectorAll('[data-save]')) b.onclick = async () => { const kind = b.dataset.save; closeSave(); toast('Preparing…', true);
+  try { if (kind === 'model') { const m = meshNow(); await offer(m.name + '-papercraft.zip', await modelZip(m)); }
+    else if (kind === 'png') { const p = await cutoutPng(); if (p) await offer((MINE.name || 'cutout') + '.png', p); else toast('Nothing to save: everything was removed.'); }
+    else { const png = await pngOf(MINE.px, MINE.w, MINE.h); let bin = ''; for (let i = 0; i < png.length; i += 32768) bin += String.fromCharCode.apply(null, png.subarray(i, i + 32768));
+      const S = MINE.S, rec = { papercraft: 1, name: MINE.name || 'papercraft', prime: PAPER.PRIME, picture: 'data:image/png;base64,' + btoa(bin), size: [MINE.w, MINE.h], sprite: { rect: S.rect, anchor: S.anchor, pts: S.pts, rings: S.rings, tris: S.tris, ein: S.ein }, shape: ST.shape, depth: depth() };
+      await offer(rec.name + '.papercraft.json', JSON.stringify(rec)); } }
+  catch (e) { toast('Could not save: ' + (e && e.message || e)); } };
 // ---------- start ----------
 if (Q.get('t')) $('thick').value = Q.get('t'); $('wire').checked = Q.get('wire') === '1'; $('spin').checked = Q.get('spin') !== '0';
 document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x.dataset.look === ST.look)); document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape));
 const retheme = () => { if (loaded === names.length) build(); }; matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme); new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+$('save').disabled = false;
 for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); ATLAS_PX[at] = g.getImageData(0, 0, im.width, im.height).data; } /* pixels, for Round */ if (++loaded === names.length) { build(); refreshHello(); requestAnimationFrame(frame); window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }
 </script></body></html>'''
 if '--artifact' in sys.argv:  # the same page without its own document wrapper (the artifact host adds one)

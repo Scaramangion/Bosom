@@ -111,7 +111,13 @@ Extruding the outline (the card) gives every part the same thickness: arms as de
 - No neural network: the downloads for one are blocked from this workspace, and this runs offline and gives the same cut every time. A person-segmentation model could be added later as a first guess for `paperSubject` (its `o.init`).
 - Check: `node tools/shoot_upload.js` now also folds a photo (`tools/fixtures/photo-astronaut.jpg`) and uses Cut with Keep / Remove taps. GREEN.
 
-**Next:** save what you made (the polygon + its cut-out as one file, and a .glb so it opens in other 3D apps); make the viewer an installable phone app (it is already one self-contained page); then the cast in the town demo, layer stacks, hinges and the Heads system.
+**Step 9, Save** (the download icon, top right). Inside Claude the page offers files through the viewer's own save (you confirm each one); opened anywhere else it is a normal download. Allowed file types there are zip, png and json among others (not glb or obj on their own), so:
+- **3D model** (`name-papercraft.zip`): `name.glb` (glTF 2.0 binary: unlit, the texture embedded with its alpha cut, the paper shading as vertex colours, 1 m tall, y up, front toward +z; our world's x east / y south / z up maps to (x, z, y), which also turns left-handed into right-handed) and `name.obj` + `.mtl` + `.png` for apps that prefer OBJ, and a README.
+- **Cut-out picture** (`name.png`): the cut's mask scaled up smoothly onto the original photo (up to 2048 px), hard-edged, trimmed to the subject. For character sheets and game assets.
+- **Papercraft file** (`name.papercraft.json`): the cut-out picture (PNG, data URI), the outline record (`rect, anchor, pts, rings, tris, ein`, the format `paperSprite` folds), shape and depth. Choose it with Photo to open it again.
+- Check: `tools/shoot_upload.js` saves all three; `python3 tools/check_export.py` validates the .glb by hand (header, chunks, views, accessors, PNG), checks the .obj matches it and the faces wind outward, and renders the .glb with its own small rasteriser from the front and the side (`papercraft/shots/export/render.png`). GREEN.
+
+**Next:** rig (move the parts like Paper Mario / Minecraft) (the polygon + its cut-out as one file, and a .glb so it opens in other 3D apps); make the viewer an installable phone app (it is already one self-contained page); then the cast in the town demo, layer stacks, hinges and the Heads system.
 
 **Later:** fold the cast into the town demo beside the town mesh (and into the game in place of `asCard` for standing poses), the layer stack (cloak, arm, head) for parallax, hinge folds for cloaks and banners, and the Heads system (headless body + head docking at a neck hinge). Walk cycles can swap frames on the same card: each frame is its own outline, so rebuild just that card's slice of the buffer.
 

@@ -26,6 +26,9 @@ const TESTS = [['phone-sprite', 'art-source/characters/girl_front.png'], ['phone
     if (!/corners/.test(info)) errs.push(name + ': ' + info);
     await p.screenshot({ path: R('papercraft/shots/' + name + '.png') }); console.log('shot', name, '|', info);
   }
+  { const fs = require('fs'), dir = R('papercraft/shots/export'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true }); // Save: the model, the cut-out, the Papercraft file
+    await p.click('#save'); await p.waitForTimeout(300); await p.screenshot({ path: R('papercraft/shots/phone-save.png') });
+    for (const kind of ['model', 'png', 'json']) { if (kind !== 'model') { await p.click('#save'); await p.waitForTimeout(200); } const [d] = await Promise.all([p.waitForEvent('download', { timeout: 60000 }), p.click(`[data-save=${kind}]`)]); await d.saveAs(path.join(dir, d.suggestedFilename())); console.log('saved', d.suggestedFilename()); } }
   await p.click('#more'); await p.waitForTimeout(300); await p.screenshot({ path: R('papercraft/shots/phone-options.png') });
   await p.emulateMedia({ colorScheme: 'dark' }); await p.click('#close'); await p.click('#tLook'); await p.waitForTimeout(500); await p.screenshot({ path: R('papercraft/shots/phone-dark-look.png') });
   await b.close(); console.log(errs.length ? 'RED ' + errs.join(' | ') : 'GREEN no page errors, every picture folded'); process.exit(errs.length ? 1 : 0);
