@@ -20,6 +20,7 @@ The idea in one line: **the tile map is the blueprint, one painted sheet is the 
 - `paperBuild()` -> `Float32Array` mesh. 7 floats per vertex: `x y z` (world px, z up), `u v` (sheet), `shade`, `glow`.
 - `paperGroundStep(ms)` paints the street texture in slices so loading never stalls.
 - `paperCottage(V)` an example of a hand-folded model that appends triangles to the mesh.
+- `paperSubject(px, w, h, o)` finds the subject of a photo (GrabCut: learned colour models + `paperMaxflow`, a Boykov-Kolmogorov minimum cut); `paperCutout` uses it for photos.
 - `paperCutout(img, o)` any picture -> a clean cut-out (shrunk, background keyed out, tap-to-erase seeds); `paperTrace(px, W, rect, o)` the tracer in the browser; `paperFlood` the flood fill they share.
 - `paperPuff(V, px, W, H, rect, o)` puffs a picture into a rounded, closed shape (the Round option); see step 7.
 - `paperSprite(V, S, A, o)` folds one traced sprite into a standing card and appends it to `V` (see below).
@@ -100,6 +101,15 @@ Extruding the outline (the card) gives every part the same thickness: arms as de
 - Check: `node tools/check_paper_puff.js` puffs all 424 sprites twice (plain; mirrored and turned): every edge balanced by edges running the other way (on the seam, front and back sheets coincide), wound inward. GREEN.
 - Viewer: Depth has **Card / Round** (Round by default) and a Thin-Full slider. The cut-out also loses the 1 px fringe the background key leaves, which was where the grey stripes on card edges came from.
 - Planar projection, as on the card: seen from the side the paint stretches over the curve. Fine for PS1; a later step could paint the sides.
+
+**Step 8, the subject, not the backdrop** (photos of people, busy backgrounds).
+- `paperCutout` now decides per picture: its own transparency -> kept; a plain backdrop (the border's main colours cover 85% of it) -> the pixel-exact colour key; anything else is a photo -> `paperSubject`.
+- `paperSubject` is GrabCut: two colour models (5 Gaussians each) for subject and backdrop, a first guess (a box in the middle; the top and sides of the frame are backdrop, the bottom is left open for feet), then four rounds of: the exact best split of the pixels (a minimum graph cut, `paperMaxflow`, Boykov-Kolmogorov) where each pixel pays for the model it is given and neighbours pay to be split (a lot across flat colour, little across an edge), and both models re-learned from the split. The piece kept is the one your Keep taps touch, else the biggest piece in the middle of the frame; small holes fill in.
+- On scikit-image's sample photos it matches OpenCV's GrabCut on the cat, the coffee and the rocket (94-99% of pixels agree), keeps the whole astronaut where OpenCV cuts her arm away, and is cleaner on grid paper. About 0.5-2 s for a 256 px picture in Node; the viewer says "Finding the subject..." meanwhile.
+- **Cut** replaces Erase: the whole picture lies flat facing you (what is removed shown dark and grey), **Keep** / **Remove**, tap on the picture itself; each tap is a hard label for the cut (Keep also switches a keyed picture to the learned cut). Undo, Done.
+- Options: Cut-out (Auto / Backdrop / Photo), Backdrop tolerance.
+- No neural network: the downloads for one are blocked from this workspace, and this runs offline and gives the same cut every time. A person-segmentation model could be added later as a first guess for `paperSubject` (its `o.init`).
+- Check: `node tools/shoot_upload.js` now also folds a photo (`tools/fixtures/photo-astronaut.jpg`) and uses Cut with Keep / Remove taps. GREEN.
 
 **Next:** save what you made (the polygon + its cut-out as one file, and a .glb so it opens in other 3D apps); make the viewer an installable phone app (it is already one self-contained page); then the cast in the town demo, layer stacks, hinges and the Heads system.
 

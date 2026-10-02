@@ -488,13 +488,108 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
         // browser, so the same pixels give the same cut on every device). A picture with its own transparency keeps it; any other picture has its
         // background keyed out: a flood fill from the border through every pixel within o.tol (0..441, RGB distance) of any of the border's main colours
         // (up to six, each at least 4% of the border: one for a plain backdrop, a few for a grid, a check or a pattern).
-        // o.seeds [[u, v], ...] (0..1 across the picture): extra spots to key out (tap to erase). From each one the fill spreads while the colour changes
+        // A plain backdrop (the border's main colours cover 85% of it) is keyed out pixel-exact; anything else is treated as a photo and its subject is
+        // learned (paperSubject), with o.keep taps (the person or thing to keep) and o.drop taps (backdrop). o.method 'key' / 'photo' forces one.
+        // o.drop (or o.seeds) [[u, v], ...] (0..1 across the picture): on a keyed picture, extra spots to key out (tap to erase). From each one the fill spreads while the colour changes
         // smoothly (each step within 0.6 tol of the last pixel) and stays within 3 tol of the tapped colour, so a shaded or vignetted backdrop goes in one tap.
         // o.one keeps one subject: the biggest piece and whatever lies within a few px of it. Alpha ends up 0 or 255. Returns { cv (a canvas to use as the texture), px (its RGBA), w, h, keyed }.
         function paperFlood(px, w, h, seeds, ok) { // 4-connected flood fill from the seed pixels through every pixel j that ok(j, from) accepts
             const seen = new Uint8Array(w * h), q = []; for (const i of seeds) if (!seen[i]) { seen[i] = 1; q.push(i); }
             for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && !seen[j] && ok(j, i)) { seen[j] = 1; q.push(j); } }
             return seen;
+        }
+        // ---- the minimum cut of a grid graph (Boykov-Kolmogorov max-flow: two search trees, grow, augment, adopt). N nodes, 8 neighbour slots each:
+        // out[i*8+d] = edge index (or -1), head[e] = the node edge e points to, edges come in pairs (e, e^1 = the reverse), cap[e] = residual capacity.
+        // tr[i] = terminal capacity (+ from the source, - to the sink). Returns tree: 1 = source side (the subject), else sink side.
+        function paperMaxflow(N, out, head, cap, tr) {
+            const TERM = -2, ORPH = -3, tree = new Int8Array(N), par = new Int32Array(N).fill(-1), inQ = new Uint8Array(N), Q = [], orph = [];
+            for (let i = 0; i < N; i++) if (tr[i] > 0) { tree[i] = 1; par[i] = TERM; Q.push(i); inQ[i] = 1; } else if (tr[i] < 0) { tree[i] = 2; par[i] = TERM; Q.push(i); inQ[i] = 1; }
+            const rooted = y => { for (;;) { const e = par[y]; if (e === TERM) return true; if (e < 0) return false; y = tree[y] === 1 ? head[e ^ 1] : head[e]; } };
+            let qi = 0, cur = -1;
+            for (;;) {
+                if (cur < 0 || !tree[cur]) { cur = -1; while (qi < Q.length) { const c = Q[qi++]; inQ[c] = 0; if (tree[c]) { cur = c; break; } } if (cur < 0) break; if (qi > 65536) { Q.splice(0, qi); qi = 0; } }
+                const p = cur, tp = tree[p]; let meet = -1;
+                for (let d = 0; d < 8; d++) { const e = out[p * 8 + d]; if (e < 0) continue; const q = head[e];
+                    if (tp === 1) { if (cap[e] <= 0) continue; if (!tree[q]) { tree[q] = 1; par[q] = e; if (!inQ[q]) { inQ[q] = 1; Q.push(q); } } else if (tree[q] === 2) { meet = e; break; } }
+                    else { const r = e ^ 1; if (cap[r] <= 0) continue; if (!tree[q]) { tree[q] = 2; par[q] = r; if (!inQ[q]) { inQ[q] = 1; Q.push(q); } } else if (tree[q] === 1) { meet = r; break; } } }
+                if (meet < 0) { cur = -1; continue; }
+                const a = head[meet ^ 1], b = head[meet]; let f = cap[meet], x;     // augment along source ... a -> b ... sink
+                for (x = a; par[x] !== TERM; x = head[par[x] ^ 1]) f = Math.min(f, cap[par[x]]); f = Math.min(f, tr[x]);
+                for (x = b; par[x] !== TERM; x = head[par[x]]) f = Math.min(f, cap[par[x]]); f = Math.min(f, -tr[x]);
+                cap[meet] -= f; cap[meet ^ 1] += f;
+                for (x = a; par[x] !== TERM;) { const e = par[x], nx = head[e ^ 1]; cap[e] -= f; cap[e ^ 1] += f; if (cap[e] <= 0) { par[x] = ORPH; orph.push(x); } x = nx; } tr[x] -= f; if (tr[x] <= 0) { par[x] = ORPH; orph.push(x); }
+                for (x = b; par[x] !== TERM;) { const e = par[x], nx = head[e]; cap[e] -= f; cap[e ^ 1] += f; if (cap[e] <= 0) { par[x] = ORPH; orph.push(x); } x = nx; } tr[x] += f; if (tr[x] >= 0) { par[x] = ORPH; orph.push(x); }
+                while (orph.length) { const o = orph.pop(), t = tree[o]; let found = -1; // adopt: a new parent from the same tree, still rooted at its terminal; else free the node
+                    if (par[o] !== ORPH) continue;
+                    for (let d = 0; d < 8 && found < 0; d++) { const e = out[o * 8 + d]; if (e < 0) continue; const q = head[e]; if (tree[q] !== t) continue; const pe = t === 1 ? e ^ 1 : e; if (cap[pe] > 0 && rooted(q)) found = pe; }
+                    if (found >= 0) { par[o] = found; continue; }
+                    for (let d = 0; d < 8; d++) { const e = out[o * 8 + d]; if (e < 0) continue; const q = head[e]; if (tree[q] !== t) continue; const pe = t === 1 ? e ^ 1 : e;
+                        if (cap[pe] > 0 && !inQ[q]) { inQ[q] = 1; Q.push(q); }
+                        const qp = par[q]; if (qp >= 0 && (t === 1 ? head[qp ^ 1] : head[qp]) === o) { par[q] = ORPH; orph.push(q); } }
+                    tree[o] = 0; par[o] = -1; }
+            }
+            return tree;
+        }
+        // ---- the subject of a photo, learned from the photo itself (GrabCut): two colour models (5 Gaussians each), one for the subject and one for
+        // the backdrop, start from a guess (the middle of the frame is probably the subject; the top and sides of the frame are backdrop). Each round,
+        // the best split of the pixels is found exactly (a minimum graph cut: a pixel pays for the colour model it is given, and neighbours pay to be
+        // split, a lot across flat colour, little across an edge), then both models are re-learned from the split.
+        // o.keep [[u, v], ...]: taps on the subject (must keep, and the piece kept is the one they touch); o.drop [[u, v], ...]: taps on backdrop.
+        // Returns a Uint8Array mask (1 = subject). Deterministic: no randomness, fixed rounds.
+        function paperSubject(px, w, h, o = {}) {
+            const N = w * h, K = 5, R = new Float32Array(N), G = new Float32Array(N), B = new Float32Array(N);
+            for (let i = 0; i < N; i++) { R[i] = px[i * 4] / 255; G[i] = px[i * 4 + 1] / 255; B[i] = px[i * 4 + 2] / 255; }
+            const hard = new Int8Array(N), rad = Math.max(2, Math.round(0.03 * Math.max(w, h))); // 1 = must keep, -1 = must drop
+            for (let x = 0; x < w; x++) hard[x] = -1; for (let y = 0; y < h; y++) { hard[y * w] = -1; hard[y * w + w - 1] = -1; } // the frame's top and sides are backdrop (the bottom may cut through feet)
+            const stamp = (taps, v) => { for (const [u, t] of taps || []) { const cx = Math.round(u * (w - 1)), cy = Math.round(t * (h - 1)); for (let y = Math.max(0, cy - rad); y <= Math.min(h - 1, cy + rad); y++) for (let x = Math.max(0, cx - rad); x <= Math.min(w - 1, cx + rad); x++) if ((x - cx) ** 2 + (y - cy) ** 2 <= rad * rad) hard[y * w + x] = v; } };
+            stamp(o.drop, -1); stamp(o.keep, 1);
+            let L = new Uint8Array(N); const x0 = w * 0.12, x1 = w * 0.88, y0 = h * 0.05; // the first guess: a box in the middle
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; L[i] = hard[i] ? (hard[i] > 0 ? 1 : 0) : o.init ? o.init[i] : (x > x0 && x < x1 && y > y0 ? 1 : 0); } // o.init: a better first guess (e.g. the colour key's)
+            const lum = i => 0.299 * R[i] + 0.587 * G[i] + 0.114 * B[i];
+            const ll1 = (g, i) => { const a = R[i] - g.m[0], b = G[i] - g.m[1], c = B[i] - g.m[2], I = g.inv; return g.lk - 0.5 * (a * (I[0] * a + I[1] * b + I[2] * c) + b * (I[1] * a + I[3] * b + I[4] * c) + c * (I[2] * a + I[4] * b + I[5] * c)); };
+            const gmm = side => { // fit K Gaussians to the pixels labelled `side` (first split by brightness quantiles, then two rounds of hard EM)
+                const idx = []; for (let i = 0; i < N; i++) if (L[i] === side) idx.push(i); if (idx.length < K * 3) for (let i = 0; i < N; i++) idx.push(i);
+                idx.sort((a, b) => lum(a) - lum(b) || a - b); const comp = new Int32Array(idx.length); for (let n = 0; n < idx.length; n++) comp[n] = Math.min(K - 1, (n * K / idx.length) | 0);
+                let C = [];
+                for (let it = 0; it < 3; it++) { C = [];
+                    for (let k = 0; k < K; k++) { let n = 0; const m = [0, 0, 0], S = [0, 0, 0, 0, 0, 0];
+                        for (let q = 0; q < idx.length; q++) if (comp[q] === k) { const i = idx[q]; n++; m[0] += R[i]; m[1] += G[i]; m[2] += B[i]; }
+                        if (n < 2) continue; m[0] /= n; m[1] /= n; m[2] /= n;
+                        for (let q = 0; q < idx.length; q++) if (comp[q] === k) { const i = idx[q], a = R[i] - m[0], b = G[i] - m[1], c = B[i] - m[2]; S[0] += a * a; S[1] += a * b; S[2] += a * c; S[3] += b * b; S[4] += b * c; S[5] += c * c; }
+                        for (let j = 0; j < 6; j++) S[j] /= n; S[0] += 2e-4; S[3] += 2e-4; S[5] += 2e-4;
+                        const [a, b, c, d, e, f] = S, det = a * (d * f - e * e) - b * (b * f - e * c) + c * (b * e - d * c), inv = [(d * f - e * e) / det, (c * e - b * f) / det, (b * e - c * d) / det, (a * f - c * c) / det, (b * c - a * e) / det, (a * d - b * b) / det];
+                        C.push({ m, inv, lk: Math.log(n / idx.length) - 0.5 * Math.log(det), k }); }
+                    if (it === 2) break;
+                    for (let q = 0; q < idx.length; q++) { const i = idx[q]; let best = 0, bv = -Infinity; for (const g of C) { const v = ll1(g, i); if (v > bv) { bv = v; best = g.k; } } comp[q] = best; } }
+                return C; };
+            const nll = (C, i) => { let mx = -Infinity; const v = []; for (const g of C) { const t = ll1(g, i); v.push(t); if (t > mx) mx = t; } let s = 0; for (const t of v) s += Math.exp(t - mx); return -(mx + Math.log(s)); };
+            const dirs = [[1, 0, 1], [0, 1, 1], [1, 1, Math.SQRT1_2], [-1, 1, Math.SQRT1_2]]; let beta = 0, cnt = 0;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (const [dx, dy] of dirs) { const xx = x + dx, yy = y + dy; if (xx < 0 || xx >= w || yy >= h) continue; const i = y * w + x, j = yy * w + xx; beta += (R[i] - R[j]) ** 2 + (G[i] - G[j]) ** 2 + (B[i] - B[j]) ** 2; cnt++; }
+            beta = 1 / (2 * beta / Math.max(1, cnt) + 1e-9); const gam = o.smooth || 50, INF = 1e9;
+            const out = new Int32Array(N * 8).fill(-1), head = [], wts = []; // the grid graph: one edge pair per neighbour pair
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) dirs.forEach(([dx, dy, f], k) => { const xx = x + dx, yy = y + dy; if (xx < 0 || xx >= w || yy >= h) return; const i = y * w + x, j = yy * w + xx, e = head.length;
+                head.push(j, i); wts.push(gam * f * Math.exp(-beta * ((R[i] - R[j]) ** 2 + (G[i] - G[j]) ** 2 + (B[i] - B[j]) ** 2))); out[i * 8 + k] = e; out[j * 8 + k + 4] = e + 1; });
+            const H = Int32Array.from(head), cap = new Float64Array(head.length), tr = new Float64Array(N);
+            for (let round = 0; round < (o.rounds || 4); round++) {
+                const F = gmm(1), Bk = gmm(0);
+                for (let m = 0; m < wts.length; m++) { cap[2 * m] = wts[m]; cap[2 * m + 1] = wts[m]; }
+                for (let i = 0; i < N; i++) tr[i] = hard[i] > 0 ? INF : hard[i] < 0 ? -INF : Math.min(40, nll(Bk, i)) - Math.min(40, nll(F, i)); // + pulls toward the subject
+                const T = paperMaxflow(N, out, H, cap, tr); let changed = 0; for (let i = 0; i < N; i++) { const v = T[i] === 1 ? 1 : 0; if (v !== L[i]) changed++; L[i] = v; }
+                if (!changed) break; }
+            const M = L;
+            // the piece kept: the one the "keep" taps touch, else the biggest piece reaching into the middle third of the frame
+            const lab = new Int32Array(N), size = [0], mid = [0]; for (let s0 = 0; s0 < N; s0++) { if (!M[s0] || lab[s0]) continue; const id = size.length, q = [s0]; lab[s0] = id; let m = 0;
+                for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; if (x > w / 3 && x < 2 * w / 3) m++; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < w && yy < h && M[yy * w + xx] && !lab[yy * w + xx]) { lab[yy * w + xx] = id; q.push(yy * w + xx); } } }
+                size.push(q.length); mid.push(m); }
+            const keep = new Uint8Array(size.length); for (let i = 0; i < N; i++) if (hard[i] > 0 && lab[i]) keep[lab[i]] = 1;
+            if (!keep.some(Boolean)) { let best = 0; for (let k = 1; k < size.length; k++) if (mid[k] > mid[best] || (mid[k] === mid[best] && size[k] > size[best])) best = k; keep[best] = 1; }
+            for (let k = 1; k < size.length; k++) if (!keep[k] && size[k] >= 0.02 * N && keep.some((v, j) => v && mid[j]) && mid[k] > 0.25 * size[k]) keep[k] = 1; // another big piece in the middle (a split by a belt or a shadow) stays
+            const Mo = new Uint8Array(N); for (let i = 0; i < N; i++) Mo[i] = lab[i] && keep[lab[i]] ? 1 : 0;
+            { const bg = new Uint8Array(N), q = []; for (let i = 0; i < N; i++) { const x = i % w, y = (i / w) | 0; if (!Mo[i] && (x === 0 || y === 0 || x === w - 1 || y === h - 1)) { bg[i] = 1; q.push(i); } } // small holes fill in; real gaps (between arm and body) stay
+                for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy, j = yy * w + xx; if (xx >= 0 && yy >= 0 && xx < w && yy < h && !Mo[j] && !bg[j]) { bg[j] = 1; q.push(j); } } }
+                const seen = new Uint8Array(N); for (let s0 = 0; s0 < N; s0++) { if (Mo[s0] || bg[s0] || seen[s0]) continue; const hq = [s0]; seen[s0] = 1; for (let hd = 0; hd < hq.length; hd++) { const i = hq[hd], x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy, j = yy * w + xx; if (xx >= 0 && yy >= 0 && xx < w && yy < h && !Mo[j] && !bg[j] && !seen[j]) { seen[j] = 1; hq.push(j); } } }
+                    if (hq.length < N * 0.004) for (const i of hq) Mo[i] = 1; } }
+            return Mo;
         }
         function paperCutout(src, o = {}) {
             const MAX = o.max || 160, tol = o.tol == null ? 48 : o.tol, W0 = src.naturalWidth || src.width, H0 = src.naturalHeight || src.height, k0 = Math.min(1, 4096 / Math.max(W0, H0));
@@ -505,7 +600,7 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
                 const xa = Math.floor(x * sw / w), xb = Math.max(xa + 1, Math.floor((x + 1) * sw / w)), ya = Math.floor(y * sh / h), yb = Math.max(ya + 1, Math.floor((y + 1) * sh / h)); let A = 0, R = 0, G = 0, B = 0, n = 0;
                 for (let yy = ya; yy < yb; yy++) for (let xx = xa; xx < xb; xx++) { const i = (yy * sw + xx) * 4, al = S[i + 3]; A += al; R += S[i] * al; G += S[i + 1] * al; B += S[i + 2] * al; n++; }
                 const o4 = (y * w + x) * 4; if (A) { px[o4] = R / A; px[o4 + 1] = G / A; px[o4 + 2] = B / A; } px[o4 + 3] = A / n; }
-            let air = 0, paper = 0; for (let i = 3; i < px.length; i += 4) px[i] >= 128 ? paper++ : air++;
+            const full = new Uint8ClampedArray(px); let air = 0, paper = 0, method = 'alpha'; for (let i = 3; i < px.length; i += 4) px[i] >= 128 ? paper++ : air++;
             const keyed = !(air && paper);
             if (keyed) { // no transparency of its own: key the background out from the border
                 const border = []; for (let x = 0; x < w; x++) border.push(x, (h - 1) * w + x); for (let y = 1; y < h - 1; y++) border.push(y * w, y * w + w - 1);
@@ -513,11 +608,15 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
                 const keys = [...bins.values()].sort((p, q) => q[0] - p[0] || p[4] - q[4]).filter((b, n) => n === 0 || (n < 6 && b[0] >= Math.max(3, border.length * 0.04))).map(b => [b[1] / b[0], b[2] / b[0], b[3] / b[0]]); // the border's palette: a plain backdrop has one colour, a grid or a pattern a few
                 const near = i => keys.some(c => (px[i * 4] - c[0]) ** 2 + (px[i * 4 + 1] - c[1]) ** 2 + (px[i * 4 + 2] - c[2]) ** 2 <= tol * tol);
                 const seen = paperFlood(px, w, h, border.filter(near), near); for (let i = 0; i < w * h; i++) px[i * 4 + 3] = seen[i] ? 0 : 255;
+                const cover = keys.reduce((n, c) => n + border.filter(i => (px[i * 4] - c[0]) ** 2 + (px[i * 4 + 1] - c[1]) ** 2 + (px[i * 4 + 2] - c[2]) ** 2 <= tol * tol).length, 0) / border.length;
+                method = o.method === 'key' || o.method === 'photo' ? o.method : cover >= 0.85 && keys.length <= 3 && !(o.keep && o.keep.length) ? 'key' : 'photo'; // a plain backdrop keys out pixel-exact; anything else is a photo
+                if (method === 'photo') { const init = cover >= 0.85 ? Uint8Array.from({ length: w * h }, (_, i) => px[i * 4 + 3] ? 1 : 0) : null; // the subject, learned (paperSubject)
+                    const M = paperSubject(px, w, h, { keep: o.keep, drop: o.drop || o.seeds, init }); for (let i = 0; i < w * h; i++) px[i * 4 + 3] = M[i] ? 255 : 0; }
                 const rim = []; for (let i = 0; i < w * h; i++) { if (!px[i * 4 + 3]) continue; const x = i % w, y = (i / w) | 0; // trim the 1 px fringe the key leaves (half backdrop, half subject)
                     if ((x > 0 && !px[(i - 1) * 4 + 3]) || (x < w - 1 && !px[(i + 1) * 4 + 3]) || (y > 0 && !px[(i - w) * 4 + 3]) || (y < h - 1 && !px[(i + w) * 4 + 3])) rim.push(i); }
                 for (const i of rim) px[i * 4 + 3] = 0;
             } else for (let i = 3; i < px.length; i += 4) px[i] = px[i] >= 128 ? 255 : 0;
-            for (const [u, v] of o.seeds || []) { const i0 = Math.min(h - 1, Math.max(0, Math.floor(v * h))) * w + Math.min(w - 1, Math.max(0, Math.floor(u * w))); if (!px[i0 * 4 + 3]) continue; // tap to erase
+            for (const [u, v] of method === 'photo' ? [] : o.drop || o.seeds || []) { const i0 = Math.min(h - 1, Math.max(0, Math.floor(v * h))) * w + Math.min(w - 1, Math.max(0, Math.floor(u * w))); if (!px[i0 * 4 + 3]) continue; // tap to erase
                 const d2 = (i, j) => (px[i * 4] - px[j * 4]) ** 2 + (px[i * 4 + 1] - px[j * 4 + 1]) ** 2 + (px[i * 4 + 2] - px[j * 4 + 2]) ** 2, step = (0.6 * tol) ** 2, far = (3 * tol) ** 2;
                 const near = (j, i) => px[j * 4 + 3] > 0 && d2(j, i) <= step && d2(j, i0) <= far;
                 const seen = paperFlood(px, w, h, [i0], near); for (let i = 0; i < w * h; i++) if (seen[i]) px[i * 4 + 3] = 0; }
@@ -532,7 +631,7 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
                     let added = 0; for (let i = 0; i < w * h; i++) if (near[i] && lab[i] && !keep[lab[i]] && size[lab[i]] >= min) { keep[lab[i]] = 1; added++; } if (!added) break; }
                 for (let i = 0; i < w * h; i++) if (!keep[lab[i]]) px[i * 4 + 3] = 0; }
             const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').putImageData(new ImageData(px, w, h), 0, 0);
-            return { cv, px, w, h, keyed };
+            return { cv, px, w, h, keyed, method, full };
         }
 
         // ---- sprites folded into paper: an outline traced by tools/sprite_poly.py (assets/papercraft/sprite-polys.json) becomes a standing

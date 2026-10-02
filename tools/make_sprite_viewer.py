@@ -14,7 +14,7 @@ uri = lambda p: 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(R
 atlases = ''.join('<script type="text/plain" id="atlas-%s">%s</script>\n' % (k, uri(v['file'])) for k, v in db['atlases'].items())
 ICON = { # 24 px line icons, drawn in currentColor
     'photo': '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/>',
-    'erase': '<path d="M14.5 4.5l5 5-8.5 8.5H6l-2.5-2.5z"/><path d="M9 10l5 5"/><path d="M11 18h9"/>',
+    'cut': '<circle cx="6.5" cy="7" r="2.6"/><circle cx="6.5" cy="17" r="2.6"/><path d="M8.6 8.6L20 18M8.6 15.4L20 6"/>',
     'depth': '<path d="M5 8l7-4 7 4v8l-7 4-7-4z"/><path d="M5 8l7 4 7-4M12 12v8"/>',
     'look': '<circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16" fill="currentColor" stroke="none"/>',
     'more': '<circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/>',
@@ -43,7 +43,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 .tab{min-width:64px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
 .tab[aria-pressed="true"]{color:var(--tint);background:var(--fill)}
 .panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
-.panel.col{flex-direction:column;align-items:stretch}.panel .line{display:flex;align-items:center;gap:12px}.panel .seg{flex:none}.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
+.panel.col{flex-direction:column;align-items:stretch}.panel .line{display:flex;align-items:center;gap:10px}.panel.col>.seg{flex:none}.panel .line .seg{flex:1}.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
 .panel input[type=range]{flex:1;min-width:0;accent-color:var(--tint)}.small{font-size:13px;color:var(--label2)}
 .pill{height:32px;padding:0 14px;border-radius:16px;background:var(--fill);font-size:14px;font-weight:500}.pill.tinted{background:var(--tint);color:var(--tint-ink)}
 .seg{display:flex;flex:1;background:var(--fill);border-radius:9px;padding:2px;gap:2px}.seg button{flex:1;height:30px;border-radius:7px;font-size:13px;font-weight:500}
@@ -74,18 +74,19 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <div class="top"><span class="word">Papercraft</span><button id="more" class="round glass" aria-label="Options">''' + svg('more') + '''</button></div>
 <div id="hello" class="hello glass" hidden><h1>Turn any picture into a paper model</h1><p>Choose a photo or a drawing. Papercraft cuts out the subject and folds it into 3D.</p><label class="primary" for="file">Choose Photo</label></div>
 <div id="pDepth" class="panel glass col" hidden><div class="seg" role="group" aria-label="Shape"><button data-shape="card" aria-pressed="false">Card</button><button data-shape="round" aria-pressed="true">Round</button></div><div class="line"><span class="small">Thin</span><input id="thick" type="range" min="0" max="4" step="0.25" value="2" aria-label="Depth"><span class="small">Full</span></div></div>
-<div id="pErase" class="panel glass" hidden><span class="hint" id="eraseHint">Tap the background to remove it.</span><button id="undo" class="pill">Undo</button><button id="done" class="pill tinted">Done</button></div>
+<div id="pCut" class="panel glass col" hidden><div class="line"><div class="seg" role="group" aria-label="Tap to"><button data-mark="keep" aria-pressed="true">Keep</button><button data-mark="drop" aria-pressed="false">Remove</button></div><button id="undo" class="pill">Undo</button><button id="done" class="pill tinted">Done</button></div><span class="hint" id="cutHint">Tap the person or thing you want to keep.</span></div>
 <div id="pLook" class="panel glass" hidden><div class="seg" role="group" aria-label="Look"><button data-look="clean" aria-pressed="true">Clean</button><button data-look="ps1" aria-pressed="false">PS1</button></div></div>
 <nav class="bar glass" aria-label="Tools">
 <label class="tab btn" for="file" id="tPhoto">''' + svg('photo') + '''Photo</label>
-<button class="tab" id="tErase" aria-pressed="false" disabled>''' + svg('erase') + '''Erase</button>
+<button class="tab" id="tCut" aria-pressed="false" disabled>''' + svg('cut') + '''Cut</button>
 <button class="tab" id="tDepth" aria-pressed="false">''' + svg('depth') + '''Depth</button>
 <button class="tab" id="tLook" aria-pressed="false">''' + svg('look') + '''Look</button></nav>
 <div id="scrim" class="scrim" hidden></div>
 <div id="sheet" class="sheet" role="dialog" aria-label="Options" hidden><div class="grab"></div><header><h2>Options</h2><button id="close" class="link">Done</button></header>
 <div class="cap">Picture</div><div class="group">
 <div class="row"><span>Detail</span><div class="seg" style="flex:1.4" role="group" aria-label="Detail"><button data-detail="96" aria-pressed="false">Low</button><button data-detail="160" aria-pressed="false">Medium</button><button data-detail="256" aria-pressed="true">High</button></div></div>
-<div class="row"><span>Background removal</span><input id="tol" type="range" min="12" max="120" step="4" value="48" aria-label="Background removal"></div>
+<div class="row"><span>Cut-out</span><div class="seg" style="flex:1.4" role="group" aria-label="Cut-out"><button data-method="auto" aria-pressed="true">Auto</button><button data-method="key" aria-pressed="false">Backdrop</button><button data-method="photo" aria-pressed="false">Photo</button></div></div>
+<div class="row"><span>Backdrop tolerance</span><input id="tol" type="range" min="12" max="120" step="4" value="48" aria-label="Backdrop tolerance"></div>
 <div class="row"><span>Keep one piece</span><input id="one" class="switch" type="checkbox" checked aria-label="Keep one piece"></div></div>
 <div class="cap">View</div><div class="group">
 <div class="row"><span>Turn slowly</span><input id="spin" class="switch" type="checkbox" checked aria-label="Turn slowly"></div>
@@ -110,8 +111,8 @@ const CAST = [['farm/f_elder', 24], ['farm/f_farmer', 24], ['farm/f_franz', 24],
 const STALKER = ['farm/f_farmer', 24 * 1.35]; // the tall one, at the back
 // ---------- state: everything the page shows comes from here ----------
 const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
-const ST = { shape: Q.get('shape') || 'round', mode: Q.get('mode') || (Q.get('s') ? 'one' : 'start'), sprite: Q.get('s') || 'sud/stand', tool: null, look: Q.get('ps1') === '1' ? 'ps1' : 'clean', detail: 256, tol: 48, one: true };
-const MINE = { img: null, px: null, S: null, w: 0, h: 0, seeds: [], ms: 0, fold: null };
+const ST = { method: 'auto', shape: Q.get('shape') || 'round', mode: Q.get('mode') || (Q.get('s') ? 'one' : 'start'), sprite: Q.get('s') || 'sud/stand', tool: null, look: Q.get('ps1') === '1' ? 'ps1' : 'clean', detail: 256, tol: 48, one: true };
+const MINE = { img: null, px: null, full: null, S: null, fullS: null, w: 0, h: 0, marks: [], mark: 'keep', ms: 0, fold: null, method: '' };
 // ---------- a tiny renderer: an orbit camera, the SAME fragment shader as the game (PAPER_GLSL.frag) ----------
 const cv = $('c'), gl = cv.getContext('webgl', { antialias: false, preserveDrawingBuffer: true });
 const vsrc = `attribute vec3 aP;attribute vec2 aT;attribute vec2 aS;uniform mat4 uM;varying vec2 vT;varying vec3 vW;varying float vZ,vSh,vEm;
@@ -146,7 +147,9 @@ function build() { // fold every piece on stage; one buffer per texture
   const th = depth(), round = ST.shape === 'round', per = {}, put = (key, h, x, y, ang, flip) => { const S = SPRITE_POLYS.sprites[key]; if (!S) return 0; const at = key.split('/')[0], A = SPRITE_POLYS.atlases[at].size, o = { x, y, ang, flip, s: h / S.rect[3], anchor: S.anchor };
     if (round && ATLAS_PX[at]) paperPuff(per[at] || (per[at] = []), ATLAS_PX[at], A[0], A[1], S.rect, Object.assign(o, { depth: th * h * 0.05 })); else paperSprite(per[at] || (per[at] = []), S, A, Object.assign(o, { thick: th * h / 24 })); return h * S.rect[2] / S.rect[3]; };
   let shadow = 0, R = 120;
-  if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; MINE.fold = { s, hh, th: round ? 0 : th * hh / 24 }; if (round) paperPuff(per.mine = [], MINE.px, MINE.w, MINE.h, [0, 0, MINE.w, MINE.h], { s, depth: th * hh * 0.05, anchor: S.anchor }); else paperSprite(per.mine = [], S, [MINE.w, MINE.h], { s, thick: MINE.fold.th }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
+  if (ST.mode === 'mine' && MINE.S && ST.tool === 'cut' && MINE.fullS) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; MINE.fold = { s, hh, th: 0 }; MINE.fullS.anchor = S.anchor; // Cut: the whole picture, flat, facing you
+    paperSprite(per.cutview = [], MINE.fullS, [MINE.w, MINE.h], { s, thick: 0 }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.5; shadow = 0; R = Math.max(hh, S.rect[2] * s) * 4.2; }
+  else if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; MINE.fold = { s, hh, th: round ? 0 : th * hh / 24 }; if (round) paperPuff(per.mine = [], MINE.px, MINE.w, MINE.h, [0, 0, MINE.w, MINE.h], { s, depth: th * hh * 0.05, anchor: S.anchor }); else paperSprite(per.mine = [], S, [MINE.w, MINE.h], { s, thick: MINE.fold.th }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
   else if (ST.mode === 'cast') { const n0 = 14, look = [150, 260]; // two arcs on the plaza, each piece turned toward the lens and nudged by the prime
     CAST.forEach(([key, h], i) => { const row = i < n0 ? 0 : 1, k = row ? i - n0 : i, n = row ? CAST.length - n0 : n0, x = (k - (n - 1) / 2) * (row ? 30 : 17) + (paperPrime(i) - 0.5) * 5, y = row ? -40 + Math.abs(k - (n - 1) / 2) * 5 : 10 + Math.abs(k - (n - 1) / 2) * 3;
       put(key, h, x, y, Math.atan2(-(look[0] - x), look[1] - y) + (paperPrime(i + 50) - 0.5) * 0.6, paperPrime(i + 99) < 0.3); });
@@ -159,7 +162,7 @@ function build() { // fold every piece on stage; one buffer per texture
   const L = []; for (const v of Object.values(per)) for (let t = 0; t < v.length / 7; t += 3) for (let i = 0; i < 3; i++) { const a = (t + i) * 7, b = (t + (i + 1) % 3) * 7; L.push(v[a], v[a + 1], v[a + 2], v[b], v[b + 1], v[b + 2]); }
   wire = wire || gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(L), gl.STATIC_DRAW); wireN = L.length / 3;
   info(); }
-function info() { $('info').textContent = (ST.mode === 'mine' && MINE.S ? `Your picture: ${MINE.w} × ${MINE.h} px, ${MINE.S.pts.length / 2} corners, cut in ${MINE.ms | 0} ms. ` : '') + `${tris} triangles on stage. Prime ${PAPER.PRIME}.`; }
+function info() { $('info').textContent = (ST.mode === 'mine' && MINE.S ? `Your picture: ${MINE.w} × ${MINE.h} px, cut as a ${MINE.method === 'photo' ? 'photo (subject learned)' : MINE.method === 'key' ? 'plain backdrop' : 'picture with its own transparency'}, ${MINE.S.pts.length / 2} corners, ${MINE.ms | 0} ms. ` : '') + `${tris} triangles on stage. Prime ${PAPER.PRIME}.`; }
 // ---------- the camera ----------
 const cam = { yaw: +(Q.get('yaw') || 0.5), pitch: +(Q.get('pitch') || 0.22), zoom: +(Q.get('dist') || 0), to: null };
 function eye() { const d = cam.zoom || radius * 1.6, [tx, ty, tz] = focus, cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
@@ -174,7 +177,7 @@ let last = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000 || 0); last = now;
   if (cam.to) { const k = 1 - Math.exp(-dt * 9); let dy = ((cam.to.yaw - cam.yaw + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; cam.yaw += dy * k; cam.pitch += (cam.to.pitch - cam.pitch) * k; if (Math.abs(dy) + Math.abs(cam.to.pitch - cam.pitch) < 0.002) { cam.yaw = cam.to.yaw; cam.pitch = cam.to.pitch; } }
-  else if ($('spin').checked && !held && ST.tool !== 'erase') cam.yaw += dt * 0.3;
+  else if ($('spin').checked && !held && ST.tool !== 'cut') cam.yaw += dt * 0.3;
   const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth * dpr | 0, h = cv.clientHeight * dpr | 0; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
   const ps1 = ST.look === 'ps1', sc = ps1 ? [0.55, 0.62, 0.7] : rgb(css('--scene'));
   gl.viewport(0, 0, w, h); gl.clearColor(sc[0], sc[1], sc[2], 1); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -190,34 +193,36 @@ function frame(now) {
   gl.disable(gl.POLYGON_OFFSET_FILL);
   if ($('wire').checked && wire) { gl.useProgram(wprog); gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.uniformMatrix4fv(gl.getUniformLocation(wprog, 'uM'), false, M); gl.uniform3fv(gl.getUniformLocation(wprog, 'uC'), rgb(css('--wire'))); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0); gl.drawArrays(gl.LINES, 0, wireN); }
   requestAnimationFrame(frame); }
-// ---------- touch: drag to turn, pinch or wheel to zoom, tap to erase (in Erase), double-tap to reset ----------
+// ---------- touch: drag to turn, pinch or wheel to zoom, tap to keep / remove (in Cut), double-tap to reset ----------
 const pts = new Map(); let held = false, pd = 0, down = null, lastTap = 0;
 cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); held = true; cam.to = null; if (pts.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() }; else down = null; closeSheet(); });
 cv.addEventListener('pointermove', e => { const p = pts.get(e.pointerId); if (!p) return; const dx = e.clientX - p[0], dy = e.clientY - p[1]; pts.set(e.pointerId, [e.clientX, e.clientY]);
   if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pd) cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * pd / d)); pd = d; return; }
-  if (ST.tool === 'erase') return; cam.yaw -= dx * 0.006; cam.pitch = Math.max(0.02, Math.min(1.45, cam.pitch + dy * 0.005)); });
+  if (ST.tool === 'cut') return; cam.yaw -= dx * 0.006; cam.pitch = Math.max(0.02, Math.min(1.45, cam.pitch + dy * 0.005)); });
 const up = e => { pts.delete(e.pointerId); pd = 0; if (!pts.size) held = false;
   if (down && e.type === 'pointerup' && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && performance.now() - down.t < 400) {
-    if (ST.tool === 'erase') eraseAt(e.clientX, e.clientY); else { const t = performance.now(); if (t - lastTap < 320) { cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; } lastTap = t; } }
+    if (ST.tool === 'cut') markAt(e.clientX, e.clientY); else { const t = performance.now(); if (t - lastTap < 320) { cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; } lastTap = t; } }
   down = null; };
 cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
 cv.addEventListener('wheel', e => { e.preventDefault(); cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * (1 + e.deltaY * 0.001))); }, { passive: false });
-function eraseAt(x, y) { // cast a ray from the tap onto the card's face, and key out from the pixel it lands on
+function markAt(x, y) { // cast a ray from the tap onto the picture's face: that spot is to keep, or to remove
   if (ST.mode !== 'mine' || !MINE.S || !MINE.fold) return; const rc = cv.getBoundingClientRect(), nx = (x - rc.left) / rc.width * 2 - 1, ny = 1 - (y - rc.top) / rc.height * 2, a = rc.width / rc.height, { e, f, r, u } = eye();
   const d = [0, 1, 2].map(i => f[i] + r[i] * nx * a / FOV + u[i] * ny / FOV), yp = (e[1] >= 0 ? 1 : -1) * MINE.fold.th / 2; if (Math.abs(d[1]) < 1e-6) return;
   const l = (yp - e[1]) / d[1], X = e[0] + l * d[0], Z = e[2] + l * d[2], s = MINE.fold.s, A = MINE.S.anchor, U = (X / s + A[0]) / MINE.w, V = (A[1] - Z / s) / MINE.h;
   if (l <= 0 || U < 0 || V < 0 || U > 1 || V > 1) return; const rp = document.createElement('div'); rp.className = 'ripple'; rp.style.left = x + 'px'; rp.style.top = y + 'px'; document.body.appendChild(rp); setTimeout(() => rp.remove(), 600);
-  MINE.seeds.push([U, V]); makeMine(); $('undo').disabled = false; }
+  MINE.marks.push([U, V, MINE.mark === 'keep']); $('undo').disabled = false; makeMine(); }
 window.screenOf = (U, V) => { // where a point of your picture's front face is on screen (used by the tests)
   const s = MINE.fold.s, A = MINE.S.anchor, P = [(U * MINE.w - A[0]) * s, MINE.fold.th / 2, (A[1] - V * MINE.h) * s, 1], rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), o = [0, 1, 2, 3].map(j => P[0] * M[j] + P[1] * M[4 + j] + P[2] * M[8 + j] + P[3] * M[12 + j]);
   return [rc.left + (o[0] / o[3] + 1) / 2 * rc.width, rc.top + (1 - o[1] / o[3]) / 2 * rc.height]; };
-// ---------- the tools: Photo, Erase, Depth, Look (one panel at a time) ----------
-const PANELS = { erase: 'pErase', depth: 'pDepth', look: 'pLook' }, TABS = { erase: 'tErase', depth: 'tDepth', look: 'tLook' };
-function setTool(t) { if (ST.tool === t) t = null; ST.tool = t; for (const k in PANELS) { $(PANELS[k]).hidden = k !== t; $(TABS[k]).setAttribute('aria-pressed', k === t); }
-  if (t === 'erase' && ST.mode !== 'mine' && MINE.S) { ST.mode = 'mine'; build(); }
-  if (t === 'erase') { cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; $('undo').disabled = !MINE.seeds.length; } refreshHello(); }
-$('tErase').onclick = () => setTool('erase'); $('tDepth').onclick = () => setTool('depth'); $('tLook').onclick = () => setTool('look'); $('done').onclick = () => setTool(null);
-$('undo').onclick = () => { MINE.seeds.pop(); makeMine(); $('undo').disabled = !MINE.seeds.length; };
+// ---------- the tools: Photo, Cut, Depth, Look (one panel at a time) ----------
+const PANELS = { cut: 'pCut', depth: 'pDepth', look: 'pLook' }, TABS = { cut: 'tCut', depth: 'tDepth', look: 'tLook' };
+function setTool(t) { if (ST.tool === t) t = null; const was = ST.tool; ST.tool = t; for (const k in PANELS) { $(PANELS[k]).hidden = k !== t; $(TABS[k]).setAttribute('aria-pressed', k === t); }
+  if (t === 'cut' && MINE.img) { ST.mode = 'mine'; cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; $('undo').disabled = !MINE.marks.length; }
+  if ((t === 'cut') !== (was === 'cut') && MINE.img) build(); // Cut shows the whole picture, with what is removed dimmed
+  refreshHello(); }
+for (const b of document.querySelectorAll('[data-mark]')) b.onclick = () => { MINE.mark = b.dataset.mark; document.querySelectorAll('[data-mark]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('cutHint').textContent = MINE.mark === 'keep' ? 'Tap the person or thing you want to keep.' : 'Tap what you want removed.'; };
+$('tCut').onclick = () => setTool('cut'); $('tDepth').onclick = () => setTool('depth'); $('tLook').onclick = () => setTool('look'); $('done').onclick = () => setTool(null);
+$('undo').onclick = () => { MINE.marks.pop(); $('undo').disabled = !MINE.marks.length; makeMine(); };
 $('thick').oninput = build;
 for (const b of document.querySelectorAll('[data-shape]')) b.onclick = () => { ST.shape = b.dataset.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); };
 for (const b of document.querySelectorAll('[data-look]')) b.onclick = () => { ST.look = b.dataset.look; document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); };
@@ -225,22 +230,28 @@ for (const b of document.querySelectorAll('[data-look]')) b.onclick = () => { ST
 function openSheet() { info(); $('sheet').hidden = $('scrim').hidden = false; } function closeSheet() { $('sheet').hidden = $('scrim').hidden = true; }
 $('more').onclick = openSheet; $('close').onclick = closeSheet; $('scrim').onclick = closeSheet;
 for (const b of document.querySelectorAll('[data-detail]')) b.onclick = () => { ST.detail = +b.dataset.detail; document.querySelectorAll('[data-detail]').forEach(x => x.setAttribute('aria-pressed', x === b)); makeMine(); };
+for (const b of document.querySelectorAll('[data-method]')) b.onclick = () => { ST.method = b.dataset.method; document.querySelectorAll('[data-method]').forEach(x => x.setAttribute('aria-pressed', x === b)); makeMine(); };
 let redo = 0; $('tol').oninput = () => { ST.tol = +$('tol').value; clearTimeout(redo); redo = setTimeout(makeMine, 120); }; $('one').onchange = () => { ST.one = $('one').checked; makeMine(); };
 $('cast').onclick = () => { ST.mode = 'cast'; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.42 }; build(); closeSheet(); };
 { const sel = $('spr'); for (const at of names) { const og = document.createElement('optgroup'); og.label = at; for (const k of Object.keys(SPRITE_POLYS.sprites)) if (k.startsWith(at + '/')) { const o = document.createElement('option'); o.value = k; o.textContent = k.split('/')[1]; og.appendChild(o); } sel.appendChild(og); }
   sel.value = ST.sprite; sel.onchange = () => { ST.sprite = sel.value; ST.mode = 'one'; setTool(null); cam.zoom = 0; build(); closeSheet(); }; }
 // ---------- your picture: cut out (paperCutout), traced (paperTrace), folded (paperSprite), all on this device ----------
-let toastT = 0; function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3200); }
-function makeMine(first) { if (!MINE.img) return; const t0 = performance.now();
-  const C = paperCutout(MINE.img, { max: ST.detail, tol: ST.tol, one: ST.one, seeds: MINE.seeds });
+let toastT = 0; function toast(m, stay) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); if (!stay) toastT = setTimeout(hideToast, 3400); } function hideToast() { $('toast').classList.remove('on'); }
+let busy = 0, again = false;
+function makeMine(first) { if (!MINE.img) return; if (busy) { again = true; return; } busy = 1; // the cut can take a second on a phone: say so, let the screen paint, then work
+  toast('Finding the subject…', true); setTimeout(() => { try { cutNow(first); } finally { busy = 0; if (again) { again = false; makeMine(); } else hideToast(); window.CUT_DONE = (window.CUT_DONE || 0) + 1; } }, 30); }
+function cutNow(first) { const t0 = performance.now();
+  const C = paperCutout(MINE.img, { max: ST.detail, tol: ST.tol, one: ST.one, keep: MINE.marks.filter(m => m[2]).map(m => [m[0], m[1]]), drop: MINE.marks.filter(m => !m[2]).map(m => [m[0], m[1]]), method: ST.method });
   MINE.S = paperTrace(C.px, C.w, [0, 0, C.w, C.h]); if (MINE.S) { const P = MINE.S.pts; let x0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < P.length; i += 2) { x0 = Math.min(x0, P[i]); x1 = Math.max(x1, P[i]); y1 = Math.max(y1, P[i + 1]); } MINE.S.anchor = [(x0 + x1) / 2, y1]; } // it stands on its lowest painted pixel
-  MINE.w = C.w; MINE.px = C.px; MINE.h = C.h; MINE.ms = performance.now() - t0; TEX.mine = texOf(C, false, TEX.mine);
+  MINE.w = C.w; MINE.px = C.px; MINE.h = C.h; MINE.ms = performance.now() - t0; MINE.method = C.method; TEX.mine = texOf(C, false, TEX.mine);
+  { const v = new Uint8ClampedArray(C.full); for (let i = 0; i < C.w * C.h; i++) { if (!C.px[i * 4 + 3]) { const l = 0.299 * v[i * 4] + 0.587 * v[i * 4 + 1] + 0.114 * v[i * 4 + 2], k = ((i % C.w) + ((i / C.w) | 0)) % 6 < 3 ? 0.22 : 0.3; v[i * 4] = v[i * 4 + 1] = v[i * 4 + 2] = l * k + 18; } v[i * 4 + 3] = 255; } /* the Cut view: removed parts dark, grey and lightly striped */
+    TEX.cutview = texOf({ px: v, w: C.w, h: C.h }, false, TEX.cutview); MINE.fullS = paperTrace(new Uint8ClampedArray(C.w * C.h * 4).fill(255), C.w, [0, 0, C.w, C.h]); }
   let air = 0; for (let i = 3; i < C.px.length; i += 4) if (!C.px[i]) air++;
-  if (!MINE.S) { toast('Everything was removed. Tap Undo, or turn Background removal down in Options.'); groups = []; tris = 0; return; }
-  if (first && !air) toast('No background found. Tap Erase, then tap the background.');
+  if (!MINE.S) { toast('Everything was removed. Tap Undo, or tap Keep on what you want.'); groups = []; tris = 0; return; }
+  if (first && (!air || C.method === 'photo')) setTimeout(() => toast(C.method === 'photo' ? 'Not quite right? Tap Cut, then tap what to keep or remove.' : 'No background found. Tap Cut, then Remove, and tap it.'), 400);
   ST.mode = 'mine'; build(); }
 $('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image();
-  im.onload = () => { MINE.img = im; MINE.seeds = []; $('tErase').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
+  im.onload = () => { MINE.img = im; MINE.marks = []; $('tCut').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
   im.onerror = () => toast('That file could not be opened as a picture.'); im.src = URL.createObjectURL(f); e.target.value = ''; };
 function refreshHello() { $('hello').hidden = !(ST.mode === 'start' && !MINE.img && !ST.tool); }
 // ---------- start ----------
