@@ -8,7 +8,7 @@ import path from 'path';
 const args = process.argv.slice(2);
 const flags = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => a.slice(2).split('=')));
 const pos = args.filter(a => !a.startsWith('--'));
-const names = (pos[0] || 'hero,field,village,water,sunset,combat,forest').split(',');
+const names = (pos[0] || 'hero,field,trail,village,water,sunset,combat,forest').split(',');
 const out = pos[1] || 'shots';
 const W = +(flags.w || 1600), H = +(flags.h || 900), WAIT = +(flags.wait || 6000);
 fs.mkdirSync(out, { recursive: true });
