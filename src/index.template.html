@@ -34,6 +34,7 @@
             <div class="flex items-center space-x-1">
                 <button onclick="toggleJournal()" id="journal-btn" class="hidden px-2 py-1 bg-indigo-900 hover:bg-indigo-800 text-[9px] rounded border border-indigo-400"><i class="fa-solid fa-book"></i> JOURNAL</button>
                 <button onclick="toggleBGM()" id="bgm-btn" class="px-2 py-1 bg-emerald-900 hover:bg-emerald-800 text-[9px] rounded border border-emerald-400 ml-2"><i class="fa-solid fa-music"></i> AMBIENT: OFF</button>
+                <button onclick="toggleVoices()" id="voice-btn" class="px-2 py-1 bg-sky-900 hover:bg-sky-800 text-[9px] rounded border border-sky-400 ml-1"><i class="fa-solid fa-comment-dots"></i> VOICES: ON</button>
             </div>
         </div>
 
@@ -66,15 +67,30 @@
                 <button id="opening-skip" type="button">SKIP &#9656;&#9656;</button>
             </div>
 
-            <div id="crawl-screen" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center p-6 z-50 text-center">
-                <div id="crawl-text" class="text-cyan-300 text-[9px] sm:text-[10px] leading-relaxed max-w-sm font-mono transition-all duration-700 opacity-0">
-                    An Age of Mystery Has Fallen Upon The Planet.<br><br>
-                    The Supreme Spirit Above All Things, no longer speaks. Man does not listen.<br><br>
-                    Across the desert lands, the balance between <span class="text-yellow-300">LIGHT</span> and <span class="text-purple-400">DARK</span> has begun to waver.<br><br>
-                    Throughout the ages, whenever that balance is disturbed, the Supreme Spirit sends down a dew drop of its power to a human worthy, in this age, that human is a child.<br><br>
-                    That child is <span class="text-yellow-400">YOU!</span>
+            <div id="crawl-screen" class="hidden absolute inset-0 bg-black z-50" style="overflow:hidden">
+                <div id="crawl-flash" style="position:absolute;inset:0;background:#e8f0ff;opacity:0;pointer-events:none;transition:opacity .5s"></div>
+                <div id="crawl-text" style="position:absolute;left:8%;right:8%;top:100%;text-align:center;color:#d8d2c2;font-family:Georgia,'Times New Roman',serif;font-size:11px;line-height:1.75;text-shadow:0 1px 2px #000;will-change:transform">
+                    <div style="font-size:20px;letter-spacing:.35em;color:#e8c36a;margin-bottom:1.6em">KOTO</div>
+                    <p style="margin:0 0 1.3em">Was small for a boy his age. But compared to the architecture of the foreign land he was a dwarf; a grasshopper, a single moving iota of a thing in a landscape built for something quite larger than him.</p>
+                    <p style="margin:0 0 1.3em">He ran alone across a bridge that seems to stretch farther than reason should allow &mdash; a narrow spine of pale stone laid over nothing, carved everywhere with spirals and old geometric scars, patterns worn soft by centuries no one bothered to count. Around him, the world falls away into a canyon vast enough to swallow him whole: cliffs the color of dried bone, patches of stubborn green clinging where they can, and far below, a wide basin of sand catching what little light slips through the clouds. The sky sits low and heavy, grey-green and overcast, the kind of light that flattens everything beneath it.</p>
+                    <p style="margin:0 0 1.3em">For moons the boy dreamt of a princess with hair of <span style="color:#f2c94c">molten gold</span>, curled up in fear as a shower of shadows came upon her.</p>
+                    <p id="crawl-lightning" style="margin:0 0 1.3em">Lightning crashes in the sky over the never-ending bridge that leads to that great and terrible land of <span style="color:#e8c36a;letter-spacing:.08em">RAHJAI</span>.</p>
+                    <p style="margin:0 0 1.3em">He has inherited his grandmother&rsquo;s farm&hellip; and so his adventure begins.</p>
                 </div>
-                <button onclick="beginCinematicIntroFromCrawl()" class="mt-4 bg-cyan-600 hover:bg-cyan-500 text-white py-1.5 px-3 rounded text-[8px] border border-cyan-300 active:scale-95">SKIP CRAWL</button>
+                <button onclick="beginCinematicIntroFromCrawl()" class="bg-cyan-600 hover:bg-cyan-500 text-white py-1.5 px-3 rounded text-[8px] border border-cyan-300 active:scale-95" style="position:absolute;top:8px;right:8px;opacity:.8">SKIP &#9656;&#9656;</button>
+            </div>
+
+            <div id="scroll-screen" onclick="closeScroll()" style="display:none;position:absolute;inset:0;z-index:56;background:rgba(6,4,2,.82);align-items:center;justify-content:center;padding:14px;cursor:pointer">
+                <div style="position:relative;max-width:300px;width:100%;padding:22px 20px 18px;background:radial-gradient(ellipse at 50% 40%,#efe0bb 0%,#e2cc9c 62%,#c9ad78 100%);color:#3b2a18;font-family:Georgia,'Times New Roman',serif;font-size:10.5px;line-height:1.65;text-align:center;border-radius:3px;box-shadow:0 0 0 2px #8a6a3e,0 8px 28px rgba(0,0,0,.7),inset 0 0 28px rgba(110,70,30,.35)">
+                    <div style="position:absolute;left:-6px;right:-6px;top:-7px;height:10px;background:#7a5632;border-radius:5px"></div><div style="position:absolute;left:-6px;right:-6px;bottom:-7px;height:10px;background:#7a5632;border-radius:5px"></div>
+                    <p style="margin:0 0 1em">An Age of Mystery Has Fallen Upon The Planet.</p>
+                    <p style="margin:0 0 1em">The Supreme Spirit Above All Things no longer speaks. Man does not listen.</p>
+                    <p style="margin:0 0 1em">Across the desert lands, the balance between <b style="color:#8a6512">LIGHT</b> and <b style="color:#4b2a6a">DARK</b> has begun to waver.</p>
+                    <p style="margin:0 0 1em">Throughout the ages, whenever that balance is disturbed, the Supreme Spirit sends down a dew drop of its power to a human worthy. In this age, that human is a child.</p>
+                    <p style="margin:0 0 1.1em">That child is <b style="color:#8a1f12">YOU!</b></p>
+                    <p style="margin:0;font-style:italic;font-size:9.5px;color:#5a4128">&mdash; left in this house for whoever came after me.<br>Your great-grandmother</p>
+                    <div style="margin-top:12px;font-size:8px;letter-spacing:.2em;color:#7a5a36">TAP TO ROLL IT UP</div>
+                </div>
             </div>
 
             <div id="credits-modal" class="hidden absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-6 z-50 text-center">
