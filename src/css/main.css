@@ -186,21 +186,19 @@
         .tc-bosom { text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 1.5px 0 0 rgba(255,40,40,.55), -1.5px 0 0 rgba(40,220,255,.45); animation: tcJitter .12s steps(2) infinite; }
         @keyframes tcJitter { 0% { transform: translate(0,0) } 50% { transform: translate(.6px,-.4px) } 100% { transform: translate(-.4px,.5px) } }
         @media (prefers-reduced-motion: reduce) { .tc-bosom { animation: none } }
-        /* dialogue as a book page on the right; the scene stays in view on the left */
-        #dialogue-box { top: 6px !important; bottom: 6px !important; right: 6px !important; left: auto !important; width: 47% !important; max-width: 300px; padding: 14px 12px 10px 16px !important; overflow-y: auto;
-            background: linear-gradient(90deg, rgba(92,62,30,.28) 0, rgba(92,62,30,0) 14px), radial-gradient(ellipse at 40% 30%, #f3e7cb 0%, #e9d9b4 70%, #dcc597 100%) !important;
-            border: 0 !important; border-radius: 2px 5px 5px 2px !important; box-shadow: -2px 0 0 #b39661, -4px 0 0 #8c6f42, 0 10px 26px rgba(0,0,0,.6), inset 0 0 22px rgba(120,80,30,.25) !important;
-            font-family: Georgia, 'Times New Roman', serif; font-size: 11px !important; line-height: 1.6 !important; animation: pageIn .28s ease-out; }
-        @keyframes pageIn { from { opacity: 0; transform: translateX(14px) } to { opacity: 1; transform: none } }
+        /* dialogue: a plain panel on the right; the scene stays in view on the left */
+        #dialogue-box { top: 6px !important; bottom: 6px !important; right: 6px !important; left: auto !important; width: 47% !important; max-width: 300px; padding: 12px 12px 10px !important; overflow-y: auto;
+            background: rgba(12,14,22,.9) !important; border: 1px solid rgba(255,255,255,.14) !important; border-radius: 8px !important; box-shadow: 0 6px 20px rgba(0,0,0,.55) !important;
+            font-size: 11px !important; line-height: 1.55 !important; animation: panelIn .2s ease-out; }
+        @keyframes panelIn { from { opacity: 0; transform: translateX(10px) } to { opacity: 1; transform: none } }
         @media (prefers-reduced-motion: reduce) { #dialogue-box { animation: none } }
-        #dialogue-box #dialogue-text { color: #3a2a18 !important; white-space: pre-line; }
-        #dialogue-box #dialogue-text::first-line { font-variant: small-caps; letter-spacing: .12em; color: #7a4f12; font-size: 12px; }
-        #dialogue-box #npc-dialogue-actions, #dialogue-box #dialogue-actions, #dialogue-box #shop-buy-actions { border-top: 1px solid rgba(110,80,40,.35) !important; grid-template-columns: 1fr !important; gap: 2px !important; }
-        #dialogue-box button { background: transparent !important; border: 0 !important; border-bottom: 1px dotted rgba(110,80,40,.4) !important; border-radius: 0 !important; color: #4a3218 !important;
-            font-family: Georgia, 'Times New Roman', serif !important; font-size: 10.5px !important; text-align: left !important; padding: 5px 2px 5px 14px !important; position: relative; text-transform: none; }
-        #dialogue-box button::before { content: '\203A'; position: absolute; left: 3px; color: #9a6a12; }
-        #dialogue-box button:hover, #dialogue-box button:focus-visible { background: rgba(154,106,18,.12) !important; outline: none; color: #2a1a08 !important; }
-        #dialogue-box #dialogue-continue-prompt { color: #8a6a3e !important; font-style: italic; animation: none !important; font-family: Georgia, serif; }
+        #dialogue-box #dialogue-text { color: #e8e6df !important; white-space: pre-line; }
+        #dialogue-box #dialogue-text::first-line { letter-spacing: .08em; color: #f1c40f; font-weight: 700; }
+        #dialogue-box #npc-dialogue-actions, #dialogue-box #dialogue-actions, #dialogue-box #shop-buy-actions { border-top: 1px solid rgba(255,255,255,.12) !important; grid-template-columns: 1fr !important; gap: 4px !important; }
+        #dialogue-box button { background: rgba(255,255,255,.07) !important; border: 1px solid rgba(255,255,255,.16) !important; border-radius: 5px !important; color: #f1f0ea !important;
+            font-size: 10.5px !important; text-align: left !important; padding: 6px 8px !important; text-transform: none; }
+        #dialogue-box button:hover, #dialogue-box button:focus-visible { background: rgba(241,196,15,.18) !important; outline: none; border-color: #f1c40f !important; }
+        #dialogue-box #dialogue-continue-prompt { color: #9aa0ad !important; animation: none !important; }
         #v2-en-fill { background: linear-gradient(90deg,#fbbf24,#f59e0b); width: 100%; }
         .v2-stat-num { font-size: 6px; color: rgba(255,255,255,0.85); min-width: 17px; text-align: right; font-family: monospace; }
         #v2-clock-row { margin-top: 1px; }

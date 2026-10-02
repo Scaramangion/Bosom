@@ -111,7 +111,7 @@
             const F = farmState(), first = !F.scrollRead;
             openNpcConversation(first ? 'THE BASEMENT\nYou lift the trapdoor. Cold air, dust, jars of something long gone to vinegar. Under a sheet, a cedar chest, and in it a scroll tied with faded red thread.'
                                       : 'THE BASEMENT\nThe cedar chest, the jars, the cold. Great-grandmother\'s scroll is where you left it.',
-                [{ label: first ? 'UNTIE THE SCROLL' : 'READ THE SCROLL AGAIN', handler: readScroll }, { label: 'GO BACK UP', handler: openHome }]);
+                [{ label: first ? 'UNTIE THE SCROLL' : 'READ THE SCROLL AGAIN', handler: readScroll }, { label: 'GO BACK UP', handler: hideDialogue }]);
         }
         function readScroll() {
             const F = farmState(); hideDialogue(); const el = document.getElementById('scroll-screen'); if (el) el.style.display = 'flex'; audio.playSelect && audio.playSelect();
@@ -128,8 +128,8 @@
                 const need = ['butter', 'garlic', 'herbs', 'chicken', 'pasta'].filter(k => P[k] < 1);
                 if (need.length) { showFluidMessage('Still missing: ' + need.map(k => PANTRY[k]).join(', ') + '.', 2200); return; }
                 ['butter', 'garlic', 'herbs', 'chicken', 'pasta'].forEach(k => P[k]--); P.dish++; audio.playClue && audio.playClue();
-                openNpcConversation('The kitchen fills with butter and garlic and something green and bright.\n\nYou made BUTTER GARLIC HERB CHICKEN PASTA. Someone special should taste this.', [{ label: 'BACK', handler: openHome }]); } });
-            ch.push({ label: 'BACK', handler: openHome });
+                openNpcConversation('The kitchen fills with butter and garlic and something green and bright.\n\nYou made BUTTER GARLIC HERB CHICKEN PASTA. Someone special should taste this.', [{ label: 'BACK', handler: hideDialogue }]); } });
+            ch.push({ label: 'BACK', handler: hideDialogue });
             openNpcConversation('THE KITCHEN\n' + pantryText(), ch);
         }
         function sleepUntilMorning() {
@@ -151,7 +151,7 @@
             if (currentMapName !== 'overworld' || inDialogue || POUCH.state || HORSE.mounted) return false;
             const v = DIR8_VEC[player.dir] || [0, 1], fx = player.gridX + v[0], fy = player.gridY + v[1], F = farmState(), say = (t, ms) => showFluidMessage(t, ms || 1600);
             const fo = folkAt(fx, fy); if (fo) { talkFolk(fo); return true; }
-            const house = HOMESTEAD[0]; if ((fx === house.door[0] && fy === house.door[1]) || (player.gridX === house.door[0] && player.gridY === house.door[1])) { openHome(); return true; }
+            const house = HOMESTEAD[0]; if ((fx === house.door[0] && fy === house.door[1]) || (player.gridX === house.door[0] && player.gridY === house.door[1])) { enterFarmhouse(); return true; }
             if (FARM_SOLID.has(fx + ',' + fy) && HOMESTEAD[1].solid.some(([x, y]) => x === fx && y === fy)) { const m = FOLK.find(x => x.stall); openFarmStall(m); return true; }
             const an = animalAt(fx, fy); if (an) { petAnimal(an); return true; }
             const fg = forageAt(fx, fy) || forageAt(player.gridX, player.gridY); if (fg) { F.forage[fg.at] = gameDay(); F.pantry[fg.k]++; audio.playClue && audio.playClue(); say('You gather wild ' + PANTRY[fg.k].toLowerCase() + '.  (' + F.pantry[fg.k] + ' in the pantry)'); updateFarmHud(); return true; }

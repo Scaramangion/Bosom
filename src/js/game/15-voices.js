@@ -175,11 +175,11 @@
             currentMapName = 'overworld'; savedOverworldX = 23 * TILE_SIZE; savedOverworldY = 20 * TILE_SIZE;
             player.gridX = 23; player.gridY = 20; player.pixelX = player.targetX = 23 * TILE_SIZE; player.pixelY = player.targetY = 20 * TILE_SIZE;
             player.dir = 'down'; player.face8 = 'down'; player.isMoving = false; CAM.yaw = 0; CAM.ctrl = 0;
+            enterZone('farmhouse', 7, 9); player.dir = 'up'; player.face8 = 'up'; // he starts inside, lamp lit
             { const want = (22.4 - 6) / 24 * DAY_MS; zoneFlags.timeOff = (zoneFlags.timeOff || 0) + ((want - gameNow() % DAY_MS + DAY_MS) % DAY_MS); } // late on the first night
             HORSE.map = 'overworld'; HORSE.mounted = false; HORSE.x = HORSE_HOME[0]; HORSE.y = HORSE_HOME[1]; // the horse is already in the stable
             zoneFlags.arrived = true;
-            setTimeout(() => { if (currentMapName !== 'overworld' || inDialogue) return;
-                openNpcConversation('THE FARMHOUSE\nYou got in at dusk, after the long bridge. Since then you have been through every room with the lamp: the kitchen, the cold stove, her bed still made, the trapdoor to the basement.\nNobody has lived here for a long time. Outside, the field is very quiet.',
-                    [{ label: 'LOOK AROUND THE HOUSE', handler: openHome }, { label: 'STEP OUTSIDE', handler: () => { hideDialogue(); showFluidMessage('Grandmother\'s farm. Rahjai, at night.', 2600); } }]); }, 900);
+            setTimeout(() => { if (currentMapName !== 'farmhouse' || inDialogue) return;
+                showDialogue('THE FARMHOUSE\nYou got in at dusk, after the long bridge. The lamp is lit. Everything here was hers: the stove, the bed still made, the shelves, the trapdoor in the floor.\nWalk around. [A] on anything to look closer. The door is at the bottom.'); }, 900);
         }
 

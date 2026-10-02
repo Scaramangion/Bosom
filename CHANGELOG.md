@@ -13,3 +13,9 @@
 ## 2.91
 - Title card: removed "2027"; tiny "© Yules" lower right.
 - B button: guarded (cannot throw to the error screen); tested with every tool (axe, torch, lens, staff, sword, rope, none).
+
+## 2.92
+- The opening-film cottage is Koto's house (new homestead footprint, door at 23,17).
+- Walkable farmhouse interior (zone "farmhouse"): stove (kitchen), bed (sleep), table (pantry), shelves, trapdoor (basement + scroll), rug. [A] on things replaces the menu. New games start inside.
+- Dialogue panel: plain dark side panel (the book look is gone).
+- Cottage model sheet saved in art-source/models/cottage.

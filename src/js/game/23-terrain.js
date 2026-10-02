@@ -80,7 +80,7 @@
                     if (glade && n1(x / 9 + 9, y / 9) > 0.7) { r += 18; g += 20; b += 4; }                                               // dapples of light in the glade
                 } else {
                     const [F, Wc, Hi] = pal, wall = Math.max(0, 1 - field(Dw, x, y) / 1.25);
-                    const sx = (x + ((y >> 3) % 2) * 5) % 11, sy = y % 9, mortar = sx === 0 || sy === 0;                                  // irregular flagstones
+                    const hm = z.home, sx = hm ? (x + ((y / 7 | 0) % 2) * 13) % 27 : (x + ((y >> 3) % 2) * 5) % 11, sy = hm ? y % 7 : y % 9, mortar = sx === 0 || sy === 0;   // flagstones; floorboards in the farmhouse                                  // irregular flagstones
                     const k = 0.78 + m * 0.42 + (rngOf(((x / 11) | 0) * 131 + ((y / 9) | 0) * 977)() - 0.5) * 0.18;
                     r = F[0] * k; g = F[1] * k; b = F[2] * k; if (mortar) { r *= 0.55; g *= 0.55; b *= 0.55; }
                     if (n3(x / 3, y / 3) > 0.8 && !mortar) { r += (Hi[0] - r) * 0.3; g += (Hi[1] - g) * 0.3; b += (Hi[2] - b) * 0.3; }    // dust and wear
@@ -125,6 +125,7 @@
                     const fx = x * T + ex, fy = y * T + ey, torch = t === 2 && dy === 1, door = t === 8, niche = t === 11;
                     asCard(fx, fy, () => { const r = (a, b, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(fx + a, fy + b, w, h); }, Rr = rngOf(x * 977 + y * 131 + dx * 7 + dy * 3);
                         r(-8, -26, 16, 26, Wc);
+                        if (z.home) { for (let k = -8; k < 8; k += 4) r(k, -26, 0.7, 26, F); r(-8, -9, 16, 1, F); r(-8, -2, 16, 2, Hi); } else
                         for (let row = 0; row < 5; row++) { const yy = -26 + row * 5.2, off = row % 2 ? 4 : 0; r(-8, yy, 16, 0.7, F); for (let k = -8 + off; k < 8; k += 8) r(k, yy, 0.7, 5.2, F); for (let k = 0; k < 2; k++) r(-7 + Rr() * 13, yy + 1 + Rr() * 3, 2, 1, 'rgba(255,255,255,.06)'); }
                         r(-8, -27, 16, 2, Hi); r(-8, -1, 16, 1, 'rgba(0,0,0,.4)');
                         if (torch) { r(-1.5, -16, 3, 5, '#44403c'); r(-2, -21, 4, 5, '#f97316'); r(-1, -22, 2, 3, '#fde68a'); }

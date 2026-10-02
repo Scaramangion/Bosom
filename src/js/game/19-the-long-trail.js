@@ -31,7 +31,7 @@
             const rle = row => { const o = []; for (let i = 0; i < row.length;) { let j = i; while (j < row.length && row[j] === row[i]) j++; o.push(j - i > 1 ? row[i] + 'x' + (j - i) : String(row[i])); i = j; } return o.join(','); };
             rows.forEach((r, i) => { HAVEN_ROWS[i] = rle(r); });
         })();
-        const DUNGEON_TILES = { '#': 1, '.': 0, T: 2, D: 3, C: 4, b: 5, p: 6, S: 7, L: 8, B: 10, A: 11 }; // ... 10 = funeral slab (walkable), 11 = empty Head niche // wall, floor, torch, exit, chest, bones, pillar, sarcophagus, locked door
+        const DUNGEON_TILES = { '#': 1, '.': 0, T: 2, D: 3, C: 4, b: 5, p: 6, S: 7, L: 8, B: 10, A: 11, k: 12, e: 13, t: 14, r: 16, X: 17, c: 19 }; // 12 stove, 13 bed, 14 table, 16 rug (walkable), 17 trapdoor, 19 shelf: the farmhouse // ... 10 = funeral slab (walkable), 11 = empty Head niche // wall, floor, torch, exit, chest, bones, pillar, sarcophagus, locked door
         const zoneFlags = { sunKey: false, bones: false, tomb: false };
         const ZONES = {
             wastes: { name: 'THE WASTES', photo: true, cols: 30, rows: 84, solid: new Set([15]), exits: { 16: { to: 'overworld', x: 68, y: 18 }, 17: { to: 'cave', x: 7, y: 10, msg: 'Cold air breathes out of the rock. The cave swallows the light.' }, 18: { to: 'tomb', x: 7, y: 10, msg: 'Sand spills across the threshold. Someone has been here before you.' }, 19: { to: 'trail', x: 15, y: 355, dir: 'up', msg: 'The cleft opens onto a long trail running north into the fog.' } },
@@ -44,13 +44,40 @@
                 rows: ["################", "#T..........T..#", "#..b....##.....#", "#.......##..C..#", "###.#####......#", "#T..#....##.b..#", "#...#..b.#######", "#...#....T.....#", "#.b.####.......#", "#...#..#...b...#", "#T......#.....T#", "#######D########"] },
             tomb: { name: 'SUN TOMB', dungeon: true, solid: new Set([1, 2, 6, 7, 8]), exits: { 3: { to: 'wastes', x: 20, y: 59 } }, pal: ['#2a2218', '#6b5638', '#8f7648'],
                 rows: ["################", "######T..T######", "######.S..######", "######....######", "#######L########", "#T............T#", "#..p........p..#", "#..............#", "#..p........p..#", "#..............#", "#T............T#", "#######D########"] },
+            farmhouse: { name: 'THE FARMHOUSE', dungeon: true, home: true, solid: new Set([1, 2, 12, 13, 14, 17, 19]), exits: { 3: { to: 'overworld', x: 23, y: 18, dir: 'down', msg: 'Outside. Rahjai.' } }, pal: ['#7a5a3a', '#4a3322', '#a9835a'],
+                rows: ["################", "#cc.kk.T..T.eee#", "#...........eee#", "#..............#", "#.tt...rrrr....#", "#......rrrr....#", "#..............#", "#.X............#", "#..............#", "#..............#", "#..............#", "#######D########"] },
             waking: { name: 'TOMB OF WAKING', dungeon: true, solid: new Set([1, 2, 5, 6, 11]), exits: { 3: { to: 'wolf_hollow', x: 8, y: 3, msg: 'You step out of the tomb into a world already beginning to rot.' } }, pal: ['#2e251e', '#5e4d3f', '#86705b'],
                 rows: ["################", "#T.....AA.....T#", "#..............#", "#..p........p..#", "#......B.......#", "#......B.......#", "#..p........p..#", "#..............#", "#b............b#", "#T............T#", "#######..#######", "#######D########"] }
         };
         Object.values(ZONES).forEach(z => { if (Array.isArray(z.rows)) { z.data = z.rows.map(r => [...r].map(ch => DUNGEON_TILES[ch])); z.cols = 16; z.rows = z.data.length; }
             z.torches = []; z.data.forEach((row, r) => row.forEach((t, c) => { if (z.dungeon && t === 2) z.torches.push([c * TILE_SIZE + 8, r * TILE_SIZE + 6]); })); });
+        ZONES.farmhouse.data.forEach((row, r) => row.forEach((t, c) => { if (t === 12) ZONES.farmhouse.torches.push([c * TILE_SIZE + 8, r * TILE_SIZE + 12, 34]); })); // the stove's glow
         ZONES.trail.torches.push([TRAIL.camp[0] * TILE_SIZE + 8, TRAIL.camp[1] * TILE_SIZE + 2, 44]); // the campfire
 
+        // ---- the farmhouse: things you walk up to and press [A] on ----
+        const HOME_LINES = ['Jars of preserves, the labels gone brown. Great-grandmother\'s handwriting, small and slanted.', 'Spools of red thread. A cracked teapot. A key that fits nothing you have found yet.', 'Dried herbs tied in bundles. They still smell like summer.', 'Plates, stacked for four people. Nobody has eaten here in years.'];
+        function homeInteract(t, gx, gy) {
+            if (t === 12) { openKitchen(); return true; }
+            if (t === 13) { const F = farmState(); openNpcConversation('THE BED\nHer quilt, patched in a hundred colours.', [{ label: 'SLEEP UNTIL MORNING', handler: sleepUntilMorning }, { label: 'NOT YET', handler: hideDialogue }]); return true; }
+            if (t === 14) { showDialogue('THE TABLE\n' + pantryText()); return true; }
+            if (t === 17) { openBasement(); return true; }
+            if (t === 19) { showDialogue('THE SHELF\n' + HOME_LINES[(gx * 7 + gy * 3) % HOME_LINES.length]); return true; }
+            return false;
+        }
+        function drawHomeProps(z) { // upright furniture, the same way walls stand up
+            const T = TILE_SIZE, d = z.data, px = player.gridX, py = player.gridY, now = Date.now();
+            for (let y = 0; y < d.length; y++) for (let x = 0; x < d[0].length; x++) {
+                const t = d[y][x]; if (t !== 12 && t !== 13 && t !== 14 && t !== 19) continue; if (Math.abs(x - px) > 11 || Math.abs(y - py) > 11) continue;
+                const fx = x * T + 8, fy = y * T + 15, leftBed = t === 13 && d[y][x - 1] === 13, topBed = t === 13 && d[y - 1] && d[y - 1][x] === 13, fl = t === 12 ? 1 + (now / 140 + x) % 2 | 0 : 0;
+                asCard(fx, fy, () => { const r = (a, b, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(fx + a, fy + b, w, h); };
+                    if (t === 19) { r(-8, -27, 16, 27, '#4a3322'); r(-7, -26, 14, 25, '#6b4a2b'); for (let k = 0; k < 4; k++) { r(-7, -25 + k * 6, 14, 1, '#3a281a'); r(-6 + (k * 3) % 5, -23 + k * 6, 2, 3, ['#9a4a3a', '#6d8b4a', '#c9a25a', '#7a6aa5'][k]); r(-1 + (k * 5) % 6, -23 + k * 6, 2, 3, ['#c9a25a', '#9a4a3a', '#7a6aa5', '#6d8b4a'][k]); } }
+                    else if (t === 12) { r(-8, -16, 16, 16, '#26262a'); r(-8, -17, 16, 2, '#4a4a50'); r(-6, -12, 6, 7, '#0e0e10'); r(-5, -11, 4, 5, fl ? '#f97316' : '#fb923c'); r(-4, -9, 2, 3, '#fde047'); r(1, -12, 6, 3, '#3a3a40'); r(-2, -30, 4, 14, '#38383e'); r(-3, -31, 6, 2, '#4a4a50'); }
+                    else if (t === 14) { r(-8, -11, 16, 3, '#9a6a3c'); r(-8, -8, 16, 1, '#5b3a22'); r(-7, -8, 2, 8, '#6b4a2b'); r(5, -8, 2, 8, '#6b4a2b'); r(-3, -14, 5, 3, '#d9d0bd'); r(-2, -15, 3, 1, '#b84a3a'); }
+                    else { r(-8, -(topBed ? 7 : 11), 16, topBed ? 7 : 11, '#6b4a2b'); r(-8, -(topBed ? 7 : 11), 16, 1, '#8a6238'); r(-7, -(topBed ? 6 : 10), 14, topBed ? 5 : 8, '#d9d0bd'); r(-7, -(topBed ? 4 : 6), 14, topBed ? 3 : 5, '#4a6fa5'); if (!leftBed) { r(-7, -(topBed ? 6 : 10), 5, topBed ? 3 : 5, '#efe9d8'); r(-8, -(topBed ? 7 : 12), 1, topBed ? 7 : 12, '#4a3322'); } }
+                }, 'hp_' + t + '_' + x + '_' + y + '_' + fl);
+            }
+        }
+        function enterFarmhouse() { enterZone('farmhouse', 7, 10); player.dir = 'up'; player.face8 = 'up'; }
         function zoneSolid(gx, gy) {
             const z = ZONES[currentMapName];
             return gx < 0 || gy < 0 || gx >= z.cols || gy >= z.rows || z.solid.has(z.data[gy][gx]);
@@ -74,6 +101,7 @@
             const z = ZONES[currentMapName];
             if (gx < 0 || gy < 0 || gx >= z.cols || gy >= z.rows) return;
             const t = z.data[gy][gx];
+            if (z.home && homeInteract(t, gx, gy)) return;
             if (currentMapName === 'trail' && t === 24) { playerHealth.current = playerHealth.max; updateHealthBar(); showDialogue('You rest by the embers a while. The fog moves, but nothing comes out of it. [Health restored]'); return; }
             if (currentMapName === 'waking' && t === 11) {
                 showDialogue("The niche is silent now, but her words stay with you: the priestess lives, taken into blighted land. Complete true Heads. Perform the rites. Your unfinished Head is a wound, and a beginning.");
@@ -123,6 +151,8 @@
                     ctx.fillRect(x + 4 + (h % 3) * 3, y, 1, 3); ctx.fillRect(x + 9 - (h % 2) * 3, y + 5, 1, 4);
                     ctx.fillStyle = hi; ctx.fillRect(x, y, 16, 1);
                 }
+                if (z.home && t === 16) { ctx.fillStyle = '#8c3b32'; ctx.fillRect(x, y, 16, 16); ctx.fillStyle = '#c9a25a'; ctx.fillRect(x, y, 16, 1); ctx.fillRect(x, y + 15, 16, 1); ctx.fillStyle = '#6e2a24'; ctx.fillRect(x + 3, y + 3, 10, 10); ctx.fillStyle = '#c9a25a'; ctx.fillRect(x + 7, y + 7, 2, 2); }
+                if (z.home && t === 17) { ctx.fillStyle = '#2a1d12'; ctx.fillRect(x + 1, y + 1, 14, 14); ctx.fillStyle = '#6b4a2b'; ctx.fillRect(x + 2, y + 2, 12, 12); ctx.fillStyle = '#4a3322'; for (let k = 5; k < 14; k += 4) ctx.fillRect(x + 2, y + k, 12, 1); ctx.fillStyle = '#c9a25a'; ctx.fillRect(x + 11, y + 7, 2, 3); }
                 if (t === 10) { // funeral slab
                     ctx.fillStyle = '#0d0a08'; ctx.fillRect(x + 1, y + 3, 14, 13); ctx.fillStyle = '#8a7a68'; ctx.fillRect(x + 1, y + 1, 14, 12);
                     ctx.fillStyle = '#a8977f'; ctx.fillRect(x + 1, y + 1, 14, 2); ctx.fillStyle = '#6d5f50'; ctx.fillRect(x + 1, y + 12, 14, 1);
@@ -141,6 +171,7 @@
             }
             if (currentMapName === 'trail') drawTrail();
             if (glG) drawWallFaces(z);
+            if (z.home) drawHomeProps(z);
             if (gameState === "PLAYING" && hero) hero.render();
             if (companion.active) asCard(companion.pixelX + 8, companion.pixelY + 15, () => drawDogSprite(companion.pixelX, companion.pixelY, camDir(companion.dir), companion.animFrame)); drawFollower();
             ctx.restore();

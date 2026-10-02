@@ -133,7 +133,7 @@
                     if (currentMapName === 'overworld') {
                         const hd = HOMESTEAD[0].door;
                         if (player.gridX === hd[0] && player.gridY === hd[1] && !HORSE.mounted) { // stepped through the farmhouse door: home, then back out onto the porch
-                            player.gridY = hd[1] + 1; player.pixelY = player.targetY = player.gridY * TILE_SIZE; player.isMoving = false; player.dir = 'up'; player.face8 = 'up'; openHome();
+                            player.isMoving = false; enterFarmhouse();
                         } else if (MAP_DATA[player.gridY][player.gridX] === 5) {
                             enterBuilding(player.gridX, player.gridY);
                         } else if (MAP_DATA[player.gridY][player.gridX] === 14) {
