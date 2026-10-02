@@ -18,10 +18,11 @@ import { smokeTex } from './tex.js';
 const PI = Math.PI;
 
 export async function init(ctx) {
+  const __t0 = performance.now(); const __lap = (n) => console.log("[village] " + n + " " + Math.round(performance.now() - __t0));
   const heightAt = ctx.terrain?.heightAt || layout.heightAt;
   const R = rng(113);
   const M = makeMaterials();
-  patchWindow(M.window);
+  patchWindow(M.window); __lap("materials");
   const root = new THREE.Group(); root.name = 'village';
   ctx.scene.add(root);
   const colliders = [];
@@ -139,7 +140,7 @@ export async function init(ctx) {
   const mill = PR.windmill(ctx, MV, MR, WINDMILL, heightAt, R, { colliders });
   MR.build(M, mill.spin);
   PR.ribbon(MV, 'path', [[WINDMILL.x - 2, WINDMILL.z + 3.5], [WINDMILL.x, WINDMILL.z + 4.2]], 2, heightAt);
-  MV.build(M, root);
+  MV.build(M, root); __lap("village");
 
   // ---------------- bridge chunk ----------------
   const MB = new Merger();
@@ -149,7 +150,7 @@ export async function init(ctx) {
   // ---------------- shrine chunk ----------------
   const MS = new Merger();
   const shrine = buildShrine(MS, SHRINE, heightAt, R, colliders);
-  MS.build(M, root);
+  MS.build(M, root); __lap("shrine");
 
   // ---------------- crops + weeds (instanced) ----------------
   const crops = PR.cropInstances(FIELDS, heightAt, R);
