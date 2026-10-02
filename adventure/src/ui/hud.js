@@ -5,6 +5,7 @@ import './hud.css';
 import { LANDMARKS, heightAt as layoutHeightAt, normalAt as layoutNormalAt, WATER_LEVEL } from '../world/layout.js';
 import { buildMinimapImage } from './minimap.js';
 
+const SERIF_ATTR = "'Palatino Linotype', Palatino, 'Book Antiqua', 'Bitstream Charter', Georgia, serif";
 const SVGNS = 'http://www.w3.org/2000/svg';
 const HEART_PATH = 'M13 22.6C9.2 19.3 1.4 14.3 1.4 7.9 1.4 4.1 4.2 1.4 7.5 1.4c2.4 0 4.3 1.3 5.5 3.4 1.2-2.1 3.1-3.4 5.5-3.4 3.3 0 6.1 2.7 6.1 6.5 0 6.4-7.8 11.4-11.6 14.7z';
 // quarter order (clockwise from bottom-left): BL, TL, TR, BR
@@ -115,6 +116,7 @@ export async function init(ctx) {
   ring.innerHTML = ringSVG();
   map.appendChild(ring);
   const rose = ring.querySelector('#k-map-rose');
+  const cardLetters = [...ring.querySelectorAll('.k-card-l')];
   const mapArea = el('div', { id: 'k-map-area' }, map);
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = canvas.height = Math.round(180 * DPR);
@@ -400,6 +402,10 @@ export async function init(ctx) {
     // compass rose rotation: north (0,-1) on screen
     const nAng = Math.atan2(-fx, -fz) * 180 / Math.PI;
     rose.setAttribute('transform', `rotate(${nAng.toFixed(2)} 104 104)`);
+    for (const L of cardLetters) {
+      const a = (nAng + +L.dataset.a) * Math.PI / 180;
+      L.setAttribute('x', (104 + Math.sin(a) * 95.8).toFixed(2)); L.setAttribute('y', (104 - Math.cos(a) * 95.8).toFixed(2));
+    }
   }
   function drawIcon(kind, x, y, s, a) {
     g.save(); g.translate(x, y); g.scale(DPR * s, DPR * s); g.globalAlpha = a;
@@ -511,11 +517,6 @@ function ringSVG() {
     const r0 = big ? 92.5 : 93.5, r1 = big ? 98.5 : 96.5;
     ticks += `<line x1="${(C + Math.sin(a) * r0).toFixed(2)}" y1="${(C - Math.cos(a) * r0).toFixed(2)}" x2="${(C + Math.sin(a) * r1).toFixed(2)}" y2="${(C - Math.cos(a) * r1).toFixed(2)}" stroke="#e9d7a6" stroke-width="${big ? 1.1 : .7}" opacity="${big ? .9 : .55}"/>`;
   }
-  const letter = (ch, ang, fill, size) => {
-    const a = ang * Math.PI / 180, r = 95.6;
-    return `<text x="${(C + Math.sin(a) * r).toFixed(2)}" y="${(C - Math.cos(a) * r).toFixed(2)}" transform="rotate(${ang} ${(C + Math.sin(a) * r).toFixed(2)} ${(C - Math.cos(a) * r).toFixed(2)})"
-      text-anchor="middle" dominant-baseline="central" font-family="var(--k-serif)" font-size="${size}" fill="${fill}" letter-spacing="0">${ch}</text>`;
-  };
   return `<defs><linearGradient id="k-ring-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3124"/><stop offset="1" stop-color="#16120c"/></linearGradient></defs>
     <circle cx="${C}" cy="${C}" r="96" fill="none" stroke="url(#k-ring-g)" stroke-width="13" opacity=".92"/>
     <circle cx="${C}" cy="${C}" r="102.3" fill="none" stroke="#e9d7a6" stroke-width="1.3"/>
@@ -523,7 +524,7 @@ function ringSVG() {
     <circle cx="${C}" cy="${C}" r="87.6" fill="none" stroke="rgba(0,0,0,.5)" stroke-width="2"/>
     <g id="k-map-rose">${ticks}
       <path d="M${C} ${C - 108} L${C + 5} ${C - 100} L${C} ${C - 102.5} L${C - 5} ${C - 100}Z" fill="#e05a43" stroke="#2a1a10" stroke-width=".8"/>
-      ${letter('N', 0, '#ffd9a0', 12)}${letter('E', 90, '#e9d7a6', 10)}${letter('S', 180, '#e9d7a6', 10)}${letter('W', 270, '#e9d7a6', 10)}
     </g>
+    ${['N', 'E', 'S', 'W'].map((ch, i) => `<text class="k-card-l" data-a="${i * 90}" text-anchor="middle" dominant-baseline="central" font-family="${SERIF_ATTR}" font-size="${i ? 10 : 12}" fill="${i ? '#e9d7a6' : '#ffd9a0'}">${ch}</text>`).join('')}
     <path d="M${C} ${C - 87} l3.2 -4 h-6.4z" fill="#f7eed4" opacity=".9"/>`;
 }

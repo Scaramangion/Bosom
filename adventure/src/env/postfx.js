@@ -29,6 +29,26 @@ class ScenePass extends Pass {
   }
 }
 
+// Kills NaN/Inf (e.g. from broken skinned geometry or degenerate normals) and clamps
+// HDR before bloom so a single bad pixel can never smear across the whole frame.
+const SanitizeShader = {
+  uniforms: { tDiffuse: { value: null }, uMax: { value: 48.0 } },
+  vertexShader: /* glsl */`
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse;
+    uniform float uMax;
+    varying vec2 vUv;
+    bool bad(float x) { return isnan(x) || isinf(x) || !(x >= 0.0 || x <= 0.0) || abs(x) > 1e6; }
+    void main() {
+      vec3 c = texture2D(tDiffuse, vUv).rgb;
+      if (bad(c.r) || bad(c.g) || bad(c.b)) c = vec3(0.0);
+      c = clamp(c, vec3(0.0), vec3(uMax));
+      gl_FragColor = vec4(c, 1.0);
+    }`,
+};
+
 const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
@@ -113,6 +133,9 @@ export function init(ctx) {
     gtao.blendIntensity = 0.55;
     composer.addPass(gtao);
   }
+
+  const sanitize = new ShaderPass(SanitizeShader);
+  composer.addPass(sanitize);
 
   const bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.22, 0.65, 1.6);
   composer.addPass(bloom);

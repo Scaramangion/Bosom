@@ -15,7 +15,8 @@
 #ui .k-hidden { opacity: 0 !important; visibility: hidden; }
 
 /* ---------- gameplay HUD wrapper ---------- */
-#k-hud { transition: opacity 1.2s ease; }
+#k-hud { transition: opacity 1.2s ease; z-index: 10; }
+#k-title, #k-pause { z-index: 20; }
 
 /* ---------- top-left: badge + hearts + shards ---------- */
 #k-vitals { position: absolute; left: 34px; top: 26px; }
@@ -76,7 +77,6 @@
   box-shadow: 0 6px 18px rgba(0,0,0,.45); }
 #k-map-canvas { width: 100%; height: 100%; display: block; }
 #k-map-ring { position: absolute; left: 0; top: 0; width: 208px; height: 208px; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0,0,0,.55)); }
-#k-map-rose { transform-origin: 104px 104px; }
 #k-map-area { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 13px; letter-spacing: .3em;
   text-transform: uppercase; color: var(--k-gold); text-shadow: var(--k-shadow); white-space: nowrap; }
 

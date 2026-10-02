@@ -450,6 +450,10 @@ export function buildBody(rig, M) {
       return ng;
     });
     const g = mergeGeometries(clean);
+    const P = g.attributes.position.array;
+    for (let i = 0; i < P.length; i++) if (!Number.isFinite(P[i])) P[i] = 0; // never let a bad vertex poison the frame
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 1.6);
+    g.boundingBox = new THREE.Box3(new THREE.Vector3(-1, -0.6, -1), new THREE.Vector3(1, 2.4, 1));
     const m = new THREE.SkinnedMesh(g, mat);
     m.castShadow = true; m.receiveShadow = true;
     m.frustumCulled = false;

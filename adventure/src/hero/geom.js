@@ -108,6 +108,9 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 
 // piecewise-smooth interpolation through [[x, ...vals]] keys (Catmull-Rom on values)
 export function curve(keys) {
+  // pad ragged keys ([x, r] next to [x, rx, ry]) by repeating the last value
+  const W = Math.max(...keys.map(k => k.length));
+  keys = keys.map(k => { const c = k.slice(); while (c.length < W) c.push(c[c.length - 1]); return c; });
   return (x) => {
     if (x <= keys[0][0]) return keys[0].slice(1);
     const L = keys.length;
