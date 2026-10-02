@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { LANDMARKS, pathDist, riverDist, smoothstep, noise2, fbm } from './layout.js';
 import { getTerrainData } from './terrainData.js';
-import { buildGrass, buildFlowers, grassUniforms } from './grass.js';
+import { buildGrass, buildFlowers, grassUniforms, updateFields } from './grass.js';
 import { buildTrees, foliageUniforms, leafMaterial } from './trees.js';
 import { buildRocks } from './rocks.js';
 import { leafCard } from './textures.js';
@@ -142,6 +142,7 @@ export function init(ctx) {
         foliageUniforms.uSunCol.value.copy(grassUniforms.uSunCol.value);
       }
       treeSys.update(camPos, false);
+      updateFields(camPos, H);
     },
   };
 }

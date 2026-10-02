@@ -1,0 +1,311 @@
+{
+ "wooddark": {
+  "map": {
+   "file": "wooddark.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "wooddark.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "wooddark.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "woodlight": {
+  "map": {
+   "file": "woodlight.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "woodlight.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "woodlight.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "plankwarm": {
+  "map": {
+   "file": "plankwarm.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "plankwarm.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "plankwarm.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "plankgrey": {
+  "map": {
+   "file": "plankgrey.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "plankgrey.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "plankgrey.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "plankred": {
+  "map": {
+   "file": "plankred.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "plankred.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "plankred.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "plaster": {
+  "map": {
+   "file": "plaster.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "plaster.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "plaster.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "stone": {
+  "map": {
+   "file": "stone.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "stone.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "stone.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "ruin": {
+  "map": {
+   "file": "ruin.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "ruin.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "ruin.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "cobble": {
+  "map": {
+   "file": "cobble.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "cobble.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "cobble.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "thatch": {
+  "map": {
+   "file": "thatch.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "thatch.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "thatch.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "shingle": {
+  "map": {
+   "file": "shingle.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "shingle.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "shingle.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "slate": {
+  "map": {
+   "file": "slate.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "slate.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "slate.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "redtile": {
+  "map": {
+   "file": "redtile.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "redtile.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "redtile.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "soil": {
+  "map": {
+   "file": "soil.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "soil.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "soil.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "cloth": {
+  "map": {
+   "file": "cloth.map.webp",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "cloth.normalMap.webp",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "cloth.roughnessMap.webp",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "path": {
+  "map": {
+   "file": "path.map.png",
+   "srgb": true,
+   "repeat": true
+  },
+  "normalMap": {
+   "file": "path.normalMap.png",
+   "srgb": false,
+   "repeat": true
+  },
+  "roughnessMap": {
+   "file": "path.roughnessMap.png",
+   "srgb": false,
+   "repeat": true
+  }
+ },
+ "window": {
+  "glow": {
+   "file": "window.glow.webp",
+   "srgb": true,
+   "repeat": false
+  },
+  "day": {
+   "file": "window.day.webp",
+   "srgb": true,
+   "repeat": false
+  }
+ },
+ "sign": {
+  "file": "sign.webp",
+  "srgb": true,
+  "repeat": false
+ },
+ "cropwheat": {
+  "file": "cropwheat.png",
+  "srgb": true,
+  "repeat": false
+ },
+ "cropveg": {
+  "file": "cropveg.png",
+  "srgb": true,
+  "repeat": false
+ },
+ "cropweed": {
+  "file": "cropweed.png",
+  "srgb": true,
+  "repeat": false
+ },
+ "smoke": {
+  "file": "smoke.png",
+  "srgb": false,
+  "repeat": false
+ }
+}

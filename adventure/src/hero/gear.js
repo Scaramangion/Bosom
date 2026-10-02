@@ -70,26 +70,38 @@ export function buildScabbard(M) {
 }
 
 export const SHIELD_R = 0.27;
+// ensure a disk's normals point toward sign*Z
+function fixFacing(g, sign) {
+  const N = g.attributes.normal.array; let d = 0;
+  for (let i = 2; i < N.length; i += 3) d += N[i];
+  if (d * sign < 0) {
+    const idx = g.index.array;
+    for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; }
+    g.index.needsUpdate = true; g.computeVertexNormals();
+  }
+}
 export function buildShield(M) {
   const g = new THREE.Group(); g.name = 'shield';
   const R = SHIELD_R, dome = 0.04;
   const face = paramSurface(56, 14, (u, v, o) => {
     const a = u * TAU, r = v * R;
     o.set(Math.cos(a) * r, Math.sin(a) * r, dome * (1 - (r / R) ** 2) + 0.012);
-  }, { uvFn: (u, v) => [0.5 + Math.cos(u * TAU) * v * 0.5, 0.5 - Math.sin(u * TAU) * v * 0.5], flip: true });
+  }, { uvFn: (u, v) => [0.5 + Math.cos(u * TAU) * v * 0.5, 0.5 - Math.sin(u * TAU) * v * 0.5], orient: false });
+  fixFacing(face, 1);
   g.add(new THREE.Mesh(face, M.shield));
   // back: darker wood dish
   const back = paramSurface(40, 6, (u, v, o) => {
     const a = u * TAU, r = v * R;
     o.set(Math.cos(a) * r, Math.sin(a) * r, dome * 0.6 * (1 - (r / R) ** 2) - 0.004);
-  }, { uvFn: (u, v) => [0.5 + Math.cos(u * TAU) * v * 0.5, 0.5 - Math.sin(u * TAU) * v * 0.5] });
+  }, { uvFn: (u, v) => [0.5 + Math.cos(u * TAU) * v * 0.5, 0.5 - Math.sin(u * TAU) * v * 0.5], orient: false });
+  fixFacing(back, -1);
   g.add(new THREE.Mesh(back, M.leatherDark));
   // iron rim (tube around edge)
   const rim = paramSurface(64, 8, (u, v, o) => {
     const a = u * TAU, b = v * TAU;
     const rr = R + 0.006 * Math.cos(b), z = 0.006 + 0.012 * Math.sin(b);
     o.set(Math.cos(a) * rr, Math.sin(a) * rr, z);
-  }, { flip: true });
+  });
   g.add(new THREE.Mesh(rim, M.iron));
   // boss
   const boss = new THREE.SphereGeometry(0.058, 24, 12, 0, TAU, 0, Math.PI / 2);

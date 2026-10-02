@@ -21,7 +21,7 @@ for (const s of specs) {
   await page.goto(full, { waitUntil: 'commit', timeout: 120000 });
   try { await page.waitForFunction(() => window.__ready || window.__error, null, { timeout: 120000 }); } catch { logs.push('timeout ' + name); }
   await page.waitForTimeout(+(process.env.WAIT || 1500));
-  await page.screenshot({ path: `${out}/${name}.png` });
+  await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 });
   console.log(name, 'ok', Date.now() - t0, 'ms');
 }
 fs.writeFileSync(`${out}/console.log`, logs.join('\n'));

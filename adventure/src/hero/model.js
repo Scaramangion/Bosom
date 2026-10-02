@@ -13,8 +13,8 @@ function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let
 const sgnPow = (x, p) => Math.sign(x) * Math.pow(Math.abs(x), p);
 
 // ---------------- head ----------------
-export const HEAD_C = new THREE.Vector3(0, 1.597, 0.008);
-const HR = { x: 0.087, y: 0.117, z: 0.098 };
+export const HEAD_C = new THREE.Vector3(0, 1.588, 0.012);
+const HR = { x: 0.09, y: 0.115, z: 0.1 };
 // u in 0..1 around (0.5 = facing +Z), v 0..1 top->bottom. off = extra outward offset.
 export function headPoint(u, v, out, off = 0, features = true) {
   const a = (u - 0.5) * TAU, th = v * Math.PI;
@@ -24,7 +24,7 @@ export function headPoint(u, v, out, off = 0, features = true) {
   // jaw taper
   if (ny < 0.12) {
     const k = smooth((0.12 - ny) / 1.12);
-    x *= 1 - 0.40 * k;
+    x *= 1 - 0.30 * k;
     z *= z < 0 ? 1 - 0.5 * k : 1 - 0.06 * k;
   }
   // cranium: fuller at back/top
@@ -33,13 +33,13 @@ export function headPoint(u, v, out, off = 0, features = true) {
   // flatter face plane
   z -= 0.010 * Math.pow(front, 6) * smooth(1 - Math.abs(ny + 0.15) / 0.6);
   // chin point
-  z += 0.010 * G((ny + 0.86) / 0.12, 0) * Math.pow(front, 8);
+  z += 0.004 * G((ny + 0.86) / 0.12, 0) * Math.pow(front, 8);
   y -= 0.006 * G((ny + 0.9) / 0.1, 0) * Math.pow(front, 4);
   let d = off;
   if (features) {
     const aa = Math.abs(a);
-    d += 0.021 * G(a / 0.085, (v - 0.70) / 0.045) * (v > 0.70 ? 1 : 1);   // nose
-    d += 0.006 * G(a / 0.05, (v - 0.63) / 0.07);                          // nose bridge
+    d += 0.015 * G(a / 0.075, (v - 0.70) / 0.035);   // nose
+    d += 0.004 * G(a / 0.05, (v - 0.64) / 0.05);                          // nose bridge
     d -= 0.008 * G((aa - 0.33) / 0.12, (v - 0.565) / 0.045);              // eye sockets
     d += 0.0045 * G((aa - 0.30) / 0.2, (v - 0.505) / 0.025);              // brow ridge
     d += 0.006 * G((aa - 0.55) / 0.18, (v - 0.65) / 0.06);                // cheekbones
@@ -105,80 +105,80 @@ function earGeo(side) {
     o.copy(root).addScaledVector(D, s * L)
       .addScaledVector(E, w * cu + 0.012 * s * s - 0.004 * s)
       .addScaledVector(N, t * si * side + cup);
-  }, { flip: side < 0 });
+  });
   return g;
 }
 
 function hairGeo() {
   const R = rng(7);
   const parts = [];
+  const vmaxOf = (u) => { const a = (u - 0.5) * TAU, back = (1 - Math.cos(a)) / 2; return lerp(0.46, 0.86, Math.pow(back, 1.2)); };
   // cap: offset head surface, hairline lower at the back
   const cap = paramSurface(64, 40, (u, v, o) => {
-    const a = (u - 0.5) * TAU;
-    const back = (1 - Math.cos(a)) / 2;
-    const vmax = lerp(0.40, 0.80, Math.pow(back, 0.8)) + 0.04 * Math.sin(a * 9) * (back);
-    headPoint(u, v * vmax, o, 0.009 + 0.004 * (1 - v), false);
-  }, { uvFn: (u, v) => [u * 6, v] });
+    const a = (u - 0.5) * TAU, back = (1 - Math.cos(a)) / 2;
+    const vmax = vmaxOf(u) - 0.03 + 0.03 * Math.sin(a * 9) * back;
+    headPoint(u, v * vmax, o, 0.007 + 0.006 * (1 - v), false);
+  }, { uvFn: (u, v) => [u * 6, v * 0.3] });
   parts.push(cap);
-  const P = new THREE.Vector3(), Nn = new THREE.Vector3(), tmp = new THREE.Vector3();
-  const addClump = (u, v, len, width, dirFn, curl = 0, twist = 0) => {
-    headPoint(u, v, P, 0.004, false);
-    Nn.copy(P).sub(HEAD_C); Nn.y *= 0.8; Nn.normalize();
-    const dir = dirFn(Nn, P).normalize();
-    const p0 = P.clone().addScaledVector(Nn, -0.006);
-    const p1 = P.clone().addScaledVector(Nn, 0.016).addScaledVector(dir, len * 0.35);
-    const p2 = p1.clone().addScaledVector(dir, len * 0.4).addScaledVector(Nn, 0.004 + curl * len * 0.25);
-    const p3 = p2.clone().addScaledVector(dir, len * 0.3).add(tmp.set(0, -curl * len * 0.25, 0));
-    const side = new THREE.Vector3().crossVectors(dir, Nn).normalize();
-    const crv = new THREE.CubicBezierCurve3(p0, p1, p2, p3);
-    const g = paramSurface(6, 10, (uu, vv, o) => {
+  const P = new THREE.Vector3(), Nn = new THREE.Vector3(), T = new THREE.Vector3(), Sd = new THREE.Vector3();
+  // clump that follows the scalp from (u,v) by (du,dv) in head-param space, lifting off by `lift` at the tip
+  const addClump = (u, v, du, dv, width, lift, twist = 0, tipOut = 0) => {
+    const pts = [];
+    const K = 6;
+    for (let k = 0; k <= K; k++) {
+      const s = k / K;
+      const uu = u + du * s, vv = Math.min(0.97, v + dv * s);
+      headPoint(((uu % 1) + 1) % 1, vv, P, 0.008 + 0.022 * Math.sin(Math.PI * Math.min(1, s * 1.3)) + lift * 1.4 * s * s, false);
+      pts.push(P.clone());
+    }
+    // tip extension
+    const last = pts[K], prev = pts[K - 1];
+    const ext = last.clone().sub(prev).normalize();
+    Nn.copy(last).sub(HEAD_C).normalize();
+    pts.push(last.clone().addScaledVector(ext, 0.02 + tipOut * 0.5).addScaledVector(Nn, tipOut));
+    const crv = new THREE.CatmullRomCurve3(pts);
+    const NS = 12;
+    const g = paramSurface(6, NS, (uu, vv, o) => {
       crv.getPoint(vv, o);
-      const th = uu * TAU;
-      const w = width * Math.pow(1 - vv, 0.9) * (0.75 + 0.25 * Math.sin(Math.PI * Math.min(1, vv * 3)));
-      const ang = th + twist * vv;
-      const cs = Math.cos(ang), sn = Math.sin(ang);
-      // flattened cross-section (wide along scalp tangent)
-      o.addScaledVector(side, cs * w).addScaledVector(Nn, sn * w * 0.38);
-    }, { uvFn: (uu, vv) => [uu * 0.25 + R(), vv] });
+      crv.getTangent(vv, T);
+      Nn.copy(o).sub(HEAD_C).normalize();
+      Sd.crossVectors(T, Nn).normalize();
+      const nn = new THREE.Vector3().crossVectors(Sd, T).normalize();
+      const th = uu * TAU + twist * vv;
+      const w = width * Math.pow(1 - vv, 0.75) * (0.55 + 0.45 * Math.sin(Math.PI * Math.min(1, 0.15 + vv * 2)));
+      o.addScaledVector(Sd, Math.cos(th) * w).addScaledVector(nn, Math.sin(th) * w * 0.32);
+    }, { uvFn: (uu, vv) => [uu * 0.3 + R(), vv] });
     parts.push(g);
   };
-  const down = new THREE.Vector3(0, -1, 0);
-  // crown/back spikes: flow outward + down + back, messy
-  for (let i = 0; i < 70; i++) {
-    const u = R(), v = 0.05 + R() * 0.55;
-    const a = (u - 0.5) * TAU;
-    const back = (1 - Math.cos(a)) / 2;
-    if (back < 0.22 && v > 0.3) continue; // keep face clear
-    const len = 0.07 + R() * 0.07 + back * 0.04;
-    addClump(u, v, len, 0.022 + R() * 0.014, (n) => {
-      const d = n.clone().multiplyScalar(0.9);
-      d.addScaledVector(down, 0.55 + v * 0.6);
-      d.z -= 0.35 * back;
-      d.x += (R() - 0.5) * 0.5; d.y += (R() - 0.4) * 0.35;
-      return d;
-    }, (R() - 0.3) * 0.6, (R() - 0.5) * 1.5);
+  // main mass: everything flows away from the crown pole (v = 0)
+  for (let i = 0; i < 95; i++) {
+    const u = R(), a = (u - 0.5) * TAU, back = (1 - Math.cos(a)) / 2;
+    const vmax = vmaxOf(u);
+    const v = R() * (vmax - 0.12);
+    const reach = Math.min(vmax + 0.02 + R() * 0.05 * back, v + 0.22 + R() * 0.2);
+    const dv = Math.max(0.06, reach - v);
+    const sweep = (back < 0.35 ? -0.05 : 0) + (R() - 0.5) * 0.05;
+    const lift = (0.01 + R() * 0.03) * (0.4 + back) + (v > vmax - 0.2 ? 0.015 : 0);
+    addClump(u, v, sweep, dv, 0.034 + R() * 0.02, lift, (R() - 0.5) * 1.2, (R() * 0.025) * (0.3 + back));
   }
-  // fringe / bangs over forehead, swept to the character's right (-X) with a parting
-  for (let i = 0; i < 16; i++) {
-    const t = i / 15;
-    const u = 0.5 + (t - 0.45) * 0.30, v = 0.12 + R() * 0.12;
-    addClump(u, v, 0.11 + R() * 0.05, 0.022 + R() * 0.008, (n) => {
-      const d = new THREE.Vector3(-0.35 - 0.3 * t, -1, 0.35 + 0.1 * R());
-      d.addScaledVector(n, 0.25);
-      return d;
-    }, -0.2, (R() - 0.5));
+  // fringe: chunky locks over the brow, swept to the character's right
+  for (let i = 0; i < 13; i++) {
+    const t = i / 12;
+    const u = 0.5 + (t - 0.5) * 0.24;
+    addClump(u, 0.12 + R() * 0.08, -0.045 - 0.02 * t, 0.36 - Math.abs(t - 0.45) * 0.12 + R() * 0.04, 0.03 + R() * 0.008, 0.012, (R() - 0.5), 0.004);
   }
-  // side locks in front of ears
-  for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
-    const u = 0.5 + s * (0.17 + i * 0.025), v = 0.3 + R() * 0.08;
-    addClump(u, v, 0.12 + R() * 0.04, 0.02, (n) => new THREE.Vector3(s * 0.25, -1, 0.15).addScaledVector(n, 0.2), 0, (R() - 0.5));
+  // side locks in front of the ears
+  for (const sd of [-1, 1]) for (let i = 0; i < 3; i++) {
+    const u = 0.5 + sd * (0.15 + i * 0.03);
+    addClump(u, 0.3 + R() * 0.06, sd * 0.01, 0.34 + R() * 0.05, 0.022, 0.006, (R() - 0.5), 0.0);
   }
-  // a few defiant cowlick spikes at the crown
-  for (let i = 0; i < 6; i++) {
-    const u = 0.5 + (R() - 0.5) * 0.6 + 0.5, v = 0.04 + R() * 0.1;
-    addClump(u % 1, v, 0.07 + R() * 0.05, 0.016, (n) => n.clone().add(new THREE.Vector3((R() - 0.5) * 0.6, 0.4, -0.5)), 0.3, R());
+  // nape spikes + crown cowlick (the messy silhouette from the concept art)
+  for (let i = 0; i < 9; i++) {
+    const u = (R() - 0.5) * 0.4 + 1.0, v = 0.6 + R() * 0.12;
+    addClump(u % 1, v, (R() - 0.5) * 0.06, 0.18 + R() * 0.06, 0.024, 0.05, R(), 0.03);
   }
-  return mergeGeometries(parts.map(g => { g.deleteAttribute('normal'); return g; }).map(g => { g.computeVertexNormals(); return g; }));
+  for (let i = 0; i < 4; i++) addClump(0.0 + (R() - 0.5) * 0.1, 0.02, (R() - 0.5) * 0.1, 0.12, 0.018, 0.06, R(), 0.035);
+  return mergeGeometries(parts);
 }
 
 // ---------------- torso ----------------
@@ -253,7 +253,7 @@ function limbTube(points, radii, opts = {}) {
 
 function bootFoot(side) {
   const cx = side * 0.106;
-  const prof = curve([[0, 0.034, 0.075], [0.15, 0.043, 0.11], [0.35, 0.046, 0.12], [0.55, 0.049, 0.085], [0.72, 0.047, 0.066], [0.88, 0.038, 0.056], [1, 0.02, 0.04]]);
+  const prof = curve([[0, 0.04, 0.08], [0.15, 0.05, 0.115], [0.35, 0.053, 0.125], [0.55, 0.056, 0.09], [0.72, 0.054, 0.07], [0.88, 0.044, 0.06], [1, 0.024, 0.045]]);
   const z0 = -0.078, z1 = 0.17;
   return paramSurface(22, 26, (u, v, o) => {
     const s = v, th = u * TAU;
@@ -267,7 +267,7 @@ function bootFoot(side) {
 }
 function soleGeo(side) {
   const cx = side * 0.106, z0 = -0.082, z1 = 0.176;
-  const prof = curve([[0, 0.036], [0.2, 0.045], [0.5, 0.05], [0.7, 0.051], [0.88, 0.042], [1, 0.022]]);
+  const prof = curve([[0, 0.042], [0.2, 0.052], [0.5, 0.057], [0.7, 0.058], [0.88, 0.048], [1, 0.026]]);
   return paramSurface(24, 20, (u, v, o) => {
     const s = v, th = u * TAU;
     const e = Math.pow(1 - Math.pow(Math.abs(2 * s - 1), 6), 0.5);
@@ -383,7 +383,9 @@ export function buildBody(rig, M) {
   // tunic + cross strap + belt
   add(M.tunic, skinBySegments(tunicGeo(), S(['hips', 'spine', 'chest', ['neck', 0.4], ['clavicle_L', armFade], ['clavicle_R', armFade], ['upperLeg_L', legFade], ['upperLeg_R', legFade]]), { power: 4 }));
   add(M.leather, skinBySegments(bandGeo(crossStrapY, 0.022, 0.006, 80), S(['hips', 'spine', 'chest', ['clavicle_L', armFade], ['clavicle_R', armFade]]), { power: 4 }));
-  add(M.leather, skinBySegments(bandGeo(() => 0.955, 0.03, 0.008), S(['hips', ['spine', 0.5]]), { power: 4 }));
+  add(M.scarf, skinBySegments(bandGeo(() => 0.975, 0.045, 0.004), S(['hips', ['spine', 0.7]]), { power: 4 }));
+  add(M.leather, skinBySegments(bandGeo(() => 0.95, 0.024, 0.012), S(['hips', ['spine', 0.5]]), { power: 4 }));
+  add(M.trousers, skinBySegments(bandGeo(a => hemY(a) + 0.018, 0.018, 0.003), S(['hips', ['upperLeg_L', legFade], ['upperLeg_R', legFade]]), { power: 4 }));
   add(M.brass, skinRigid(buckleGeo(), info.hips.index));
   // pouches at the hips
   add(M.leatherDark, skinBySegments(pouchGeo(1.25, 0.91, 0.04, 0.045, 0.022), S(['hips', ['upperLeg_L', 0.3]]), { power: 3 }));
@@ -397,7 +399,7 @@ export function buildBody(rig, M) {
       const rr = r * fold;
       const RR = R + rr * Math.cos(b);
       o.set(Math.sin(a) * RR * 1.08, y + rr * 1.15 * Math.sin(b), Math.cos(a) * RR * 0.95 - 0.006);
-    }, { uS: 3, vS: 1 });
+    }, { uS: 3, vS: 0.75 });
     add(M.scarf, skinBySegments(g, S(['chest', ['neck', 0.6]]), { power: 3 }));
   }
   // pauldron on the left (shield-side) shoulder
@@ -425,15 +427,15 @@ export function buildBody(rig, M) {
     // trousers
     const ul = info['upperLeg_' + L], ll = info['lowerLeg_' + L];
     add(M.trousers, skinBySegments(limbTube([[ul.head.x * 0.9, 0.96, 0], [lerp(ul.head.x, ll.head.x, 0.5) + s * 0.006, 0.72, 0.006], [ll.head.x, ll.head.y, ll.head.z + 0.004], [ll.tail.x, 0.3, 0], [ll.tail.x, 0.14, -0.01]],
-      [[0, 0.098, 0.09], [0.2, 0.084], [0.48, 0.062], [0.56, 0.06], [0.72, 0.058], [1, 0.05]], { radial: 18, segs: 28, vS: 3 }),
+      [[0, 0.1, 0.095], [0.2, 0.092], [0.46, 0.068], [0.55, 0.066], [0.7, 0.066], [1, 0.056]], { radial: 18, segs: 28, vS: 3 }),
       S([['hips', p => 0.05 + 0.8 * smooth((p.y - 0.88) / 0.1)], 'upperLeg_' + L, 'lowerLeg_' + L]), { power: 4 }));
     // boot shaft + cuff
-    add(M.leather, skinBySegments(limbTube([[ll.tail.x * 0.98, 0.44, 0.0], [ll.tail.x, 0.3, -0.004], [ll.tail.x, 0.08, -0.012]],
-      [[0, 0.074], [0.12, 0.074], [0.16, 0.066], [0.45, 0.062], [0.8, 0.056], [1, 0.058]], { radial: 18, segs: 16, vS: 2 }),
+    add(M.leather, skinBySegments(limbTube([[ll.tail.x * 0.98, 0.39, 0.0], [ll.tail.x, 0.26, -0.004], [ll.tail.x, 0.08, -0.012]],
+      [[0, 0.076], [0.12, 0.076], [0.16, 0.07], [0.45, 0.066], [0.8, 0.06], [1, 0.061]], { radial: 18, segs: 16, vS: 2 }),
       S(['lowerLeg_' + L, ['foot_' + L, 0.4]]), { power: 5 }));
     // cuff fold (darker turned-down leather)
-    add(M.leatherDark, skinBySegments(limbTube([[ll.tail.x * 0.98, 0.455, 0.0], [ll.tail.x * 0.99, 0.385, -0.002]],
-      [[0, 0.07], [0.3, 0.079], [1, 0.08]], { radial: 18, segs: 4, vS: 1 }), S(['lowerLeg_' + L]), { power: 4 }));
+    add(M.leatherDark, skinBySegments(limbTube([[ll.tail.x * 0.98, 0.405, 0.0], [ll.tail.x * 0.99, 0.34, -0.002]],
+      [[0, 0.072], [0.3, 0.081], [1, 0.083]], { radial: 18, segs: 4, vS: 1 }), S(['lowerLeg_' + L]), { power: 4 }));
     add(M.leather, skinBySegments(bootFoot(s), S(['foot_' + L, ['lowerLeg_' + L, p => 0.4 * smooth((p.y - 0.06) / 0.06)]]), { power: 5 }));
     add(M.leatherDark, skinRigid(soleGeo(s), info['foot_' + L].index));
   }

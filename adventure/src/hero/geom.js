@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 
 // fn(u, v, outVec3) with u,v in [0,1]. Returns BufferGeometry (indexed) with uv = (u*uS, v*vS).
-export function paramSurface(nu, nv, fn, { closedU = false, uS = 1, vS = 1, flip = false, uvFn = null } = {}) {
+export function paramSurface(nu, nv, fn, { closedU = false, uS = 1, vS = 1, flip = false, uvFn = null, orient = true } = {}) {
   const pos = [], uv = [], idx = [];
   const p = new THREE.Vector3();
   for (let j = 0; j <= nv; j++) {
@@ -25,6 +25,18 @@ export function paramSurface(nu, nv, fn, { closedU = false, uS = 1, vS = 1, flip
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
+  if (orient && !flip) {
+    // make normals point away from the centroid (closed-ish shapes)
+    let cx = 0, cy = 0, cz = 0; const n = pos.length / 3;
+    for (let i = 0; i < pos.length; i += 3) { cx += pos[i]; cy += pos[i + 1]; cz += pos[i + 2]; }
+    cx /= n; cy /= n; cz /= n;
+    const N = g.attributes.normal.array; let d = 0;
+    for (let i = 0; i < pos.length; i += 3) d += (pos[i] - cx) * N[i] + (pos[i + 1] - cy) * N[i + 1] + (pos[i + 2] - cz) * N[i + 2];
+    if (d < 0) {
+      for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; }
+      g.setIndex(idx); g.computeVertexNormals();
+    }
+  }
   weldNormals(g);
   return g;
 }

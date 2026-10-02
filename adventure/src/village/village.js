@@ -5,7 +5,7 @@
 // Exposes ctx.village = { center, interactables:[{position,label,onInteract}], isOccupied(x,z,pad), shrine:{position, top} }
 import * as THREE from 'three';
 import * as layout from '../world/layout.js';
-import { rng } from './tex.js';
+import { rng, loadBakedManifest } from './tex.js';
 import { Merger, mat } from './kit.js';
 import { makeMaterials, plantMaterial, shared } from './materials.js';
 import { HOUSES, WINDMILL, WELL, SQUARE, ROADS, FIELDS, BRIDGE, SHRINE, CENTER, isOccupied } from './plan.js';
@@ -21,6 +21,7 @@ export async function init(ctx) {
   const __t0 = performance.now(); const __lap = (n) => console.log("[village] " + n + " " + Math.round(performance.now() - __t0));
   const heightAt = ctx.terrain?.heightAt || layout.heightAt;
   const R = rng(113);
+  await loadBakedManifest();
   const M = makeMaterials();
   patchWindow(M.window); __lap("materials");
   const root = new THREE.Group(); root.name = 'village';

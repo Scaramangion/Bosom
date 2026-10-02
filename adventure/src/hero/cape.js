@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 
 const NC = 13, NR = 16;
-const TOP_W = 0.44, BOT_W = 0.74, LEN = 0.98;
+const TOP_W = 0.36, BOT_W = 0.68, LEN = 0.98;
 
 export function buildCape(material) {
   const n = NC * NR;
@@ -14,8 +14,8 @@ export function buildCape(material) {
     const s = i / (NC - 1) * 2 - 1; // -1..1 across (character right .. left)
     const x = s * TOP_W / 2 * 1.05;
     // wrap around the shoulders: corners come forward over the shoulder
-    const z = -0.105 + 0.10 * Math.pow(Math.abs(s), 2.2);
-    const y = 0.195 + 0.03 * Math.pow(Math.abs(s), 2) ;
+    const z = -0.11 + 0.07 * Math.pow(Math.abs(s), 2.2);
+    const y = 0.20 - 0.035 * Math.pow(Math.abs(s), 2);
     anchorsLocal.push(new THREE.Vector3(x, y, z));
   }
   // rest lengths

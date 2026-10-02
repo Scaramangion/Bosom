@@ -31,7 +31,7 @@ float hash1(float n){ return fract(sin(n) * 43758.5453); }
 // compute blade placement; leaves world position in gPos, normal in objectNormal
 const PLACE = /* glsl */`
   vec2 lp = aOff.xy;
-  vec2 wp = lp + floor((uCam.xz - lp) / uS + 0.5) * uS;
+  vec2 wp = lp + modelMatrix[3].xz; // tile shift (set on the CPU, keeps frustum culling per tile)
   vec4 TD = tData(wp);
   float dist = length(wp - uCam.xz);
   float keep = step(aOff.z, TD.g * DENS_MUL);
@@ -85,7 +85,7 @@ function makeLayerMaterial(opts) {
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>\n#define DENS_MUL ${opts.densMul.toFixed(2)}\nuniform vec3 uGLush, uGDry, uGDeep;\n${COMMON_VERT}`)
       .replace('#include <beginnormal_vertex>', `vec3 objectNormal;\n${PLACE}`)
-      .replace('#include <begin_vertex>', 'vec3 transformed = gPos;');
+      .replace('#include <begin_vertex>', 'vec3 transformed = gPos - modelMatrix[3].xyz;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying float vT; varying vec3 vTint; varying vec3 vWPos2;
@@ -119,39 +119,73 @@ function bladeGeometry(segs) {
   return g;
 }
 
-function offsets(count, S, seed) {
-  const a = new Float32Array(count * 4);
-  let s = seed;
-  const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-  // stratified jitter so the field is even without clumps of nothing
-  const n = Math.ceil(Math.sqrt(count)), cell = S / n;
-  for (let i = 0; i < count; i++) {
-    const cx = i % n, cz = Math.floor(i / n);
-    a[i * 4] = (cx + r()) * cell - S / 2; a[i * 4 + 1] = (cz + r()) * cell - S / 2;
-    a[i * 4 + 2] = r(); a[i * 4 + 3] = r();
+function rngf(seed) { let s = seed; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; }
+
+// Split a wrapped field of size S into n x n tiles; each tile is its own draw
+// with a bounding sphere, shifted (via its model matrix) to the copy nearest the
+// camera, so frustum culling + distance culling skip most of the work.
+const tiledFields = [];
+function tiledField(ctx, proto, material, S, n, count, seed, maxDist, name) {
+  const R = rngf(seed);
+  const T = S / n, per = Math.ceil(count / (n * n));
+  const tiles = [];
+  for (let tj = 0; tj < n; tj++) for (let ti = 0; ti < n; ti++) {
+    const g = new THREE.InstancedBufferGeometry();
+    for (const k of Object.keys(proto.attributes)) g.setAttribute(k, proto.attributes[k]);
+    g.setIndex(proto.index);
+    const a = new Float32Array(per * 4), m = Math.ceil(Math.sqrt(per)), cell = T / m;
+    const x0 = -S / 2 + ti * T, z0 = -S / 2 + tj * T;
+    for (let i = 0; i < per; i++) {
+      a[i * 4] = x0 + ((i % m) + R()) * cell; a[i * 4 + 1] = z0 + (Math.floor(i / m) + R()) * cell;
+      a[i * 4 + 2] = R(); a[i * 4 + 3] = R();
+    }
+    g.setAttribute('aOff', new THREE.InstancedBufferAttribute(a, 4));
+    g.instanceCount = per;
+    const cx = x0 + T / 2, cz = z0 + T / 2;
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, 0, cz), T * 0.75 + 2);
+    const mesh = new THREE.Mesh(g, material);
+    mesh.receiveShadow = true; mesh.castShadow = false; mesh.name = name;
+    ctx.scene.add(mesh);
+    tiles.push({ mesh, cx, cz });
   }
-  return a;
+  const f = { tiles, S, T, maxDist };
+  tiledFields.push(f);
+  return f;
+}
+export function updateFields(cam, heightFn) {
+  for (const f of tiledFields) for (const t of f.tiles) {
+    const sx = Math.round((cam.x - t.cx) / f.S) * f.S, sz = Math.round((cam.z - t.cz) / f.S) * f.S;
+    const wx = t.cx + sx, wz = t.cz + sz;
+    const dx = Math.max(0, Math.abs(wx - cam.x) - f.T / 2), dz = Math.max(0, Math.abs(wz - cam.z) - f.T / 2);
+    t.mesh.visible = dx * dx + dz * dz < f.maxDist * f.maxDist;
+    t.mesh.position.set(sx, 0, sz);
+    t.mesh.geometry.boundingSphere.center.y = heightFn(wx, wz);
+  }
+}
+export function qualityScale(ctx) {
+  const q = ctx.params.get('grass'); if (q) return +q;
+  try {
+    const gl = ctx.renderer.getContext(); const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const r = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '';
+    if (/swiftshader|llvmpipe|software/i.test(r)) return 0.45;
+  } catch (e) { /* ignore */ }
+  return 1;
 }
 
 export function buildGrass(ctx, dataTex, colors) {
   const uTData = { value: dataTex };
   const col = { lush: { value: new THREE.Color(colors.lush) }, dry: { value: new THREE.Color(colors.dry) }, deep: { value: new THREE.Color(colors.deep) } };
-  const q = ctx.params.get('grass'); const mul = q ? +q : 1;
+  const mul = qualityScale(ctx), wmul = 1 / Math.sqrt(Math.max(mul, 0.2));
   const layers = [
-    { key: 'near', S: 44, count: Math.round(110000 * mul), segs: 4, height: 0.62, width: 0.075, fade0: 15, fade1: 21, inner0: -1, inner1: 0, densMul: 1.0 },
-    { key: 'mid', S: 120, count: Math.round(90000 * mul), segs: 3, height: 0.7, width: 0.16, fade0: 42, fade1: 58, inner0: 14, inner1: 18, densMul: 1.0 },
+    { key: 'near', S: 44, n: 6, count: Math.round(100000 * mul), segs: 4, height: 0.62, width: 0.075 * wmul, fade0: 15, fade1: 21, inner0: -1, inner1: 0, densMul: 1.0 },
+    { key: 'mid', S: 120, n: 8, count: Math.round(80000 * mul), segs: 3, height: 0.7, width: 0.16 * wmul, fade0: 42, fade1: 58, inner0: 14, inner1: 18, densMul: 1.0 },
   ];
-  const meshes = [];
+  const fields = [];
   for (const L of layers) {
-    const g = bladeGeometry(L.segs);
-    g.setAttribute('aOff', new THREE.InstancedBufferAttribute(offsets(L.count, L.S, 1234 + L.count), 4));
-    g.instanceCount = L.count;
-    const m = new THREE.Mesh(g, makeLayerMaterial({ ...L, uTData, colors: col }));
-    m.frustumCulled = false; m.receiveShadow = true; m.castShadow = false;
-    m.name = 'grass-' + L.key;
-    ctx.scene.add(m); meshes.push(m);
+    const mat = makeLayerMaterial({ ...L, uTData, colors: col });
+    fields.push(tiledField(ctx, bladeGeometry(L.segs), mat, L.S, L.n, L.count, 1234 + L.count, L.fade1 + 1, 'grass-' + L.key));
   }
-  return { meshes };
+  return { fields };
 }
 
 // ---------------------------------------------------------------- wildflowers
@@ -171,9 +205,7 @@ export function buildFlowers(ctx, dataTex) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('aPart', new THREE.Float32BufferAttribute(part, 1));
   g.setIndex(idx);
-  const S = 64, count = Math.round(14000 * (+ctx.params.get('grass') || 1));
-  g.setAttribute('aOff', new THREE.InstancedBufferAttribute(offsets(count, S, 777), 4));
-  g.instanceCount = count;
+  const S = 64, count = Math.round(14000 * qualityScale(ctx));
   const mat = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.55 });
   const u = Object.assign({}, grassUniforms, { uTData: { value: dataTex }, uNoise: { value: noiseTexture() }, uS: { value: S } });
   mat.onBeforeCompile = sh => {
@@ -186,7 +218,7 @@ export function buildFlowers(ctx, dataTex) {
       float hash1(float n){ return fract(sin(n) * 43758.5453); }`)
       .replace('#include <beginnormal_vertex>', `
       vec2 lp = aOff.xy;
-      vec2 wp = lp + floor((uCam.xz - lp) / uS + 0.5) * uS;
+      vec2 wp = lp + modelMatrix[3].xz;
       vec4 TD = tData(wp);
       float dist = length(wp - uCam.xz);
       vec4 pn = texture2D(uNoise, wp * 0.021 + 3.7);
@@ -210,7 +242,7 @@ export function buildFlowers(ctx, dataTex) {
       float pick = floor(fract(pn.r * 7.0 + aOff.w * 0.35) * 5.0);
       vec3 fc = pick < 1.0 ? vec3(0.95, 0.93, 0.86) : pick < 2.0 ? vec3(1.0, 0.82, 0.18) : pick < 3.0 ? vec3(0.62, 0.38, 0.9) : pick < 4.0 ? vec3(0.45, 0.6, 1.0) : vec3(1.0, 0.45, 0.38);
       vFCol = fc; vPart = aPart;`)
-      .replace('#include <begin_vertex>', 'vec3 transformed = gPos;');
+      .replace('#include <begin_vertex>', 'vec3 transformed = gPos - modelMatrix[3].xyz;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vPart; varying vec3 vFCol;')
       .replace('#include <color_fragment>', `
         vec3 fcl = pow(vFCol, vec3(2.2));
@@ -218,8 +250,5 @@ export function buildFlowers(ctx, dataTex) {
       .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n#ifdef DOUBLE_SIDED\n normal *= faceDirection;\n#endif');
   };
   mat.customProgramCacheKey = () => 'flowers';
-  const m = new THREE.Mesh(g, mat);
-  m.frustumCulled = false; m.receiveShadow = true; m.name = 'flowers';
-  ctx.scene.add(m);
-  return m;
+  return tiledField(ctx, g, mat, S, 4, count, 777, 31, 'flowers');
 }

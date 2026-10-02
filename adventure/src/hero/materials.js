@@ -57,31 +57,28 @@ function std(maps, extra = {}, fx = {}) {
 
 export function buildMaterials(envMap) {
   const navy = T.clothTex(0x2b3a6e, { seed: 1, wear: 0.35 });
-  const navyD = T.clothTex(0x222c4f, { seed: 2, wear: 0.25 });
   const red = T.woolTex(0x9b2620, { seed: 4 });
-  const redPlain = T.woolTex(0x8e231e, { seed: 5, hem: false, size: 512 });
-  const linen = T.linenTex();
-  const leather = T.leatherTex(0x5a3a22, { seed: 11, stitch: true });
-  const leatherD = T.leatherTex(0x3b2617, { seed: 12, size: 512 });
+  const linen = T.linenTex({ size: 256 });
+  const leather = T.leatherTex(0x5a3a22, { seed: 11, size: 512 });
   const skinF = T.skinTex({ face: true, seed: 13 });
-  const skinB = T.skinTex({ face: false, seed: 14, size: 512 });
-  const hair = T.hairTex();
-  const steel = T.metalTex(0xc8ced8, { rough: 0.22 });
-  const iron = T.metalTex(0x6d7076, { seed: 44, rough: 0.45, size: 256 });
-  const brass = T.brassTex();
+  const skinB = T.skinTex({ face: false, seed: 14, size: 256 });
+  const hair = T.hairTex({ size: 256 });
+  const steel = T.metalTex(0xc8ced8, { rough: 0.22, size: 256 });
+  const iron = T.metalTex(0x6d7076, { seed: 44, rough: 0.45, size: 128 });
+  const brass = T.brassTex({ size: 128 });
   const shield = T.shieldTex();
-  const eye = T.eyeTex();
-
+  const eye = T.eyeTex({ size: 256 });
+  const navyD = navy, redPlain = red, leatherD = leather;
   const M = {
     tunic: std(navy, { side: THREE.DoubleSide }, { rim: 1 }),
-    trousers: std(navyD, {}, { rim: 0.8 }),
+    trousers: std(navyD, { color: 0x8890a8 }, { rim: 0.8 }),
     cape: std(red, { side: THREE.DoubleSide }, { rim: 1.2, sss: 0.25, sssColor: 0xff3020 }),
     scarf: std(redPlain, {}, { rim: 1.2, sss: 0.2, sssColor: 0xff3020 }),
     linen: std(linen, {}, { rim: 1, sss: 0.15, sssColor: 0xffd0a0 }),
     leather: std(leather, {}, { rim: 0.7 }),
-    leatherDark: std(leatherD, {}, { rim: 0.6 }),
-    skinFace: std(skinF, {}, { sss: 0.6, rim: 0.9 }),
-    skin: std(skinB, {}, { sss: 0.6, rim: 0.9 }),
+    leatherDark: std(leatherD, { color: 0x8a7a70 }, { rim: 0.6 }),
+    skinFace: std(skinF, {}, { sss: 0.3, rim: 0.7, sssColor: 0xff8a5a }),
+    skin: std(skinB, {}, { sss: 0.3, rim: 0.7, sssColor: 0xff8a5a }),
     hair: std(hair, { side: THREE.DoubleSide }, { rim: 1.4 }),
     steel: std(steel, { metalnessMap: steel.roughnessMap, metalness: 1, envMap, envMapIntensity: 1.3 }, { rim: 0.3 }),
     iron: std(iron, { metalnessMap: iron.roughnessMap, metalness: 1, envMap, envMapIntensity: 1.0 }, { rim: 0.4 }),

@@ -228,7 +228,7 @@ export async function init(ctx) {
   // ================= state =================
   let shards = 0, shownHealth = null, shownMax = null;
   let lowHealth = false;
-  let currentRegion = WILDS, candidate = null, candT = 0, pendingRegionCard = 0;
+  let firstRegion = true, currentRegion = WILDS, candidate = null, candT = 0, pendingRegionCard = 0;
   const lastHurt = { t: -10 };
 
   function healthUnits() {
@@ -436,6 +436,7 @@ export async function init(ctx) {
     prompts: {}, // others may set ctx.hud.prompts.a = 'Open' (string) or null
     setPrompt(slot, label) { this.prompts[slot] = label; },
     get volumes() { return { ...vols }; },
+    _drawMinimap: () => drawMinimap(),
   };
   // let audio pick up stored volumes once it exists
   queueMicrotask(() => { for (const k in vols) ctx.audio?.setVolume?.(k, vols[k]); });
@@ -459,6 +460,7 @@ export async function init(ctx) {
       // region
       const p = heroPos();
       const reg = regionAt(p.x, p.z);
+      if (firstRegion) { firstRegion = false; currentRegion = reg; mapArea.textContent = reg.name; }
       if (reg !== currentRegion) {
         if (candidate !== reg) { candidate = reg; candT = 0; }
         candT += dt;

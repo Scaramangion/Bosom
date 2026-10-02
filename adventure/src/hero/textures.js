@@ -181,7 +181,7 @@ export function leatherTex(base, { size = 1024, seed = 11, stitch = false } = {}
 
 // ---------- skin (head has painted face; u=0.5 is facing +Z) ----------
 export function skinTex({ size = 1024, seed = 13, face = false } = {}) {
-  const base = hex(0x8a5a3c), warm = hex(0xa0583f), deep = hex(0x5e3a26), lip = hex(0x7a3d32), brow = hex(0x1a1420);
+  const base = hex(0x7a5442), warm = hex(0x94574a), deep = hex(0x5e3a26), lip = hex(0x7a3d32), brow = hex(0x1a1420);
   return genMaps(size, (u, v, o) => {
     const n = pfbm(u, v, 24, 4, seed), f = pnoise(u * 500, v * 500, 500, seed + 1);
     set3(o, base, 0.93 + 0.12 * (n - 0.5) + 0.04 * (f - 0.5));

@@ -502,8 +502,8 @@ export async function init(ctx) {
     const side = tmp2.set(1, 0, 0).transformDirection(B.chest.matrixWorld);
     BM('spine', C[0][0]).addScaledVector(side, 0.065); BM('neck', C[0][1]).addScaledVector(side, 0.075); C[0][2] = 0.115;
     BM('spine', C[1][0]).addScaledVector(side, -0.065); BM('neck', C[1][1]).addScaledVector(side, -0.075); C[1][2] = 0.115;
-    BM('hips', C[2][0]).addScaledVector(side, 0.06); BM('upperLeg_L', C[2][1]).lerp(BM('lowerLeg_L', tmp), 0.35); C[2][2] = 0.15;
-    BM('hips', C[3][0]).addScaledVector(side, -0.06); BM('upperLeg_R', C[3][1]).lerp(BM('lowerLeg_R', tmp), 0.35); C[3][2] = 0.15;
+    BM('hips', C[2][0]).addScaledVector(side, 0.06); BM('upperLeg_L', C[2][1]).lerp(BM('lowerLeg_L', tmp), 0.5); C[2][2] = 0.185;
+    BM('hips', C[3][0]).addScaledVector(side, -0.06); BM('upperLeg_R', C[3][1]).lerp(BM('lowerLeg_R', tmp), 0.5); C[3][2] = 0.185;
     BM('lowerLeg_L', C[4][0]); BM('upperLeg_L', C[4][1]); C[4][2] = 0.1;
     BM('lowerLeg_R', C[5][0]); BM('upperLeg_R', C[5][1]); C[5][2] = 0.1;
     BM('lowerLeg_L', C[6][0]); BM('foot_L', C[6][1]); C[6][2] = 0.08;
