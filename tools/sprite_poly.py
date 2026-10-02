@@ -12,7 +12,7 @@ Deterministic: integer pixel corners only, rings start at their top-left corner,
 Run:  python3 tools/sprite_poly.py            (all atlases)
       python3 tools/sprite_poly.py farm sud    (some of them)
 """
-import json, os, re, sys
+import json, math, os, re, sys
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -130,11 +130,11 @@ def dp(pts, eps):
     stack = [(0, len(pts) - 1)]
     while stack:
         i, j = stack.pop()
-        ax, ay = pts[i]; bx, by = pts[j]; dx, dy = bx - ax, by - ay; L = (dx * dx + dy * dy) ** 0.5
+        ax, ay = pts[i]; bx, by = pts[j]; dx, dy = bx - ax, by - ay; L = math.sqrt(dx * dx + dy * dy)
         best, bk = -1.0, -1
         for k in range(i + 1, j):
             px, py = pts[k]
-            d = abs(dx * (ay - py) - dy * (ax - px)) / L if L else ((px - ax) ** 2 + (py - ay) ** 2) ** 0.5
+            d = abs(dx * (ay - py) - dy * (ax - px)) / L if L else math.sqrt((px - ax) ** 2 + (py - ay) ** 2)
             if d > best: best, bk = d, k
         if best > eps:
             keep.add(bk); stack += [(i, bk), (bk, j)]

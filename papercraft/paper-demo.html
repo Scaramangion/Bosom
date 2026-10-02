@@ -412,6 +412,104 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
             return cv;
         }
 
+        // ---- the tracer, in the browser: the same cut as tools/sprite_poly.py, step for step (so any picture can be traced on a phone, and the
+        // same picture traced here or there gives the same polygon). px: RGBA bytes of a whole image W px wide; rect [x, y, w, h] the part to trace.
+        // Returns one sprite record { rect, anchor, pts, rings, tris, ein } (the format paperSprite folds), or null if the rect holds no paint.
+        const PAPER_TRACE = { ALPHA: 128, GROW: 1, EPS: 1, MIN_AREA: 12, NEAR: 4 };
+        function paperTrace(px, W, rect, o = {}) {
+            const C = Object.assign({}, PAPER_TRACE, o), [X0, Y0, w, h] = rect, a = new Uint8Array(w * h), cxs = [], cys = [];
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[((Y0 + y) * W + X0 + x) * 4 + 3] >= C.ALPHA) { a[y * w + x] = 1; cxs.push(x + 0.5); cys.push(y + 0.5); } // painted pixel centres, row by row
+            if (!cxs.length) return null;
+            let g = a; for (let r = 0; r < C.GROW; r++) { const m = new Uint8Array(w * h); // grow the paper 1 px (a 3 x 3 brush, clipped to the rect)
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = 0; for (let dy = -1; dy <= 1 && !v; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy, xx = x + dx; if (yy >= 0 && xx >= 0 && yy < h && xx < w && g[yy * w + xx]) { v = 1; break; } } m[y * w + x] = v; } g = m; }
+            const PW = w + 2, P = new Uint8Array(PW * (h + 2)); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) P[(y + 1) * PW + x + 1] = g[y * w + x]; // padded by one px of air
+            for (;;) { const fill = []; // unpinch: fill one pixel of every diagonal-only touch (all found first, then filled), until none are left
+                for (let y = 0; y < h + 1; y++) for (let x = 0; x < w + 1; x++) { const A = P[y * PW + x], B = P[y * PW + x + 1], Cc = P[(y + 1) * PW + x], D = P[(y + 1) * PW + x + 1];
+                    if (A && D && !B && !Cc) fill.push((y + 1) * PW + x); else if (B && Cc && !A && !D) fill.push(y * PW + x); }
+                if (!fill.length) break; for (const i of fill) P[i] = 1; }
+            const f = (x, y) => P[(y + 1) * PW + x + 1], K = w + 1, key = (x, y) => y * K + x, nxt = new Map(), add = (s, e) => { const k = key(s[0], s[1]); (nxt.get(k) || nxt.set(k, []).get(k)).push(e); };
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!f(x, y)) continue; // every pixel edge with air beyond it, run with the paper on the left (y up)
+                if (!f(x, y - 1)) add([x + 1, y], [x, y]); if (!f(x - 1, y)) add([x, y], [x, y + 1]); if (!f(x, y + 1)) add([x, y + 1], [x + 1, y + 1]); if (!f(x + 1, y)) add([x + 1, y + 1], [x + 1, y]); }
+            const lt = (p, q) => p[0] < q[0] || (p[0] === q[0] && p[1] < q[1]), raw = [];
+            while (nxt.size) { let sk = Infinity; for (const k of nxt.keys()) if (k < sk) sk = k; // the top-most, then left-most corner still unused
+                const start = [sk % K, (sk / K) | 0], ring = []; let cur = start, pd = null;
+                for (;;) { const ck = key(cur[0], cur[1]), outs = nxt.get(ck); let e = null, ei = -1;
+                    if (outs.length === 1 || !pd) { for (let i = 0; i < outs.length; i++) if (!e || lt(outs[i], e)) { e = outs[i]; ei = i; } }
+                    else { let bc = 0; for (let i = 0; i < outs.length; i++) { const q = outs[i], c = pd[0] * (q[1] - cur[1]) - pd[1] * (q[0] - cur[0]); if (!e || c < bc || (c === bc && lt(q, e))) { e = q; ei = i; bc = c; } } } // a pinch: hug the pixel we came along
+                    outs.splice(ei, 1); if (!outs.length) nxt.delete(ck); ring.push(cur); pd = [e[0] - cur[0], e[1] - cur[1]]; cur = e;
+                    if (cur[0] === start[0] && cur[1] === start[1]) break; }
+                raw.push(ring); }
+            const area2 = r => { let s = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; s += p[0] * q[1] - q[0] * p[1]; } return s; };
+            const cr = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+            const outside = (r, X, Y) => { const ins = new Uint8Array(X.length); for (let i = 0; i < r.length; i++) { const [x0, y0] = r[i], [x1, y1] = r[(i + 1) % r.length]; if (y0 === y1) continue; const lo = Math.min(y0, y1), hi = Math.max(y0, y1);
+                for (let k = 0; k < X.length; k++) if (Y[k] >= lo && Y[k] < hi && X[k] < x0 + (Y[k] - y0) * (x1 - x0) / (y1 - y0)) ins[k] ^= 1; } return ins; }; // even-odd: 0 = outside
+            const dp = (pts, eps) => { const keep = new Set([0, pts.length - 1]), st = [[0, pts.length - 1]]; // Douglas-Peucker on an open chain: the kept indices
+                while (st.length) { const [i, j] = st.pop(), [ax, ay] = pts[i], [bx, by] = pts[j], dx = bx - ax, dy = by - ay, L = Math.sqrt(dx * dx + dy * dy); let best = -1, bk = -1;
+                    for (let k = i + 1; k < j; k++) { const [qx, qy] = pts[k], d = L ? Math.abs(dx * (ay - qy) - dy * (ax - qx)) / L : Math.sqrt((qx - ax) ** 2 + (qy - ay) ** 2); if (d > best) { best = d; bk = k; } }
+                    if (best > eps) { keep.add(bk); st.push([i, bk], [bk, j]); } }
+                return [...keep].sort((p, q) => p - q); };
+            const simplify = (r, eps) => { if (eps <= 0 || r.length < 5) return r.map((_, i) => i); const a0 = r[0]; let far = 0, fd = -1;
+                for (let k = 0; k < r.length; k++) { const d = (r[k][0] - a0[0]) ** 2 + (r[k][1] - a0[1]) ** 2; if (d > fd) { fd = d; far = k; } }
+                const s = new Set(dp(r.slice(0, far + 1), eps)); for (const i of dp(r.slice(far).concat([r[0]]), eps)) if (far + i < r.length) s.add(far + i); return [...s].sort((p, q) => p - q); };
+            const hold = (r, keep, X, Y) => { keep = new Set(keep); // put corners back until every painted pixel centre this ring owns is inside it
+                for (let n = 0; n < r.length; n++) { const kk = [...keep].sort((p, q) => p - q), out = outside(kk.map(i => r[i]), X, Y); let m = -1; for (let k = 0; k < X.length; k++) if (!out[k]) { m = k; break; }
+                    if (m < 0) break; let bi = -1, bd = Infinity; for (let i = 0; i < r.length; i++) if (!keep.has(i)) { const d = (r[i][0] - X[m]) ** 2 + (r[i][1] - Y[m]) ** 2; if (d < bd) { bd = d; bi = i; } }
+                    if (bi < 0) break; keep.add(bi); }
+                return [...keep].sort((p, q) => p - q); };
+            const segX = (p1, p2, p3, p4) => { const o = (p, q, r) => Math.sign(cr(p, q, r)), d1 = o(p3, p4, p1), d2 = o(p3, p4, p2), d3 = o(p1, p2, p3), d4 = o(p1, p2, p4); if (d1 * d2 < 0 && d3 * d4 < 0) return true;
+                const on = (p, q, r) => Math.min(p[0], q[0]) <= r[0] && r[0] <= Math.max(p[0], q[0]) && Math.min(p[1], q[1]) <= r[1] && r[1] <= Math.max(p[1], q[1]);
+                return (!d1 && on(p3, p4, p1)) || (!d2 && on(p3, p4, p2)) || (!d3 && on(p1, p2, p3)) || (!d4 && on(p1, p2, p4)); };
+            const simple = r => { const n = r.length; if (new Set(r.map(p => p[0] + ',' + p[1])).size !== n) return false;
+                for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { if (j === i + 1 || (i === 0 && j === n - 1)) continue; if (segX(r[i], r[(i + 1) % n], r[j], r[(j + 1) % n])) return false; } return true; };
+            const earclip = r => { const idx = r.map((_, i) => i), tris = [], same = (p, q) => p[0] === q[0] && p[1] === q[1]; let guard = 0; // the fattest ear first (ties: the first in ring order)
+                while (idx.length > 3 && guard < 10 * r.length * r.length) { guard++; const n = idx.length; let bq = -1, bk = -1;
+                    for (let k = 0; k < n; k++) { const i0 = idx[(k - 1 + n) % n], i1 = idx[k], i2 = idx[(k + 1) % n], A = r[i0], B = r[i1], Cc = r[i2], ar = -cr(A, B, Cc); if (ar <= 0) continue;
+                        let blocked = false; for (const m of idx) { if (m === i0 || m === i1 || m === i2) continue; const p = r[m]; if (same(p, A) || same(p, B) || same(p, Cc)) continue; if (cr(A, B, p) <= 0 && cr(B, Cc, p) <= 0 && cr(Cc, A, p) <= 0) { blocked = true; break; } }
+                        if (blocked) continue; const q = ar / ((A[0] - B[0]) ** 2 + (A[1] - B[1]) ** 2 + (B[0] - Cc[0]) ** 2 + (B[1] - Cc[1]) ** 2 + (Cc[0] - A[0]) ** 2 + (Cc[1] - A[1]) ** 2); if (bk < 0 || q > bq) { bq = q; bk = k; } }
+                    if (bk < 0) return null; tris.push([idx[(bk - 1 + n) % n], idx[bk], idx[(bk + 1) % n]]); idx.splice(bk, 1); }
+                if (idx.length === 3) tris.push(idx.slice()); return tris; };
+            const near = (x, y) => { let best = null; for (let py = Math.max(0, y - C.NEAR); py < Math.min(h, y + C.NEAR); py++) for (let qx = Math.max(0, x - C.NEAR); qx < Math.min(w, x + C.NEAR); qx++) if (a[py * w + qx]) { // the nearest painted pixel (the edge ribbon samples it)
+                const d = (qx + 0.5 - x) ** 2 + (py + 0.5 - y) ** 2; if (!best || d < best[0] || (d === best[0] && (py < best[1] || (py === best[1] && qx < best[2])))) best = [d, py, qx]; }
+                return best ? [best[2], best[1]] : [Math.min(w - 1, Math.max(0, x)), Math.min(h - 1, Math.max(0, y))]; };
+            const pts = [], rings = [], tris = [], ein = [];
+            for (let ring of raw) {
+                const A2 = area2(ring); if (A2 >= 0 || -A2 / 2 < C.MIN_AREA) continue;                     // holes and specks are left to the alpha cut
+                ring = ring.filter((b, i) => cr(ring[(i - 1 + ring.length) % ring.length], b, ring[(i + 1) % ring.length]) !== 0); // drop straight-through corners
+                const ins = outside(ring, cxs, cys), X = [], Y = []; for (let k = 0; k < cxs.length; k++) if (ins[k]) { X.push(cxs[k]); Y.push(cys[k]); }
+                let s = null, t = null;
+                for (const eps of [C.EPS, C.EPS * 0.75, C.EPS * 0.5, 0]) { s = hold(ring, simplify(ring, eps), X, Y).map(i => ring[i]); t = s.length >= 3 && area2(s) < 0 && simple(s) ? earclip(s) : null; if (t) break; }
+                if (!t) return null;
+                const b = pts.length / 2; for (const p of s) { pts.push(p[0], p[1]); const e = near(p[0], p[1]); ein.push(e[0], e[1]); } rings.push(s.length); for (const q of t) tris.push(b + q[0], b + q[1], b + q[2]);
+            }
+            return { rect: [X0, Y0, w, h], anchor: o.anchor || [w / 2, h], pts, rings, tris, ein };
+        }
+
+        // ---- sprites folded into paper: an outline traced by tools/sprite_poly.py (assets/papercraft/sprite-polys.json) becomes a standing
+        // cut-out with the sprite painted on the front, a darker mirror of it on the back and, when it has thickness, a card edge between them.
+        // S: one sprite record { rect, anchor, pts, rings, tris, ein }. A: its atlas size [w, h] (the UVs are for that texture, not the paper sheet).
+        // o: x, y = where it stands (world px), ang = the way it faces (0 = south, toward +y; PI/2 = west), s = world units per sprite px,
+        //    thick = card thickness in world units (0 = paper-thin), flip = mirrored left to right, shade = [front, back, edge], glow.
+        function paperSprite(V, S, A, o = {}) {
+            const s = o.s || 0.25, th = o.thick || 0, fl = o.flip ? -1 : 1, a = o.ang || 0, Rx = Math.cos(a), Ry = Math.sin(a), Nx = -Ry, Ny = Rx;
+            const sh = o.shade || [1, 0.62, 0.74], em = o.glow || 0, P = S.pts, E = S.ein, ax = S.anchor[0], ay = S.anchor[1], ox = S.rect[0], oy = S.rect[1];
+            const at = (i, d) => { const u = (P[i * 2] - ax) * s * fl; return [(o.x || 0) + Rx * u + Nx * d, (o.y || 0) + Ry * u + Ny * d, (ay - P[i * 2 + 1]) * s]; };
+            const uv = (x, y) => [(ox + x) / A[0], (oy + y) / A[1]];
+            const tri = (p, t, shade, out) => { // the world is left-handed (x east, y south, z up): a face is front when (B-A)x(C-A) points INTO it
+                const ux = p[1][0] - p[0][0], uy = p[1][1] - p[0][1], uz = p[1][2] - p[0][2], vx = p[2][0] - p[0][0], vy = p[2][1] - p[0][1], vz = p[2][2] - p[0][2];
+                const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2];
+                for (const i of ord) V.push(p[i][0], p[i][1], p[i][2], t[i][0], t[i][1], shade, em); };
+            const front = [Nx, Ny, 0], back = [-Nx, -Ny, 0], T = S.tris;
+            for (let k = 0; k < T.length; k += 3) { const i = T[k], j = T[k + 1], m = T[k + 2], t = [uv(P[i * 2], P[i * 2 + 1]), uv(P[j * 2], P[j * 2 + 1]), uv(P[m * 2], P[m * 2 + 1])];
+                tri([at(i, th / 2), at(j, th / 2), at(m, th / 2)], t, sh[0], front);              // the painted front
+                tri([at(i, -th / 2), at(j, -th / 2), at(m, -th / 2)], t, sh[1], back); }          // the back: the same paint seen through, darker
+            if (th > 0) for (let r = 0, b = 0; r < S.rings.length; b += S.rings[r++]) for (let n = S.rings[r], q = 0; q < n; q++) { // the card edge, one strip per outline segment
+                const i = b + q, j = b + (q + 1) % n, dx = P[j * 2] - P[i * 2], dy = P[j * 2 + 1] - P[i * 2 + 1], c = uv(E[i * 2] + 0.5, E[i * 2 + 1] + 0.5), t = [c, c, c];
+                const out = [Rx * -dy * fl, Ry * -dy * fl, -dx]; /* the outline runs counter-clockwise as seen, so outward is to its right: (-dy, dx) in sprite px, z flips */
+                const f0 = at(i, th / 2), f1 = at(j, th / 2), b0 = at(i, -th / 2), b1 = at(j, -th / 2);
+                tri([f0, f1, b1], t, sh[2], out); tri([f0, b1, b0], t, sh[2], out); }
+            return V;
+        }
+
         // ---- the GPU half: the shaders that draw the folded mesh (the game's camera in the vertex stage, the paper look in the fragment stage) ----
         // Vertex layout, 7 floats: aP = x y z (world px, z up), aT = u v (sheet), aS = shade, glow. Drawn with a depth buffer, back faces culled, sheet on texture unit 7, NEAREST filtering.
         const PAPER_GLSL = {
