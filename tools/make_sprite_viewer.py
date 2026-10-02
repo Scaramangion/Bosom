@@ -17,6 +17,7 @@ ICON = { # 24 px line icons, drawn in currentColor
     'cut': '<circle cx="6.5" cy="7" r="2.6"/><circle cx="6.5" cy="17" r="2.6"/><path d="M8.6 8.6L20 18M8.6 15.4L20 6"/>',
     'depth': '<path d="M5 8l7-4 7 4v8l-7 4-7-4z"/><path d="M5 8l7 4 7-4M12 12v8"/>',
     'look': '<circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16" fill="currentColor" stroke="none"/>',
+    'pose': '<circle cx="12" cy="4.6" r="2.1"/><path d="M12 7v7M12 9l-5 3M12 9l5-3.5M12 14l-3.5 6M12 14l3.5 6"/>',
     'save': '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/>',
     'more': '<circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/>',
 }
@@ -41,7 +42,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 .word{font-weight:600;font-size:17px;letter-spacing:-.01em;pointer-events:auto}
 .tr{display:flex;gap:8px}.round{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;pointer-events:auto}
 .bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:6px;border-radius:22px}
-.tab{min-width:64px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
+.joint{position:fixed;width:12px;height:12px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid var(--tint);background:var(--material);pointer-events:none}.tab{min-width:58px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
 .tab[aria-pressed="true"]{color:var(--tint);background:var(--fill)}
 .panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
 .panel.col{flex-direction:column;align-items:stretch}.panel .line{display:flex;align-items:center;gap:10px}.panel.col>.seg{flex:none}.panel .line .seg{flex:1}.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
@@ -76,11 +77,14 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <div id="hello" class="hello glass" hidden><h1>Turn any picture into a paper model</h1><p>Choose a photo or a drawing. Papercraft cuts out the subject and folds it into 3D.</p><label class="primary" for="file">Choose Photo</label></div>
 <div id="pDepth" class="panel glass col" hidden><div class="seg" role="group" aria-label="Shape"><button data-shape="card" aria-pressed="false">Card</button><button data-shape="round" aria-pressed="true">Round</button></div><div class="line"><span class="small">Thin</span><input id="thick" type="range" min="0" max="4" step="0.25" value="2" aria-label="Depth"><span class="small">Full</span></div></div>
 <div id="pCut" class="panel glass col" hidden><div class="line"><div class="seg" role="group" aria-label="Tap to"><button data-mark="keep" aria-pressed="true">Keep</button><button data-mark="drop" aria-pressed="false">Remove</button></div><button id="undo" class="pill">Undo</button><button id="done" class="pill tinted">Done</button></div><span class="hint" id="cutHint">Tap the person or thing you want to keep.</span></div>
+<div id="pPose" class="panel glass col" hidden><div class="seg" role="group" aria-label="Move"><button data-anim="still" aria-pressed="false">Still</button><button data-anim="idle" aria-pressed="true">Idle</button><button data-anim="walk" aria-pressed="false">Walk</button><button data-anim="wave" aria-pressed="false">Wave</button></div><div class="line"><span class="hint" id="poseHint">Drag an arm, a leg or the head to pose it.</span><button id="reset" class="pill">Reset</button></div></div>
+<div id="joints" aria-hidden="true"></div>
 <div id="pLook" class="panel glass" hidden><div class="seg" role="group" aria-label="Look"><button data-look="clean" aria-pressed="true">Clean</button><button data-look="ps1" aria-pressed="false">PS1</button></div></div>
 <nav class="bar glass" aria-label="Tools">
 <label class="tab btn" for="file" id="tPhoto">''' + svg('photo') + '''Photo</label>
 <button class="tab" id="tCut" aria-pressed="false" disabled>''' + svg('cut') + '''Cut</button>
 <button class="tab" id="tDepth" aria-pressed="false">''' + svg('depth') + '''Depth</button>
+<button class="tab" id="tPose" aria-pressed="false" disabled>''' + svg('pose') + '''Pose</button>
 <button class="tab" id="tLook" aria-pressed="false">''' + svg('look') + '''Look</button></nav>
 <div id="scrim" class="scrim" hidden></div>
 <div id="sheet" class="sheet" role="dialog" aria-label="Options" hidden><div class="grab"></div><header><h2>Options</h2><button id="close" class="link">Done</button></header>
@@ -98,7 +102,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <p class="info" id="info"></p></div>
 <div id="saveSheet" class="sheet" role="dialog" aria-label="Save" hidden><div class="grab"></div><header><h2>Save</h2><button id="saveClose" class="link">Cancel</button></header>
 <div class="group">
-<button class="row act" data-save="model"><span><b>3D model</b><br><span class="small">.zip with a .glb (most 3D apps and engines) and an .obj with its texture</span></span></button>
+<button class="row act" data-save="model"><span><b>3D model</b><br><span class="small">.zip with a .glb (most 3D apps and engines; rigged, with Idle, Walk and Wave) and an .obj with its texture</span></span></button>
 <button class="row act" data-save="png"><span><b>Cut-out picture</b><br><span class="small">.png at the photo's full size, background transparent</span></span></button>
 <button class="row act" data-save="json"><span><b>Papercraft file</b><br><span class="small">.json: the outline and picture, to open here again or load in the game</span></span></button></div>
 <p class="info" id="saveInfo"></p></div>
@@ -118,7 +122,7 @@ const CAST = [['farm/f_elder', 24], ['farm/f_farmer', 24], ['farm/f_franz', 24],
 const STALKER = ['farm/f_farmer', 24 * 1.35]; // the tall one, at the back
 // ---------- state: everything the page shows comes from here ----------
 const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
-const ST = { method: 'auto', shape: Q.get('shape') || 'round', mode: Q.get('mode') || (Q.get('s') ? 'one' : 'start'), sprite: Q.get('s') || 'sud/stand', tool: null, look: Q.get('ps1') === '1' ? 'ps1' : 'clean', detail: 256, tol: 48, one: true };
+const ST = { anim: Q.get('anim') || 'idle', pose: {}, method: 'auto', shape: Q.get('shape') || 'round', mode: Q.get('mode') || (Q.get('s') ? 'one' : 'start'), sprite: Q.get('s') || 'sud/stand', tool: null, look: Q.get('ps1') === '1' ? 'ps1' : 'clean', detail: 256, tol: 48, one: true };
 const MINE = { img: null, px: null, full: null, S: null, fullS: null, w: 0, h: 0, marks: [], mark: 'keep', ms: 0, fold: null, method: '' };
 // ---------- a tiny renderer: an orbit camera, the SAME fragment shader as the game (PAPER_GLSL.frag) ----------
 const cv = $('c'), gl = cv.getContext('webgl', { antialias: false, preserveDrawingBuffer: true });
@@ -156,7 +160,11 @@ function build() { // fold every piece on stage; one buffer per texture
   let shadow = 0, R = 120;
   if (ST.mode === 'mine' && MINE.S && ST.tool === 'cut' && MINE.fullS) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; MINE.fold = { s, hh, th: 0 }; MINE.fullS.anchor = S.anchor; // Cut: the whole picture, flat, facing you
     paperSprite(per.cutview = [], MINE.fullS, [MINE.w, MINE.h], { s, thick: 0 }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.5; shadow = 0; R = Math.max(hh, S.rect[2] * s) * 4.2; }
-  else if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; MINE.fold = { s, hh, th: round ? 0 : th * hh / 24 }; if (round) paperPuff(per.mine = [], MINE.px, MINE.w, MINE.h, [0, 0, MINE.w, MINE.h], { s, depth: th * hh * 0.05, anchor: S.anchor }); else paperSprite(per.mine = [], S, [MINE.w, MINE.h], { s, thick: MINE.fold.th }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
+  else if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3], D = th * hh * 0.05; MINE.fold = { s, hh, th: round ? 0 : th * hh / 24 };
+    const RG = MINE.rig, P = RG.parts.length, Rg = round ? paperPuff([], MINE.px, MINE.w, MINE.h, [0, 0, MINE.w, MINE.h], { s, depth: D, anchor: S.anchor }).R : 0; // one fullest point for all parts: limbs puff thinner than the body
+    MINE.geo = RG.parts.map((pt, k) => { const V = []; if (round) paperPuff(V, MINE.rigPx, MINE.w, MINE.h * P, [0, k * MINE.h, MINE.w, MINE.h], { s, depth: D, anchor: S.anchor, R: Rg }); else if (MINE.rigS[k]) paperSprite(V, MINE.rigS[k], [MINE.w, MINE.h * P], { s, thick: MINE.fold.th });
+      return { V, name: pt.name, parent: pt.parent, dir: pt.dir, pv: [(pt.pivot[0] - S.anchor[0]) * s, 0, (S.anchor[1] - pt.pivot[1]) * s], n: V.length / 7 }; });
+    per.rig = [].concat(...MINE.geo.map(g => g.V)); MINE.rest = Float32Array.from(per.rig); MINE.dyn = Float32Array.from(per.rig); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
   else if (ST.mode === 'cast') { const n0 = 14, look = [150, 260]; // two arcs on the plaza, each piece turned toward the lens and nudged by the prime
     CAST.forEach(([key, h], i) => { const row = i < n0 ? 0 : 1, k = row ? i - n0 : i, n = row ? CAST.length - n0 : n0, x = (k - (n - 1) / 2) * (row ? 30 : 17) + (paperPrime(i) - 0.5) * 5, y = row ? -40 + Math.abs(k - (n - 1) / 2) * 5 : 10 + Math.abs(k - (n - 1) / 2) * 3;
       put(key, h, x, y, Math.atan2(-(look[0] - x), look[1] - y) + (paperPrime(i + 50) - 0.5) * 0.6, paperPrime(i + 99) < 0.3); });
@@ -165,11 +173,11 @@ function build() { // fold every piece on stage; one buffer per texture
   stage(R, shadow);
   tris = Object.values(per).reduce((n, v) => n + v.length / 21, 0);
   for (const g of groups) gl.deleteBuffer(g.b);
-  groups = Object.entries(per).map(([at, v]) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.STATIC_DRAW); return { at, b, n: v.length / 7 }; });
+  groups = Object.entries(per).map(([at, v]) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), at === 'rig' ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW); return { at, b, n: v.length / 7 }; });
   const L = []; for (const v of Object.values(per)) for (let t = 0; t < v.length / 7; t += 3) for (let i = 0; i < 3; i++) { const a = (t + i) * 7, b = (t + (i + 1) % 3) * 7; L.push(v[a], v[a + 1], v[a + 2], v[b], v[b + 1], v[b + 2]); }
   wire = wire || gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(L), gl.STATIC_DRAW); wireN = L.length / 3;
   info(); }
-function info() { $('info').textContent = (ST.mode === 'mine' && MINE.S ? `Your picture: ${MINE.w} × ${MINE.h} px, cut as a ${MINE.method === 'photo' ? 'photo (subject learned)' : MINE.method === 'key' ? 'plain backdrop' : 'picture with its own transparency'}, ${MINE.S.pts.length / 2} corners, ${MINE.ms | 0} ms. ` : '') + `${tris} triangles on stage. Prime ${PAPER.PRIME}.`; }
+function info() { $('info').textContent = (ST.mode === 'mine' && MINE.S ? `Your picture: ${MINE.w} × ${MINE.h} px, cut as a ${MINE.method === 'photo' ? 'photo (subject learned)' : MINE.method === 'key' ? 'plain backdrop' : 'picture with its own transparency'}, ${MINE.S.pts.length / 2} corners, ${MINE.ms | 0} ms; rig: ${MINE.rig && MINE.rig.humanoid ? 'head, torso, arms, legs' : 'one piece'}. ` : '') + `${tris} triangles on stage. Prime ${PAPER.PRIME}.`; }
 // ---------- the camera ----------
 const cam = { yaw: +(Q.get('yaw') || 0.5), pitch: +(Q.get('pitch') || 0.22), zoom: +(Q.get('dist') || 0), to: null };
 function eye() { const d = cam.zoom || radius * 1.6, [tx, ty, tz] = focus, cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
@@ -189,6 +197,7 @@ function frame(now) {
   const ps1 = ST.look === 'ps1', sc = ps1 ? [0.55, 0.62, 0.7] : rgb(css('--scene'));
   gl.viewport(0, 0, w, h); gl.clearColor(sc[0], sc[1], sc[2], 1); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW); // faces are wound counter-clockwise seen from outside, and this camera does not mirror the world
+  if (rigLive()) { applyPose(now / 1000); joints(now / 1000); } else $('joints').innerHTML = '';
   const M = matrix(w, h); gl.useProgram(prog); for (let i = 0; i < 3; i++) gl.enableVertexAttribArray(i);
   gl.uniformMatrix4fv(gl.getUniformLocation(prog, 'uM'), false, M); const U = n => gl.getUniformLocation(prog, n);
   gl.uniform1i(U('uSheet'), 7); gl.uniform1f(U('uAmb'), 0.9); gl.uniform1f(U('uFogD'), 5); gl.uniform1f(U('uZc'), 0); gl.uniform1f(U('uGlow'), 0); gl.uniform1f(U('uDS'), w / 240); gl.uniform2f(U('uRes'), w, h);
@@ -200,13 +209,42 @@ function frame(now) {
   gl.disable(gl.POLYGON_OFFSET_FILL);
   if ($('wire').checked && wire) { gl.useProgram(wprog); gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.uniformMatrix4fv(gl.getUniformLocation(wprog, 'uM'), false, M); gl.uniform3fv(gl.getUniformLocation(wprog, 'uC'), rgb(css('--wire'))); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0); gl.drawArrays(gl.LINES, 0, wireN); }
   requestAnimationFrame(frame); }
+// ---------- the rig in motion: each part turns about its pivot, in the picture's plane (Paper Mario) or swinging forward and back (Minecraft) ----------
+const LOOP = { idle: 4, walk: 0.9, wave: 1.4 }; // seconds per loop (what the saved animations use)
+function poseNow(t, an0) { // per part: th (turn in the picture's plane, counter-clockwise as seen from the front), ph (swing forward / back); plus the body's bob and lean
+  const G = MINE.geo, A = {}; let bob = 0; for (const g of G) A[g.name] = { th: ST.pose[g.name] || 0, ph: 0 }; const hh = MINE.fold.hh, an = an0 || ST.anim, has = n => A[n];
+  const hang = k => has(k) ? -G.find(g => g.name === k).dir * 0.9 : 0; // arms out (a T-pose) come down to hang by the sides when walking
+  if (an === 'idle') { const b = Math.sin(t * 2 * Math.PI / 2); bob = (b * 0.5 + 0.5) * 0.012 * hh; if (has('head')) A.head.th += 0.06 * Math.sin(t * 2 * Math.PI / 4); if (has('armL')) A.armL.th -= 0.05 * b; if (has('armR')) A.armR.th += 0.05 * b; A.torso.th += 0.015 * Math.sin(t * 2 * Math.PI / 4); } // loops every 4 s
+  if (an === 'walk') { const p = t * 2 * Math.PI / 0.9, w = Math.sin(p); bob = Math.abs(Math.cos(p)) * 0.025 * hh; if (has('legL')) { A.legL.ph += 0.55 * w; A.legR.ph -= 0.55 * w; } if (has('armL')) { A.armL.ph -= 0.45 * w; A.armR.ph += 0.45 * w; A.armL.th += hang('armL'); A.armR.th += hang('armR'); } if (has('head')) A.head.th += 0.04 * Math.sin(p * 2); }
+  if (an === 'wave') { if (has('armR')) A.armR.th += hang('armR') + 2.55 + 0.38 * Math.sin(t * 2 * Math.PI / 0.7); if (has('armL')) A.armL.th += hang('armL') * 0.5; if (has('head')) A.head.th += 0.08 * Math.sin(t * 2 * Math.PI / 1.4); bob = 0.006 * hh * Math.sin(t * 2 * Math.PI / 0.7); }
+  return { A, bob }; }
+function applyPose(t) { // rest mesh -> posed mesh: a part turns about its own pivot, then everything turns with the torso about the hips and bobs
+  const G = MINE.geo, { A, bob } = poseNow(t), out = MINE.dyn, rest = MINE.rest, T = G.find(g => g.name === 'torso'), tA = A.torso, tc = Math.cos(tA.th), ts = Math.sin(tA.th); let o = 0;
+  for (const g of G) { const a = A[g.name], c = Math.cos(a.th), sn = Math.sin(a.th), cp = Math.cos(a.ph), sp = Math.sin(a.ph), [px, py, pz] = g.pv, own = g.name !== 'torso';
+    for (let i = 0; i < g.n; i++, o += 7) { let x = rest[o], y = rest[o + 1], z = rest[o + 2];
+      if (own) { let dx = x - px, dz = z - pz; x = px + c * dx - sn * dz; z = pz + sn * dx + c * dz; const dy = y - py; dz = z - pz; y = py + cp * dy - sp * dz; z = pz + sp * dy + cp * dz; }
+      const dx = x - T.pv[0], dz = z - T.pv[2]; out[o] = T.pv[0] + tc * dx - ts * dz; out[o + 1] = y; out[o + 2] = T.pv[2] + ts * dx + tc * dz + bob; } }
+  const g = groups.find(q => q.at === 'rig'); if (g) { gl.bindBuffer(gl.ARRAY_BUFFER, g.b); gl.bufferSubData(gl.ARRAY_BUFFER, 0, out); } }
+const pivotNow = (name, t) => { const G = MINE.geo, g = G.find(q => q.name === name), T = G.find(q => q.name === 'torso'), { A, bob } = poseNow(t), tc = Math.cos(A.torso.th), ts = Math.sin(A.torso.th), dx = g.pv[0] - T.pv[0], dz = g.pv[2] - T.pv[2];
+  return [T.pv[0] + tc * dx - ts * dz, g.pv[1], T.pv[2] + ts * dx + tc * dz + bob]; };
+function toScreen(P) { const rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), q = [0, 1, 2, 3].map(j => P[0] * M[j] + P[1] * M[4 + j] + P[2] * M[8 + j] + M[12 + j]); return [rc.left + (q[0] / q[3] + 1) / 2 * rc.width, rc.top + (1 - q[1] / q[3]) / 2 * rc.height]; }
+const rigLive = () => ST.mode === 'mine' && MINE.geo && ST.tool !== 'cut' && groups.some(g => g.at === 'rig');
+function joints(t) { const box = $('joints'); if (!(rigLive() && ST.tool === 'pose' && MINE.rig.humanoid)) { box.innerHTML = ''; return; }
+  const G = MINE.geo; while (box.children.length < G.length) { const d = document.createElement('div'); d.className = 'joint'; box.appendChild(d); } while (box.children.length > G.length) box.lastChild.remove();
+  G.forEach((g, k) => { const [x, y] = toScreen(pivotNow(g.name, t)); box.children[k].style.left = x + 'px'; box.children[k].style.top = y + 'px'; }); }
+let grab = null; // a part being posed by a drag
+function pickPart(x, y) { const rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), G = MINE.geo, out = MINE.dyn; let best = null, bd = 44 * 44, o = 0;
+  G.forEach(g => { for (let i = 0; i < g.n; i++, o += 7) { if (i % 3) continue; const q = [0, 1, 2, 3].map(j => out[o] * M[j] + out[o + 1] * M[4 + j] + out[o + 2] * M[8 + j] + M[12 + j]), sx = rc.left + (q[0] / q[3] + 1) / 2 * rc.width, sy = rc.top + (1 - q[1] / q[3]) / 2 * rc.height, d = (sx - x) ** 2 + (sy - y) ** 2 + (g.name === 'torso' ? 400 : 0); /* limbs win over the torso when both are near the finger */
+    if (d < bd) { bd = d; best = g.name; } } }); return best; }
 // ---------- touch: drag to turn, pinch or wheel to zoom, tap to keep / remove (in Cut), double-tap to reset ----------
 const pts = new Map(); let held = false, pd = 0, down = null, lastTap = 0;
-cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); held = true; cam.to = null; if (pts.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() }; else down = null; closeSheet(); });
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); held = true; cam.to = null; grab = null;
+  if (ST.tool === 'pose' && rigLive() && MINE.rig.humanoid && pts.size === 1) { const nm = pickPart(e.clientX, e.clientY); if (nm) { const [px, py] = toScreen(pivotNow(nm, performance.now() / 1000)); grab = { nm, a: Math.atan2(-(e.clientY - py), e.clientX - px) }; } } if (pts.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() }; else down = null; closeSheet(); });
 cv.addEventListener('pointermove', e => { const p = pts.get(e.pointerId); if (!p) return; const dx = e.clientX - p[0], dy = e.clientY - p[1]; pts.set(e.pointerId, [e.clientX, e.clientY]);
   if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pd) cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * pd / d)); pd = d; return; }
+  if (grab && pts.size === 1) { const [px, py] = toScreen(pivotNow(grab.nm, performance.now() / 1000)), a = Math.atan2(-(e.clientY - py), e.clientX - px); let d = a - grab.a; d = Math.atan2(Math.sin(d), Math.cos(d)); ST.pose[grab.nm] = (ST.pose[grab.nm] || 0) + (Math.cos(cam.yaw) >= 0 ? d : -d); grab.a = a; return; }
   if (ST.tool === 'cut') return; cam.yaw -= dx * 0.006; cam.pitch = Math.max(0.02, Math.min(1.45, cam.pitch + dy * 0.005)); });
-const up = e => { pts.delete(e.pointerId); pd = 0; if (!pts.size) held = false;
+const up = e => { pts.delete(e.pointerId); pd = 0; if (!pts.size) { held = false; if (grab) { grab = null; down = null; return; } }
   if (down && e.type === 'pointerup' && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && performance.now() - down.t < 400) {
     if (ST.tool === 'cut') markAt(e.clientX, e.clientY); else { const t = performance.now(); if (t - lastTap < 320) { cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; } lastTap = t; } }
   down = null; };
@@ -222,13 +260,16 @@ window.screenOf = (U, V) => { // where a point of your picture's front face is o
   const s = MINE.fold.s, A = MINE.S.anchor, P = [(U * MINE.w - A[0]) * s, MINE.fold.th / 2, (A[1] - V * MINE.h) * s, 1], rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), o = [0, 1, 2, 3].map(j => P[0] * M[j] + P[1] * M[4 + j] + P[2] * M[8 + j] + P[3] * M[12 + j]);
   return [rc.left + (o[0] / o[3] + 1) / 2 * rc.width, rc.top + (1 - o[1] / o[3]) / 2 * rc.height]; };
 // ---------- the tools: Photo, Cut, Depth, Look (one panel at a time) ----------
-const PANELS = { cut: 'pCut', depth: 'pDepth', look: 'pLook' }, TABS = { cut: 'tCut', depth: 'tDepth', look: 'tLook' };
+const PANELS = { cut: 'pCut', depth: 'pDepth', pose: 'pPose', look: 'pLook' }, TABS = { cut: 'tCut', depth: 'tDepth', pose: 'tPose', look: 'tLook' };
 function setTool(t) { if (ST.tool === t) t = null; const was = ST.tool; ST.tool = t; for (const k in PANELS) { $(PANELS[k]).hidden = k !== t; $(TABS[k]).setAttribute('aria-pressed', k === t); }
+  if (t === 'pose' && MINE.img) { if (ST.mode !== 'mine') { ST.mode = 'mine'; build(); } cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.12 }; }
   if (t === 'cut' && MINE.img) { ST.mode = 'mine'; cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; $('undo').disabled = !MINE.marks.length; }
   if ((t === 'cut') !== (was === 'cut') && MINE.img) build(); // Cut shows the whole picture, with what is removed dimmed
   refreshHello(); }
 for (const b of document.querySelectorAll('[data-mark]')) b.onclick = () => { MINE.mark = b.dataset.mark; document.querySelectorAll('[data-mark]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('cutHint').textContent = MINE.mark === 'keep' ? 'Tap the person or thing you want to keep.' : 'Tap what you want removed.'; };
-$('tCut').onclick = () => setTool('cut'); $('tDepth').onclick = () => setTool('depth'); $('tLook').onclick = () => setTool('look'); $('done').onclick = () => setTool(null);
+$('tCut').onclick = () => setTool('cut'); $('tPose').onclick = () => setTool('pose');
+for (const b of document.querySelectorAll('[data-anim]')) b.onclick = () => { ST.anim = b.dataset.anim; document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x === b)); if (ST.anim === 'walk') { cam.zoom = 0; cam.to = { yaw: 0.9, pitch: 0.18 }; } };
+$('reset').onclick = () => { ST.pose = {}; }; $('tDepth').onclick = () => setTool('depth'); $('tLook').onclick = () => setTool('look'); $('done').onclick = () => setTool(null);
 $('undo').onclick = () => { MINE.marks.pop(); $('undo').disabled = !MINE.marks.length; makeMine(); };
 $('thick').oninput = build;
 for (const b of document.querySelectorAll('[data-shape]')) b.onclick = () => { ST.shape = b.dataset.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); };
@@ -242,6 +283,11 @@ let redo = 0; $('tol').oninput = () => { ST.tol = +$('tol').value; clearTimeout(
 $('cast').onclick = () => { ST.mode = 'cast'; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.42 }; build(); closeSheet(); };
 { const sel = $('spr'); for (const at of names) { const og = document.createElement('optgroup'); og.label = at; for (const k of Object.keys(SPRITE_POLYS.sprites)) if (k.startsWith(at + '/')) { const o = document.createElement('option'); o.value = k; o.textContent = k.split('/')[1]; og.appendChild(o); } sel.appendChild(og); }
   sel.value = ST.sprite; sel.onchange = () => { ST.sprite = sel.value; ST.mode = 'one'; setTool(null); cam.zoom = 0; build(); closeSheet(); }; }
+// ---------- the rig of your picture (paperRig): its parts, laid out one under another in a texture of their own ----------
+function rigMine() { const R = MINE.rig = paperRig(MINE.px, MINE.w, [0, 0, MINE.w, MINE.h]), P = R.parts.length, w = MINE.w, h = MINE.h, px = new Uint8ClampedArray(w * h * 4 * P);
+  R.parts.forEach((pt, k) => { for (let i = 0; i < w * h; i++) { const o = (k * w * h + i) * 4; px[o] = MINE.px[i * 4]; px[o + 1] = MINE.px[i * 4 + 1]; px[o + 2] = MINE.px[i * 4 + 2]; px[o + 3] = pt.mask[i] && MINE.px[i * 4 + 3] >= 128 ? 255 : 0; } });
+  MINE.rigPx = px; MINE.rigS = R.parts.map((pt, k) => paperTrace(px, w, [0, k * h, w, h])); TEX.rig = texOf({ px, w, h: h * P }, false, TEX.rig);
+  $('tPose').disabled = false; $('poseHint').textContent = R.humanoid ? 'Drag an arm, a leg or the head to pose it.' : 'No arms or legs found: it moves as one piece.'; ST.pose = {}; }
 // ---------- your picture: cut out (paperCutout), traced (paperTrace), folded (paperSprite), all on this device ----------
 let toastT = 0; function toast(m, stay) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); if (!stay) toastT = setTimeout(hideToast, 3400); } function hideToast() { $('toast').classList.remove('on'); }
 let busy = 0, again = false;
@@ -250,7 +296,7 @@ function makeMine(first) { if (!MINE.img) return; if (busy) { again = true; retu
 function cutNow(first) { const t0 = performance.now();
   const C = paperCutout(MINE.img, { max: ST.detail, tol: ST.tol, one: ST.one, keep: MINE.marks.filter(m => m[2]).map(m => [m[0], m[1]]), drop: MINE.marks.filter(m => !m[2]).map(m => [m[0], m[1]]), method: ST.method });
   MINE.S = paperTrace(C.px, C.w, [0, 0, C.w, C.h]); if (MINE.S) { const P = MINE.S.pts; let x0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < P.length; i += 2) { x0 = Math.min(x0, P[i]); x1 = Math.max(x1, P[i]); y1 = Math.max(y1, P[i + 1]); } MINE.S.anchor = [(x0 + x1) / 2, y1]; } // it stands on its lowest painted pixel
-  MINE.w = C.w; MINE.px = C.px; MINE.h = C.h; MINE.ms = performance.now() - t0; MINE.method = C.method; TEX.mine = texOf(C, false, TEX.mine);
+  MINE.w = C.w; MINE.px = C.px; MINE.h = C.h; rigMine(); MINE.ms = performance.now() - t0; MINE.method = C.method; TEX.mine = texOf(C, false, TEX.mine);
   { const v = new Uint8ClampedArray(C.full); for (let i = 0; i < C.w * C.h; i++) { if (!C.px[i * 4 + 3]) { const l = 0.299 * v[i * 4] + 0.587 * v[i * 4 + 1] + 0.114 * v[i * 4 + 2], k = ((i % C.w) + ((i / C.w) | 0)) % 6 < 3 ? 0.22 : 0.3; v[i * 4] = v[i * 4 + 1] = v[i * 4 + 2] = l * k + 18; } v[i * 4 + 3] = 255; } /* the Cut view: removed parts dark, grey and lightly striped */
     TEX.cutview = texOf({ px: v, w: C.w, h: C.h }, false, TEX.cutview); MINE.fullS = paperTrace(new Uint8ClampedArray(C.w * C.h * 4).fill(255), C.w, [0, 0, C.w, C.h]); }
   let air = 0; for (let i = 3; i < C.px.length; i += 4) if (!C.px[i]) air++;
@@ -258,7 +304,7 @@ function cutNow(first) { const t0 = performance.now();
   if (first && (!air || C.method === 'photo')) setTimeout(() => toast(C.method === 'photo' ? 'Not quite right? Tap Cut, then tap what to keep or remove.' : 'No background found. Tap Cut, then Remove, and tap it.'), 400);
   ST.mode = 'mine'; $('save').disabled = false; build(); }
 $('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); MINE.name = (f.name || 'papercraft').replace(/\\.papercraft\\.json$|\\.[^.]+$/, '').replace(/[^\\w-]+/g, '-').slice(0, 40) || 'papercraft';
-  if (/json/.test(f.type) || /\\.json$/i.test(f.name)) { f.text().then(t => { try { const r = JSON.parse(t); if (!r.picture) throw 0; im.src = r.picture; if (r.shape) { ST.shape = r.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); } if (r.depth != null) $('thick').value = r.depth; } catch (_) { toast('That is not a Papercraft file.'); } }); e.target.value = ''; }
+  if (/json/.test(f.type) || /\\.json$/i.test(f.name)) { f.text().then(t => { try { const r = JSON.parse(t); if (!r.picture) throw 0; im.src = r.picture; if (r.shape) { ST.shape = r.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim)); } if (r.depth != null) $('thick').value = r.depth; } catch (_) { toast('That is not a Papercraft file.'); } }); e.target.value = ''; }
   im.onload = () => { MINE.img = im; MINE.marks = []; $('tCut').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
   im.onerror = () => toast('That file could not be opened as a picture.'); if (!im.src) im.src = URL.createObjectURL(f); e.target.value = ''; };
 function refreshHello() { $('hello').hidden = !(ST.mode === 'start' && !MINE.img && !ST.tool); }
@@ -273,34 +319,50 @@ function zip(files) { // a plain .zip (stored, no compression): [{name, data: Ui
   const cdl = cd.reduce((n, a) => n + a.length, 0), end = new DataView(new ArrayBuffer(22)); end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cdl, true); end.setUint32(16, off, true);
   return new Blob([...parts, ...cd, new Uint8Array(end.buffer)], { type: 'application/zip' }); }
 const pngOf = (px, w, h) => new Promise(res => { const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(px), w, h), 0, 0); c.toBlob(b => b.arrayBuffer().then(a => res(new Uint8Array(a))), 'image/png'); });
-function meshNow() { // the model on stage, in the 7-float paper format, with its texture: your picture, or one sprite
-  if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3], th = depth(), V = [];
-    if (ST.shape === 'round') paperPuff(V, MINE.px, MINE.w, MINE.h, [0, 0, MINE.w, MINE.h], { s, depth: th * hh * 0.05, anchor: S.anchor }); else paperSprite(V, S, [MINE.w, MINE.h], { s, thick: th * hh / 24 });
-    return { V, hh, px: MINE.px, w: MINE.w, h: MINE.h, name: MINE.name || 'papercraft' }; }
+function meshNow() { // the model on stage, as parts (each its rest mesh in the 7-float paper format, a pivot and a parent) with one texture
+  if (ST.mode === 'mine' && MINE.S && MINE.geo) return { parts: MINE.geo.map(g => ({ name: g.name, parent: g.parent, pv: g.pv, V: g.V })), hh: MINE.fold.hh, px: MINE.rigPx, w: MINE.w, h: MINE.h * MINE.rig.parts.length, name: MINE.name || 'papercraft', rig: true };
   if (ST.mode === 'one' || ST.mode === 'start') { const key = ST.sprite, S = SPRITE_POLYS.sprites[key], at = key.split('/')[0], A = SPRITE_POLYS.atlases[at].size, hh = 24 * S.rect[3] / 85, s = hh / S.rect[3], th = depth(), V = [];
     if (ST.shape === 'round') paperPuff(V, ATLAS_PX[at], A[0], A[1], S.rect, { s, depth: th * hh * 0.05, anchor: S.anchor }); else paperSprite(V, S, A, { s, thick: th * hh / 24, anchor: S.anchor });
-    return { V, hh, px: ATLAS_PX[at], w: A[0], h: A[1], name: key.split('/')[1] }; }
+    return { parts: [{ name: key.split('/')[1], parent: -1, pv: [0, 0, 0], V }], hh, px: ATLAS_PX[at], w: A[0], h: A[1], name: key.split('/')[1], rig: false }; }
   return null; }
-async function modelZip(m) { // glTF: y up, metres (the model is 1 m tall), front toward +z; world (x east, y south, z up) -> (x, z, y), which also turns left- into right-handed
-  const n = m.V.length / 7, k = 1 / m.hh, pos = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * 3), mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
-  for (let i = 0; i < n; i++) { const V = m.V, o = i * 7, p = [V[o] * k, V[o + 2] * k, V[o + 1] * k]; for (let a = 0; a < 3; a++) { pos[i * 3 + a] = p[a]; mn[a] = Math.min(mn[a], p[a]); mx[a] = Math.max(mx[a], p[a]); }
-    uv[i * 2] = V[o + 3]; uv[i * 2 + 1] = V[o + 4]; const sh = Math.min(1, V[o + 5]); col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = sh; }
-  const png = await pngOf(m.px, m.w, m.h), pad4 = x => (x + 3) & ~3, bin = [pos, uv, col].map(a => new Uint8Array(a.buffer)), offs = []; let off = 0; for (const b of bin) { offs.push(off); off = pad4(off + b.length); } const pngOff = off; off = pad4(off + png.length);
-  const gltf = { asset: { version: '2.0', generator: 'Papercraft (Saga of Koto)' }, extensionsUsed: ['KHR_materials_unlit'], scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0, name: m.name }],
-    meshes: [{ name: m.name, primitives: [{ attributes: { POSITION: 0, TEXCOORD_0: 1, COLOR_0: 2 }, material: 0 }] }],
+const qmul = (a, b) => [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
+const G3 = (p, k) => [p[0] * k, p[2] * k, p[1] * k]; // world (x east, y south, z up) -> glTF (x, y up, z toward the viewer), metres; also turns left- into right-handed
+async function modelZip(m) { // glTF 2.0 binary: a node per part at its pivot (a rig), its mesh around that pivot, Idle / Walk / Wave as animations; plus an .obj of the rest pose
+  const k = 1 / m.hh, png = await pngOf(m.px, m.w, m.h), pad4 = x => (x + 3) & ~3, chunks = [], views = [], acc = []; let off = 0;
+  const view = (u8, target) => { views.push({ buffer: 0, byteOffset: off, byteLength: u8.length, ...(target ? { target } : {}) }); chunks.push([off, u8]); off = pad4(off + u8.length); return views.length - 1; };
+  const accessor = (f32, type, extra) => { acc.push({ bufferView: view(new Uint8Array(f32.buffer), extra && extra.anim ? 0 : 34962), componentType: 5126, count: f32.length / { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[type], type, ...(extra && extra.mm || {}) }); if (extra && extra.anim) delete views[views.length - 1].target; return acc.length - 1; };
+  const meshes = [], nodes = [{ name: m.name, children: [] }], objV = [], objT = [], objG = [];
+  m.parts.forEach((pt, i) => { const n = pt.V.length / 7, pos = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Float32Array(n * 3), mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9], P0 = G3(pt.pv, k);
+    for (let j = 0; j < n; j++) { const o = j * 7, q = G3([pt.V[o], pt.V[o + 1], pt.V[o + 2]], k); objV.push(q); objT.push([pt.V[o + 3], pt.V[o + 4]]); for (let a = 0; a < 3; a++) { const v = q[a] - P0[a]; pos[j * 3 + a] = v; mn[a] = Math.min(mn[a], v); mx[a] = Math.max(mx[a], v); }
+      uv[j * 2] = pt.V[o + 3]; uv[j * 2 + 1] = pt.V[o + 4]; col[j * 3] = col[j * 3 + 1] = col[j * 3 + 2] = Math.min(1, pt.V[o + 5]); }
+    objG.push([pt.name, n]);
+    meshes.push({ name: pt.name, primitives: [{ attributes: { POSITION: accessor(pos, 'VEC3', { mm: { min: mn, max: mx } }), TEXCOORD_0: accessor(uv, 'VEC2'), COLOR_0: accessor(col, 'VEC3') }, material: 0 }] }); });
+  m.parts.forEach((pt, i) => { const P0 = G3(pt.pv, k), par = pt.parent >= 0 ? m.parts[pt.parent] : null, base = par ? G3(par.pv, k) : [0, 0, 0];
+    nodes.push({ name: pt.name, mesh: i, translation: [P0[0] - base[0], P0[1] - base[1], P0[2] - base[2]], children: [] }); });
+  m.parts.forEach((pt, i) => (pt.parent >= 0 ? nodes[1 + pt.parent].children : nodes[0].children).push(1 + i)); nodes.forEach(n => { if (!n.children.length) delete n.children; });
+  const animations = [];
+  if (m.rig) for (const an of ['idle', 'walk', 'wave']) { const L = LOOP[an], F = Math.round(L * 24), times = new Float32Array(F + 1); for (let f = 0; f <= F; f++) times[f] = f / 24 * L / (F / 24);
+    const tIn = accessor(times, 'SCALAR', { anim: true, mm: { min: [0], max: [times[F]] } }), channels = [], samplers = [];
+    m.parts.forEach((pt, i) => { const rot = new Float32Array((F + 1) * 4), tr = pt.parent < 0 ? new Float32Array((F + 1) * 3) : null, n0 = nodes[1 + i].translation;
+      for (let f = 0; f <= F; f++) { const { A, bob } = poseNow(times[f], an), a = A[pt.name] || { th: 0, ph: 0 }, qz = [0, 0, Math.sin(a.th / 2), Math.cos(a.th / 2)], qx = [Math.sin(-a.ph / 2), 0, 0, Math.cos(-a.ph / 2)], q = qmul(qx, qz);
+        rot.set(q, f * 4); if (tr) tr.set([n0[0], n0[1] + bob * k, n0[2]], f * 3); }
+      samplers.push({ input: tIn, output: accessor(rot, 'VEC4', { anim: true }), interpolation: 'LINEAR' }); channels.push({ sampler: samplers.length - 1, target: { node: 1 + i, path: 'rotation' } });
+      if (tr) { samplers.push({ input: tIn, output: accessor(tr, 'VEC3', { anim: true }), interpolation: 'LINEAR' }); channels.push({ sampler: samplers.length - 1, target: { node: 1 + i, path: 'translation' } }); } });
+    animations.push({ name: an[0].toUpperCase() + an.slice(1), channels, samplers }); }
+  const imgView = view(png);
+  const gltf = { asset: { version: '2.0', generator: 'Papercraft (Saga of Koto)' }, extensionsUsed: ['KHR_materials_unlit'], scene: 0, scenes: [{ nodes: [0] }], nodes, meshes, ...(animations.length ? { animations } : {}),
     materials: [{ name: 'paper', pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0, roughnessFactor: 1 }, alphaMode: 'MASK', alphaCutoff: 0.5, extensions: { KHR_materials_unlit: {} } }],
-    textures: [{ source: 0, sampler: 0 }], samplers: [{ magFilter: 9728, minFilter: 9728, wrapS: 33071, wrapT: 33071 }], images: [{ bufferView: 3, mimeType: 'image/png' }],
-    buffers: [{ byteLength: off }], bufferViews: [{ buffer: 0, byteOffset: offs[0], byteLength: bin[0].length, target: 34962 }, { buffer: 0, byteOffset: offs[1], byteLength: bin[1].length, target: 34962 }, { buffer: 0, byteOffset: offs[2], byteLength: bin[2].length, target: 34962 }, { buffer: 0, byteOffset: pngOff, byteLength: png.length }],
-    accessors: [{ bufferView: 0, componentType: 5126, count: n, type: 'VEC3', min: mn, max: mx }, { bufferView: 1, componentType: 5126, count: n, type: 'VEC2' }, { bufferView: 2, componentType: 5126, count: n, type: 'VEC3' }] };
-  let js = new TextEncoder().encode(JSON.stringify(gltf)); const jl = pad4(js.length), glb = new Uint8Array(12 + 8 + jl + 8 + off), dv = new DataView(glb.buffer);
+    textures: [{ source: 0, sampler: 0 }], samplers: [{ magFilter: 9728, minFilter: 9728, wrapS: 33071, wrapT: 33071 }], images: [{ bufferView: imgView, mimeType: 'image/png' }],
+    buffers: [{ byteLength: off }], bufferViews: views, accessors: acc };
+  const js = new TextEncoder().encode(JSON.stringify(gltf)), jl = pad4(js.length), glb = new Uint8Array(12 + 8 + jl + 8 + off), dv = new DataView(glb.buffer);
   dv.setUint32(0, 0x46546c67, true); dv.setUint32(4, 2, true); dv.setUint32(8, glb.length, true); dv.setUint32(12, jl, true); dv.setUint32(16, 0x4e4f534a, true); glb.set(js, 20); for (let i = js.length; i < jl; i++) glb[20 + i] = 32;
-  const b0 = 20 + jl; dv.setUint32(b0, off, true); dv.setUint32(b0 + 4, 0x004e4942, true); bin.forEach((b, i) => glb.set(b, b0 + 8 + offs[i])); glb.set(png, b0 + 8 + pngOff);
-  const L = [`# Papercraft (Saga of Koto): ${m.name}, ${n / 3} triangles, 1 m tall, y up`, `mtllib ${m.name}.mtl`, `o ${m.name}`]; // .obj: same mesh, unshaded (the shading is in the .glb's vertex colours)
-  for (let i = 0; i < n; i++) L.push(`v ${pos[i * 3].toFixed(5)} ${pos[i * 3 + 1].toFixed(5)} ${pos[i * 3 + 2].toFixed(5)}`); for (let i = 0; i < n; i++) L.push(`vt ${uv[i * 2].toFixed(5)} ${(1 - uv[i * 2 + 1]).toFixed(5)}`);
-  L.push('usemtl paper'); for (let i = 0; i < n; i += 3) L.push(`f ${i + 1}/${i + 1} ${i + 2}/${i + 2} ${i + 3}/${i + 3}`);
+  const b0 = 20 + jl; dv.setUint32(b0, off, true); dv.setUint32(b0 + 4, 0x004e4942, true); for (const [o, u8] of chunks) glb.set(u8, b0 + 8 + o);
+  const N = objV.length, Lo = [`# Papercraft (Saga of Koto): ${m.name}, ${N / 3} triangles, 1 m tall, y up, rest pose${m.rig ? ' (the .glb carries the rig and its animations)' : ''}`, `mtllib ${m.name}.mtl`];
+  for (const q of objV) Lo.push(`v ${q[0].toFixed(5)} ${q[1].toFixed(5)} ${q[2].toFixed(5)}`); for (const t of objT) Lo.push(`vt ${t[0].toFixed(5)} ${(1 - t[1]).toFixed(5)}`);
+  Lo.push('usemtl paper'); let at = 1; for (const [nm, n] of objG) { Lo.push(`g ${nm}`); for (let i = 0; i < n; i += 3, at += 3) Lo.push(`f ${at}/${at} ${at + 1}/${at + 1} ${at + 2}/${at + 2}`); }
   const t = s => new TextEncoder().encode(s);
-  return zip([{ name: m.name + '.glb', data: glb }, { name: m.name + '.obj', data: t(L.join('\\n') + '\\n') }, { name: m.name + '.mtl', data: t(`newmtl paper\\nKd 1 1 1\\nmap_Kd ${m.name}.png\\nmap_d ${m.name}.png\\n`) }, { name: m.name + '.png', data: png },
-    { name: 'README.txt', data: t(`${m.name}: made with Papercraft (Saga of Koto).\\n${m.name}.glb  - open in any glTF viewer, Blender, Unity, Godot, three.js. Unlit, texture with alpha cut-out, 1 m tall, y up, front toward +z.\\n${m.name}.obj  - the same mesh for apps that prefer OBJ (+ .mtl and .png).\\n`) }]); }
+  return zip([{ name: m.name + '.glb', data: glb }, { name: m.name + '.obj', data: t(Lo.join('\\n') + '\\n') }, { name: m.name + '.mtl', data: t(`newmtl paper\\nKd 1 1 1\\nmap_Kd ${m.name}.png\\nmap_d ${m.name}.png\\n`) }, { name: m.name + '.png', data: png },
+    { name: 'README.txt', data: t(`${m.name}: made with Papercraft (Saga of Koto).\\n${m.name}.glb  - glTF 2.0 for Blender, Unity, Godot, three.js and most 3D viewers. Unlit, texture with an alpha cut, 1 m tall, y up, front toward +z.\\n${m.rig ? `  Rigged: a node per part (${m.parts.map(q => q.name).join(', ')}), each at its pivot, children of the torso; animations Idle (4 s), Walk (0.9 s), Wave (1.4 s), looping.\\n` : ''}${m.name}.obj  - the same mesh in its rest pose for apps that prefer OBJ (+ .mtl and .png), one group per part.\\n`) }]); }
 async function cutoutPng() { // your subject at the photo's own size (up to 2048 px): the cut's mask, scaled up smoothly, applied to the original
   const im = MINE.img, W0 = im.naturalWidth, H0 = im.naturalHeight, k = Math.min(1, 2048 / Math.max(W0, H0)), W = Math.round(W0 * k), H = Math.round(H0 * k);
   const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.drawImage(im, 0, 0, W, H); const big = g.getImageData(0, 0, W, H);
@@ -314,7 +376,7 @@ async function offer(filename, data) { // the viewer's own save (with its confir
   const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
   if (dl) { try { await dl.save({ filename, data }); toast('Saved ' + filename + '.'); } catch (e) { if (e && e.code === 'declined') return; toast(e && e.code === 'rate_limited' ? 'One save at a time: try again in a moment.' : 'This view cannot save files.'); } return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data])); a.download = filename; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast('Saved ' + filename + '.'); }
-function openSave() { const m = meshNow(); $('saveInfo').textContent = m ? `${m.name}: ${m.V.length / 21} triangles, ${ST.shape === 'round' ? 'round' : 'card'}.` : '';
+function openSave() { const m = meshNow(); $('saveInfo').textContent = m ? `${m.name}: ${m.parts.reduce((n, q) => n + q.V.length / 21, 0)} triangles, ${ST.shape === 'round' ? 'round' : 'card'}${m.rig ? ', rigged: ' + m.parts.length + ' parts, Idle / Walk / Wave' : ''}.` : '';
   document.querySelector('[data-save=png]').disabled = document.querySelector('[data-save=json]').disabled = !(ST.mode === 'mine' && MINE.S); document.querySelector('[data-save=model]').disabled = !m;
   closeSheet(); setTool(null); $('saveSheet').hidden = $('scrim').hidden = false; }
 function closeSave() { $('saveSheet').hidden = true; if ($('sheet').hidden) $('scrim').hidden = true; }
@@ -328,7 +390,7 @@ for (const b of document.querySelectorAll('[data-save]')) b.onclick = async () =
   catch (e) { toast('Could not save: ' + (e && e.message || e)); } };
 // ---------- start ----------
 if (Q.get('t')) $('thick').value = Q.get('t'); $('wire').checked = Q.get('wire') === '1'; $('spin').checked = Q.get('spin') !== '0';
-document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x.dataset.look === ST.look)); document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape));
+document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x.dataset.look === ST.look)); document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim));
 const retheme = () => { if (loaded === names.length) build(); }; matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme); new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 $('save').disabled = false;
 for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); ATLAS_PX[at] = g.getImageData(0, 0, im.width, im.height).data; } /* pixels, for Round */ if (++loaded === names.length) { build(); refreshHello(); requestAnimationFrame(frame); window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }

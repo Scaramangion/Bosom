@@ -657,7 +657,8 @@
             const nx = Math.ceil(w / g), ny = Math.ceil(h / g), cx = i => Math.min(i * g, w), cy = j => Math.min(j * g, h), E = new Float32Array((nx + 1) * (ny + 1)); let R = 1;
             for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const x = cx(i), y = cy(j), m = Math.min(at(x - 1, y - 1), at(x, y - 1), at(x - 1, y), at(x, y)) / 3; // the corner's distance to air, minus the seam
                 const e = Math.max(0, m - g); E[j * (nx + 1) + i] = e; if (e > R) R = e; }
-            const Hh = new Float32Array(E.length); for (let k = 0; k < E.length; k++) { const t = E[k] / R; Hh[k] = D * Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); } // quarter circle: full at the fullest point, steep at the seam
+            if (o.R) R = o.R; V.R = R; /* o.R: share one fullest point across several parts, so an arm puffs thinner than the torso */
+            const Hh = new Float32Array(E.length); for (let k = 0; k < E.length; k++) { const t = Math.min(1, E[k] / R); Hh[k] = D * Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); } // quarter circle: full at the fullest point, steep at the seam
             const hv = (i, j) => Hh[Math.max(0, Math.min(ny, j)) * (nx + 1) + Math.max(0, Math.min(nx, i))], L = [-0.35, 0.55, 0.76], Lb = [0.35, 0.55, -0.76];
             const shadeAt = (i, j, side) => { const gx = (hv(i + 1, j) - hv(i - 1, j)) / (2 * g * s) * fl, gz = -(hv(i, j + 1) - hv(i, j - 1)) / (2 * g * s), n = [-gx * side, -gz * side, side], k = Math.hypot(n[0], n[1], n[2]), l = side > 0 ? L : Lb;
                 const lam = Math.max(0, (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]) / k); return (0.55 + 0.55 * lam) * (side > 0 ? 1 : back); };
@@ -672,6 +673,52 @@
                 if (!any) continue; const A = [i, j], B = [i + 1, j], C = [i + 1, j + 1], Dd = [i, j + 1], flip = (i + j) & 1; // alternate the diagonal, so the shading has no grain
                 for (const side of [1, -1]) { if (flip) { tri([A, B, C], side); tri([A, C, Dd], side); } else { tri([A, B, Dd], side); tri([B, C, Dd], side); } } }
             return V;
+        }
+
+        // ---- a rig for a standing figure, found in its cut-out: head, torso, two arms, two legs, each with a pivot (Paper Mario's flaps, Minecraft's
+        // limbs). Read from the silhouette alone: the neck is the narrowest row under the widest part of the head; the hips are where the legs part
+        // (air under the middle); the arms are what lies outside the torso's own width (taken from rows where arm and body show a gap, else from
+        // the chest). Each limb overlaps its parent by a few px, so a joint never opens a hole when it turns. px: RGBA (W wide); rect [x, y, w, h].
+        // Returns { humanoid, parts: [{ name, parent, pivot: [x, y] (px in the rect), mask (Uint8Array w*h), dir (radians, the limb's direction, 0 = down) }] }.
+        // A figure without a neck or a leg split still gets a one-part rig (humanoid: false), so anything can at least bob and sway.
+        function paperRig(px, W, rect, o = {}) {
+            const [X0, Y0, w, h] = rect, a = new Uint8Array(w * h); let top = h, bot = -1;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[((Y0 + y) * W + X0 + x) * 4 + 3] >= 128) { a[y * w + x] = 1; if (y < top) top = y; bot = y; }
+            const whole = a.slice(), H = bot - top + 1; if (bot < 0) return { humanoid: false, parts: [] };
+            const runs = y => { const r = []; let s = -1; for (let x = 0; x <= w; x++) { const on = x < w && a[y * w + x]; if (on && s < 0) s = x; else if (!on && s >= 0) { r.push([s, x - 1]); s = -1; } } return r; };
+            let sx = 0, n = 0; for (let y = top + (H * 0.2 | 0); y < top + H * 0.6; y++) for (let x = 0; x < w; x++) if (a[y * w + x]) { sx += x; n++; } const cx = n ? sx / n : w / 2;
+            const central = y => { let best = null, bd = 1e9; for (const r of runs(y)) { const d = cx < r[0] ? r[0] - cx : cx > r[1] ? cx - r[1] : 0; if (d < bd) { bd = d; best = r; } } return best; };
+            const cw = y => { const r = central(y); return r ? r[1] - r[0] + 1 : 0; };
+            let neck = -1, nr = 1, run = 0; // the neck: the row narrowest compared with the widest row above it (the head), in the top half
+            for (let y = top; y < top + H * 0.5; y++) { const c = cw(y); if (y > top + H * 0.08 && run > 0 && c / run < nr) { nr = c / run; neck = y; } run = Math.max(run, c); }
+            const hasNeck = neck > 0 && nr < 0.95; if (!hasNeck) neck = top + Math.round(H * 0.2); // hair often hides the neck, so even a slight narrowing counts (the leg split is the stronger test)
+            let crotch = -1; for (let y = bot - Math.round(H * 0.04); y > top + H * 0.35; y--) { const c = Math.round(cx), gap = !a[y * w + c] && runs(y).filter(r => r[1] < c).length && runs(y).filter(r => r[0] > c).length; if (gap) crotch = y; else if (crotch >= 0) break; } // the legs part here
+            const hip = crotch >= 0 ? crotch - Math.round(H * 0.02) : top + Math.round(H * 0.58);
+            const band = []; for (let y = neck + 1; y < hip; y++) band.push(y); // the torso band
+            const inner = []; for (const y of band) { const r = runs(y); if (r.length >= 3) { const c = r.findIndex(q => q[0] <= cx && q[1] >= cx); if (c > 0 && c < r.length - 1) inner.push([cx - r[c][0], r[c][1] - cx]); } } // rows where arm, body, arm show gaps
+            let chest = 0; for (let y = neck + 1; y < neck + 1 + Math.max(1, (hip - neck) * 0.4); y++) { const r = runs(y); if (r.length) chest = Math.max(chest, r[r.length - 1][1] - r[0][0] + 1); }
+            const med = v => { const s = v.slice().sort((p, q) => p - q); return s[s.length >> 1]; };
+            const coreL = inner.length >= 3 ? med(inner.map(q => q[0])) + 1 : chest * 0.31, coreR = inner.length >= 3 ? med(inner.map(q => q[1])) + 1 : chest * 0.31;
+            const humanoid = hasNeck && crotch >= 0 && hip > neck + H * 0.15 && bot - hip > H * 0.08, lab = new Int8Array(w * h).fill(-1); // 0 torso, 1 head, 2 arm L, 3 arm R, 4 leg L, 5 leg R (L = the picture's left)
+            let legX = cx; if (crotch >= 0) { const r = runs(crotch); const c = Math.round(cx); let l = 0, rr = w - 1; for (const q of r) { if (q[1] < c) l = Math.max(l, q[1]); if (q[0] > c) rr = Math.min(rr, q[0]); } legX = (l + rr) / 2; }
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!a[y * w + x]) continue; const i = y * w + x;
+                lab[i] = !humanoid ? 0 : y <= neck ? 1 : y > hip && x >= cx - coreL * 1.15 && x <= cx + coreR * 1.15 ? (x < legX ? 4 : 5) : x < cx - coreL ? 2 : x > cx + coreR ? 3 : y > hip ? (x < legX ? 4 : 5) : 0; }
+            if (humanoid) for (const arm of [2, 3]) { // an "arm" pixel must hang from the shoulder: flood from the upper torso band; the rest goes to the torso or a leg
+                const seen = new Uint8Array(w * h), q = []; for (let y = neck + 1; y < neck + 1 + Math.max(2, (hip - neck) * 0.35); y++) for (let x = 0; x < w; x++) if (lab[y * w + x] === arm) { seen[y * w + x] = 1; q.push(y * w + x); }
+                for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy, j = yy * w + xx; if (xx >= 0 && yy >= 0 && xx < w && yy < h && lab[j] === arm && !seen[j]) { seen[j] = 1; q.push(j); } } }
+                for (let i = 0; i < w * h; i++) if (lab[i] === arm && !seen[i]) { const x = i % w, y = (i / w) | 0; lab[i] = y > hip ? (x < legX ? 4 : 5) : 0; } }
+            const names = ['torso', 'head', 'armL', 'armR', 'legL', 'legR'], shoulder = neck + Math.max(1, Math.round((hip - neck) * 0.12));
+            const pivots = [[cx, hip], [cx, neck], [cx - coreL, shoulder], [cx + coreR, shoulder], [legX - (legX - (cx - coreL)) * 0.5, hip], [legX + ((cx + coreR) - legX) * 0.5, hip]];
+            const lap = o.overlap || Math.max(2, Math.round(H * 0.012)), parts = [];
+            for (let k = 0; k < (humanoid ? 6 : 1); k++) { const m = new Uint8Array(w * h); let any = 0, mx = 0, my = 0;
+                for (let i = 0; i < w * h; i++) if (lab[i] === k) { m[i] = 1; any++; mx += i % w; my += (i / w) | 0; }
+                if (!any) continue;
+                if (k) for (let i = 0; i < w * h; i++) if (lab[i] === k) { const x = i % w, y = (i / w) | 0; // reach a few px into the parent (the torso), so the joint stays closed when it turns
+                    for (let yy = Math.max(0, y - lap); yy <= Math.min(h - 1, y + lap); yy++) for (let xx = Math.max(0, x - lap); xx <= Math.min(w - 1, x + lap); xx++) if (lab[yy * w + xx] === 0) m[yy * w + xx] = 1; }
+                mx /= any; my /= any; const pv = pivots[k];
+                parts.push({ name: names[k], parent: k ? 0 : -1, pivot: pv, mask: m, dir: Math.atan2(mx - pv[0], my - pv[1]) }); }
+            if (!humanoid) parts[0].mask = whole;
+            return { humanoid, parts, neck, hip, crotch, cx, core: [coreL, coreR] };
         }
 
         // ---- the GPU half: the shaders that draw the folded mesh (the game's camera in the vertex stage, the paper look in the fragment stage) ----
