@@ -19,7 +19,7 @@ import * as layout from '../world/layout.js';
 
 const PIVOT_H = 1.45;           // orbit pivot height above the hero's feet
 const DIST_DEFAULT = 4.8, DIST_MIN = 2.2, DIST_MAX = 11;
-const PITCH_MIN = -0.42, PITCH_MAX = 1.2, PITCH_DEFAULT = 0.22;
+const PITCH_MIN = -0.42, PITCH_MAX = 1.2, PITCH_DEFAULT = 0.12;
 const RECENTER_DELAY = 1.5;
 const LOCK_RANGE = 20, LOCK_BREAK = 26;
 const CAM_RADIUS = 0.3;
@@ -51,8 +51,12 @@ export function init(ctx) {
     },
   };
   ctx.cameraRig = rig;
-  ctx.on?.('hero-hurt', d => rig.shake(Math.min(0.6, 0.25 + (d?.damage || 1) * 0.08)));
-  ctx.on?.('hit', d => { if (d?.heavy || d?.byHero !== false) rig.shake(0.12); });
+  // world events may request shake: ctx.emit('shake', { amount, position? }) — attenuated by distance
+  ctx.on?.('shake', d => {
+    let a = d?.amount ?? 0.3;
+    if (d?.position) a *= THREE.MathUtils.clamp(1.4 - cam.position.distanceTo(d.position) / 25, 0, 1);
+    if (a > 0.01) rig.shake(a);
+  });
 
   // ---------- letterbox + lock reticle (DOM) ----------
   const ui = document.getElementById('ui') || document.body;
@@ -202,7 +206,7 @@ export function init(ctx) {
       // ---- framed hero shot: over-the-shoulder 3/4, hero on the left third ----
       if (!target) {
         const fy = shot.yaw ?? 0;
-        rig.yaw = fy + Math.PI + 0.38; rig.pitch = 0.2; rig.distance = 5.2;
+        rig.yaw = fy + Math.PI + 0.38; rig.pitch = 0.11; rig.distance = 5.0;
       }
     } else if (target) {
       // Z-targeting: swing behind the hero, facing the target
@@ -269,7 +273,7 @@ export function init(ctx) {
 
     // ----- look point -----
     lookPoint.copy(pivot).add(lookAhead);
-    lookPoint.y += 0.4 - Math.min(0.35, Math.max(0, rig.pitch - 0.6) * 0.5);
+    lookPoint.y += 0.15 - Math.min(0.35, Math.max(0, rig.pitch - 0.6) * 0.5);
     // close to the hero, look a bit higher so the hero isn't cut off by the bottom edge
     lookYOffset = damp(lookYOffset, collDist < 3 ? 0.25 : 0, 4, dt);
     lookPoint.y += lookYOffset;

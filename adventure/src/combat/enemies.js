@@ -159,6 +159,8 @@ export function init(ctx) {
     ctx.camera.updateMatrixWorld();
   }
 
+  ctx.combat.debugView = name => { window.__combatCam = name; debugCam(); };
+
   return {
     update(dt) {
       if (ctx.paused) return;
