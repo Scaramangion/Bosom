@@ -35,10 +35,11 @@ def world(over=None):  # every mesh's triangles in world space, through the node
         nd = g['nodes'][ni]; o = (over or {}).get(ni, {}); R = qmat(o.get('rotation', nd.get('rotation', [0, 0, 0, 1]))); tr = np.array(o.get('translation', nd.get('translation', [0, 0, 0])), float)
         M2, t2 = M @ R, t + M @ tr
         if 'mesh' in nd:
-            pr = g['meshes'][nd['mesh']]['primitives'][0]['attributes']; P = acc(pr['POSITION']) @ M2.T + t2; tris.append(P); uvs.append(acc(pr['TEXCOORD_0'])); cols.append(acc(pr['COLOR_0']))
+            pr = g['meshes'][nd['mesh']]['primitives'][0]['attributes']; P = acc(pr['POSITION']) @ M2.T + t2; tris.append((nd['mesh'], P)); uvs.append((nd['mesh'], acc(pr['TEXCOORD_0']))); cols.append((nd['mesh'], acc(pr['COLOR_0'])))
         for c in nd.get('children', []): walk(c, M2, t2)
     for r in g['scenes'][0]['nodes']: walk(r, np.eye(3), np.zeros(3))
-    return np.concatenate(tris), np.concatenate(uvs), np.concatenate(cols)
+    srt = lambda L: np.concatenate([a for _, a in sorted(L, key=lambda q: q[0])])  # in mesh order (the .obj's order), whatever the depth of the tree
+    return srt(tris), srt(uvs), srt(cols)
 P, UV, C = world(); n = len(P)
 check(all(a.get('min') is None or len(a['min']) for a in g['accessors']), 'accessors')
 iv = g['bufferViews'][g['images'][0]['bufferView']]; png = B[iv['byteOffset']:iv['byteOffset'] + iv['byteLength']]; check(png[:8] == b'\x89PNG\r\n\x1a\n', 'embedded PNG'); tex = np.array(Image.open(io.BytesIO(png)).convert('RGBA'))

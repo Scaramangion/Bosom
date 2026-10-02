@@ -219,22 +219,32 @@ function frame(now) {
   requestAnimationFrame(frame); }
 // ---------- the rig in motion: each part turns about its pivot, in the picture's plane (Paper Mario) or swinging forward and back (Minecraft) ----------
 const LOOP = { idle: 4, walk: 0.9, wave: 1.4 }; // seconds per loop (what the saved animations use)
-function poseNow(t, an0) { // per part: th (turn in the picture's plane, counter-clockwise as seen from the front), ph (swing forward / back); plus the body's bob and lean
+function poseNow(t, an0) { // per part: th (turn in the picture's plane, counter-clockwise as seen from the front), ph (swing forward / back); plus the body's bob
   const G = MINE.geo, A = {}; let bob = 0; for (const g of G) A[g.name] = { th: ST.pose[g.name] || 0, ph: 0 }; const hh = MINE.fold.hh, an = an0 || ST.anim, has = n => A[n];
   const hang = k => has(k) ? -G.find(g => g.name === k).dir * 0.9 : 0; // arms out (a T-pose) come down to hang by the sides when walking
-  if (an === 'idle') { const b = Math.sin(t * 2 * Math.PI / 2); bob = (b * 0.5 + 0.5) * 0.012 * hh; if (has('head')) A.head.th += 0.06 * Math.sin(t * 2 * Math.PI / 4); if (has('armL')) A.armL.th -= 0.05 * b; if (has('armR')) A.armR.th += 0.05 * b; A.torso.th += 0.015 * Math.sin(t * 2 * Math.PI / 4); } // loops every 4 s
-  if (an === 'walk') { const p = t * 2 * Math.PI / 0.9, w = Math.sin(p); bob = Math.abs(Math.cos(p)) * 0.025 * hh; if (has('legL')) { A.legL.ph += 0.55 * w; A.legR.ph -= 0.55 * w; } if (has('armL')) { A.armL.ph -= 0.45 * w; A.armR.ph += 0.45 * w; A.armL.th += hang('armL'); A.armR.th += hang('armR'); } if (has('head')) A.head.th += 0.04 * Math.sin(p * 2); }
-  if (an === 'wave') { if (has('armR')) A.armR.th += hang('armR') + 2.55 + 0.38 * Math.sin(t * 2 * Math.PI / 0.7); if (has('armL')) A.armL.th += hang('armL') * 0.5; if (has('head')) A.head.th += 0.08 * Math.sin(t * 2 * Math.PI / 1.4); bob = 0.006 * hh * Math.sin(t * 2 * Math.PI / 0.7); }
+  if (an === 'idle') { const b = Math.sin(t * 2 * Math.PI / 2); bob = (b * 0.5 + 0.5) * 0.012 * hh; if (has('head')) A.head.th += 0.06 * Math.sin(t * 2 * Math.PI / 4); if (has('armL')) A.armL.th -= 0.05 * b; if (has('armR')) A.armR.th += 0.05 * b;
+    if (has('foreL')) A.foreL.th -= 0.04 * b; if (has('foreR')) A.foreR.th += 0.04 * b; A.torso.th += 0.015 * Math.sin(t * 2 * Math.PI / 4); } // loops every 4 s
+  if (an === 'walk') { const p = t * 2 * Math.PI / 0.9, w = Math.sin(p), c = Math.cos(p); bob = Math.abs(c) * 0.025 * hh;
+    if (has('legL')) { A.legL.ph += 0.55 * w; A.legR.ph -= 0.55 * w; } if (has('shinL')) { A.shinL.ph -= 0.75 * Math.max(0, c); A.shinR.ph -= 0.75 * Math.max(0, -c); } // the knee folds as the leg swings through
+    if (has('armL')) { A.armL.ph -= 0.45 * w; A.armR.ph += 0.45 * w; A.armL.th += hang('armL'); A.armR.th += hang('armR'); } if (has('foreL')) { A.foreL.ph += 0.35 + 0.2 * Math.max(0, -w); A.foreR.ph += 0.35 + 0.2 * Math.max(0, w); }
+    if (has('head')) A.head.th += 0.04 * Math.sin(p * 2); }
+  if (an === 'wave') { const q = Math.sin(t * 2 * Math.PI / 0.7); if (has('armR')) A.armR.th += hang('armR') + (has('foreR') ? 1.9 : 2.55 + 0.38 * q); if (has('foreR')) A.foreR.th += 0.55 + 0.55 * q; // the forearm waves from the elbow
+    if (has('armL')) A.armL.th += hang('armL') * 0.5; if (has('head')) A.head.th += 0.08 * Math.sin(t * 2 * Math.PI / 1.4); bob = 0.006 * hh * q; }
   return { A, bob }; }
-function applyPose(t) { // rest mesh -> posed mesh: a part turns about its own pivot, then everything turns with the torso about the hips and bobs
-  const G = MINE.geo, { A, bob } = poseNow(t), out = MINE.dyn, rest = MINE.rest, T = G.find(g => g.name === 'torso'), tA = A.torso, tc = Math.cos(tA.th), ts = Math.sin(tA.th); let o = 0;
-  for (const g of G) { const a = A[g.name], c = Math.cos(a.th), sn = Math.sin(a.th), cp = Math.cos(a.ph), sp = Math.sin(a.ph), [px, py, pz] = g.pv, own = g.name !== 'torso';
-    for (let i = 0; i < g.n; i++, o += 7) { let x = rest[o], y = rest[o + 1], z = rest[o + 2];
-      if (own) { let dx = x - px, dz = z - pz; x = px + c * dx - sn * dz; z = pz + sn * dx + c * dz; const dy = y - py; dz = z - pz; y = py + cp * dy - sp * dz; z = pz + sp * dy + cp * dz; }
-      const dx = x - T.pv[0], dz = z - T.pv[2]; out[o] = T.pv[0] + tc * dx - ts * dz; out[o + 1] = y; out[o + 2] = T.pv[2] + ts * dx + tc * dz + bob; } }
-  const g = groups.find(q => q.at === 'rig'); if (g) { gl.bindBuffer(gl.ARRAY_BUFFER, g.b); gl.bufferSubData(gl.ARRAY_BUFFER, 0, out); } }
-const pivotNow = (name, t) => { const G = MINE.geo, g = G.find(q => q.name === name), T = G.find(q => q.name === 'torso'), { A, bob } = poseNow(t), tc = Math.cos(A.torso.th), ts = Math.sin(A.torso.th), dx = g.pv[0] - T.pv[0], dz = g.pv[2] - T.pv[2];
-  return [T.pv[0] + tc * dx - ts * dz, g.pv[1], T.pv[2] + ts * dx + tc * dz + bob]; };
+function frames(t) { // every part's place in the world: x' = M x + v; a part turns about its own pivot, then moves with its parent (the torso also bobs)
+  const G = MINE.geo, { A, bob } = poseNow(t), F = [];
+  G.forEach((g, k) => { const a = A[g.name], c = Math.cos(a.th), sn = Math.sin(a.th), cp = Math.cos(a.ph), sp = Math.sin(a.ph), Ri = [c, 0, -sn, 0, 1, 0, sn, 0, c], Rs = [1, 0, 0, 0, cp, -sp, 0, sp, cp];
+    const mm = (X, Y) => [0, 1, 2].flatMap(i => [0, 1, 2].map(j => X[i * 3] * Y[j] + X[i * 3 + 1] * Y[3 + j] + X[i * 3 + 2] * Y[6 + j])), mv = (X, v) => [0, 1, 2].map(i => X[i * 3] * v[0] + X[i * 3 + 1] * v[1] + X[i * 3 + 2] * v[2]);
+    const Rk = g.name === 'torso' ? Ri : mm(Rs, Ri), p = g.pv, rp = mv(Rk, p), lv = [p[0] - rp[0], p[1] - rp[1], p[2] - rp[2] + (g.parent < 0 ? bob : 0)];
+    if (g.parent < 0) F.push({ M: Rk, v: lv }); else { const P = F[g.parent], M = mm(P.M, Rk), v = mv(P.M, lv); F.push({ M, v: [v[0] + P.v[0], v[1] + P.v[1], v[2] + P.v[2]] }); } });
+  return F; }
+function applyPose(t) { // rest mesh -> posed mesh
+  const G = MINE.geo, F = frames(t), out = MINE.dyn, rest = MINE.rest; let o = 0;
+  G.forEach((g, k) => { const { M, v } = F[k]; for (let i = 0; i < g.n; i++, o += 7) { const x = rest[o], y = rest[o + 1], z = rest[o + 2];
+    out[o] = M[0] * x + M[1] * y + M[2] * z + v[0]; out[o + 1] = M[3] * x + M[4] * y + M[5] * z + v[1]; out[o + 2] = M[6] * x + M[7] * y + M[8] * z + v[2]; } });
+  const gr = groups.find(q => q.at === 'rig'); if (gr) { gl.bindBuffer(gl.ARRAY_BUFFER, gr.b); gl.bufferSubData(gl.ARRAY_BUFFER, 0, out); } }
+const pivotNow = (name, t) => { const G = MINE.geo, k = G.findIndex(q => q.name === name), g = G[k], F = frames(t), P = g.parent < 0 ? F[k] : F[g.parent], p = g.pv; // a pivot moves with its parent
+  return [0, 1, 2].map(i => P.M[i * 3] * p[0] + P.M[i * 3 + 1] * p[1] + P.M[i * 3 + 2] * p[2] + P.v[i]); };
 function toScreen(P) { const rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), q = [0, 1, 2, 3].map(j => P[0] * M[j] + P[1] * M[4 + j] + P[2] * M[8 + j] + M[12 + j]); return [rc.left + (q[0] / q[3] + 1) / 2 * rc.width, rc.top + (1 - q[1] / q[3]) / 2 * rc.height]; }
 const rigLive = () => ST.mode === 'mine' && MINE.geo && ST.tool !== 'cut' && groups.some(g => g.at === 'rig');
 function joints(t) { const box = $('joints'); if (!(rigLive() && ST.tool === 'pose' && MINE.rig.humanoid)) { box.innerHTML = ''; return; }

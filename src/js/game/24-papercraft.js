@@ -730,7 +730,8 @@
         // limbs). Read from the silhouette alone: the neck is the narrowest row under the widest part of the head; the hips are where the legs part
         // (air under the middle); the arms are what lies outside the torso's own width (taken from rows where arm and body show a gap, else from
         // the chest). Each limb overlaps its parent by a few px, so a joint never opens a hole when it turns. px: RGBA (W wide); rect [x, y, w, h].
-        // Returns { humanoid, parts: [{ name, parent, pivot: [x, y] (px in the rect), mask (Uint8Array w*h), dir (radians, the limb's direction, 0 = down) }] }.
+        // Returns { humanoid, parts: [{ name, parent (index), pivot: [x, y] (px in the rect), mask (Uint8Array w*h), dir (radians, the limb's direction, 0 = down) }] }.
+        // Limbs have two bones (o.bend !== false): armL/armR with foreL/foreR from the elbow, legL/legR with shinL/shinR from the knee.
         // A figure without a neck or a leg split still gets a one-part rig (humanoid: false), so anything can at least bob and sway.
         function paperRig(px, W, rect, o = {}) {
             const [X0, Y0, w, h] = rect, a = new Uint8Array(w * h); let top = h, bot = -1;
@@ -758,18 +759,31 @@
                 const seen = new Uint8Array(w * h), q = []; for (let y = neck + 1; y < neck + 1 + Math.max(2, (hip - neck) * 0.35); y++) for (let x = 0; x < w; x++) if (lab[y * w + x] === arm) { seen[y * w + x] = 1; q.push(y * w + x); }
                 for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy, j = yy * w + xx; if (xx >= 0 && yy >= 0 && xx < w && yy < h && lab[j] === arm && !seen[j]) { seen[j] = 1; q.push(j); } } }
                 for (let i = 0; i < w * h; i++) if (lab[i] === arm && !seen[i]) { const x = i % w, y = (i / w) | 0; lab[i] = y > hip ? (x < legX ? 4 : 5) : 0; } }
-            const names = ['torso', 'head', 'armL', 'armR', 'legL', 'legR'], shoulder = neck + Math.max(1, Math.round((hip - neck) * 0.12));
-            const pivots = [[cx, hip], [cx, neck], [cx - coreL, shoulder], [cx + coreR, shoulder], [legX - (legX - (cx - coreL)) * 0.5, hip], [legX + ((cx + coreR) - legX) * 0.5, hip]];
-            const lap = o.overlap || Math.max(2, Math.round(H * 0.012)), parts = [];
-            for (let k = 0; k < (humanoid ? 6 : 1); k++) { const m = new Uint8Array(w * h); let any = 0, mx = 0, my = 0;
+            if (humanoid) for (let k = 2; k <= 5; k++) { // thin wisps (a lock of hair beside an arm) are not limb: open the limb by 1 px and hand what falls off back to the head or torso
+                const er = new Uint8Array(w * h); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { let all = 1; for (let dy = -1; dy <= 1 && all; dy++) for (let dx = -1; dx <= 1; dx++) if (lab[(y + dy) * w + x + dx] !== k) { all = 0; break; } er[y * w + x] = all; }
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (lab[i] !== k) continue; let keep = 0; for (let dy = -1; dy <= 1 && !keep; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < w && yy < h && er[yy * w + xx]) { keep = 1; break; } }
+                    if (!keep) lab[i] = y <= neck + 1 ? 1 : 0; } }
+            const names = ['torso', 'head', 'armL', 'armR', 'legL', 'legR', 'foreL', 'foreR', 'shinL', 'shinR'], up = [-1, 0, 0, 0, 0, 0, 2, 3, 4, 5], shoulder = neck + Math.max(1, Math.round((hip - neck) * 0.12));
+            const pivots = [[cx, hip], [cx, neck], [cx - coreL, shoulder], [cx + coreR, shoulder], [legX - (legX - (cx - coreL)) * 0.5, hip], [legX + ((cx + coreR) - legX) * 0.5, hip], null, null, null, null];
+            if (humanoid && o.bend !== false) for (let k = 2; k <= 5; k++) { // two bones per limb: the elbow / knee halfway along it, from the joint to its far tip
+                const P = pivots[k]; let tip = null, best = -1; for (let i = 0; i < w * h; i++) if (lab[i] === k) { const d = (i % w - P[0]) ** 2 + (((i / w) | 0) - P[1]) ** 2; if (d > best) { best = d; tip = [i % w, (i / w) | 0]; } }
+                if (!tip) continue; const L = Math.sqrt(best), ax = (tip[0] - P[0]) / (L || 1), ay = (tip[1] - P[1]) / (L || 1), r = (k < 4 ? 0.5 : 0.52) * L;
+                if (L < H * 0.08) continue; pivots[k + 4] = [P[0] + ax * r, P[1] + ay * r];
+                for (let i = 0; i < w * h; i++) if (lab[i] === k && ((i % w) - P[0]) * ax + (((i / w) | 0) - P[1]) * ay > r) lab[i] = k + 4; }
+            if (humanoid) for (let k = 1; k <= 9; k++) { // each part is one piece: stray islands go back to the torso (or the head, above the neck)
+                const seen = new Uint8Array(w * h), comps = []; for (let s0 = 0; s0 < w * h; s0++) { if (lab[s0] !== k || seen[s0]) continue; const q = [s0]; seen[s0] = 1;
+                    for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy, j = yy * w + xx; if (xx >= 0 && yy >= 0 && xx < w && yy < h && lab[j] === k && !seen[j]) { seen[j] = 1; q.push(j); } } } comps.push(q); }
+                comps.sort((a, b) => b.length - a.length); for (const q of comps.slice(1)) for (const i of q) lab[i] = k !== 1 && ((i / w) | 0) <= neck + 1 ? 1 : 0; }
+            const lap = o.overlap || Math.max(2, Math.round(H * 0.012)), parts = [], idx = new Int32Array(10).fill(-1), kids = k => up.map((u, j) => u === k ? j : -1).filter(j => j >= 0);
+            for (let k = 0; k < (humanoid ? 10 : 1); k++) { const m = new Uint8Array(w * h); let any = 0, mx = 0, my = 0;
                 for (let i = 0; i < w * h; i++) if (lab[i] === k) { m[i] = 1; any++; mx += i % w; my += (i / w) | 0; }
-                if (!any) continue;
-                if (k) for (let i = 0; i < w * h; i++) if (lab[i] === k) { const x = i % w, y = (i / w) | 0; // reach a few px into the parent (the torso), so the joint stays closed when it turns
-                    for (let yy = Math.max(0, y - lap); yy <= Math.min(h - 1, y + lap); yy++) for (let xx = Math.max(0, x - lap); xx <= Math.min(w - 1, x + lap); xx++) if (lab[yy * w + xx] === 0) m[yy * w + xx] = 1; }
-                if (!k && humanoid) for (let i = 0; i < w * h; i++) if (lab[i] > 0) { const x = i % w, y = (i / w) | 0; // the torso reaches into each limb as well: both sides of a joint overlap
-                    for (let yy = Math.max(0, y - lap); yy <= Math.min(h - 1, y + lap) && !m[i]; yy++) for (let xx = Math.max(0, x - lap); xx <= Math.min(w - 1, x + lap); xx++) if (lab[yy * w + xx] === 0) { m[i] = 1; break; } }
-                mx /= any; my /= any; const pv = pivots[k];
-                parts.push({ name: names[k], parent: k ? 0 : -1, pivot: pv, mask: m, dir: Math.atan2(mx - pv[0], my - pv[1]) }); }
+                if (!any || !pivots[k]) continue;
+                if (humanoid) { const jr2 = (H * 0.1) ** 2, joint = new Map(); // reach a few px into the parent and each child, around the joint only: both sides overlap there, so it never opens a hole when it turns
+                    if (up[k] >= 0) joint.set(up[k], pivots[k]); for (const c of kids(k)) if (pivots[c]) joint.set(c, pivots[c]);
+                    for (let i = 0; i < w * h; i++) if (lab[i] === k) { const x = i % w, y = (i / w) | 0;
+                        for (let yy = Math.max(0, y - lap); yy <= Math.min(h - 1, y + lap); yy++) for (let xx = Math.max(0, x - lap); xx <= Math.min(w - 1, x + lap); xx++) { const J = joint.get(lab[yy * w + xx]); if (J && (xx - J[0]) ** 2 + (yy - J[1]) ** 2 <= jr2) m[yy * w + xx] = 1; } } }
+                mx /= any; my /= any; const pv = pivots[k]; idx[k] = parts.length;
+                parts.push({ name: names[k], parent: k ? idx[up[k]] : -1, pivot: pv, mask: m, dir: Math.atan2(mx - pv[0], my - pv[1]) }); }
             if (!humanoid) parts[0].mask = whole;
             return { humanoid, parts, neck, hip, crotch, cx, core: [coreL, coreR] };
         }
