@@ -397,7 +397,7 @@ export class Wolf {
     const M = this.mgr;
     if (!this.frozen) this.think(dt); else { this.st += dt; this.lookTarget = M.heroPos(); }
     const fwd = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading));
-    if (this.state !== 'lunge') this.ground.addScaledVector(fwd, this.speed * dt);
+    if (this.state !== 'lunge' && !this.frozen) this.ground.addScaledVector(fwd, this.speed * dt);
     // knockback
     if (this.knock.lengthSq() > 1e-4) { this.ground.addScaledVector(this.knock, dt); this.knock.multiplyScalar(Math.exp(-7 * dt)); }
     M.collide(this, dt);

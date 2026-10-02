@@ -18,17 +18,9 @@
 #k-hud { transition: opacity 1.2s ease; }
 
 /* ---------- top-left: badge + hearts + shards ---------- */
-#k-vitals { position: absolute; left: 22px; top: 18px; display: flex; align-items: flex-start; gap: 8px; }
-#k-badge { width: 74px; height: 82px; position: relative; flex: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
-#k-badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
-#k-badge::after { content: ""; position: absolute; inset: 6px 8px 10px 8px; border-radius: 50%;
-  box-shadow: 0 0 0 0 rgba(220, 40, 50, 0); transition: box-shadow .3s; }
-#k-hud.k-low #k-badge::after { animation: k-badge-low 1.05s ease-in-out infinite; }
-@keyframes k-badge-low { 0%,100% { box-shadow: 0 0 0 0 rgba(220,40,50,0); } 18% { box-shadow: 0 0 18px 4px rgba(220,40,50,.55); } }
-
-#k-vit-right { display: flex; flex-direction: column; gap: 7px; padding-top: 9px; }
-#k-hearts { display: grid; grid-template-columns: repeat(10, 26px); gap: 2px 3px; }
-.k-heart { width: 26px; height: 24px; position: relative; filter: drop-shadow(0 1.5px 1.5px rgba(0,0,0,.6)); transform-origin: 50% 60%; }
+#k-vitals { position: absolute; left: 34px; top: 26px; }
+#k-hearts { display: grid; grid-template-columns: repeat(10, 24px); gap: 3px 2px; }
+.k-heart { width: 24px; height: 22px; position: relative; filter: drop-shadow(0 1.5px 1.5px rgba(0,0,0,.6)); transform-origin: 50% 60%; }
 .k-heart svg { width: 100%; height: 100%; overflow: visible; display: block; }
 .k-heart.k-pulse { animation: k-heart-pulse .55s cubic-bezier(.3,1.6,.5,1); }
 @keyframes k-heart-pulse { 0% { transform: scale(1); } 30% { transform: scale(1.32); filter: drop-shadow(0 0 6px rgba(255,90,90,.95)); } 100% { transform: scale(1); } }
@@ -43,14 +35,13 @@
 #k-hud.k-low #k-low-vignette { opacity: 1; animation: k-lowv 1.05s ease-in-out infinite; }
 @keyframes k-lowv { 0%,100% { opacity: .5; } 15% { opacity: 1; } }
 
-#k-shards { display: flex; align-items: center; gap: 6px; height: 26px; padding-left: 1px; }
-#k-shards svg { width: 18px; height: 24px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
-#k-shard-count { font-size: 21px; letter-spacing: .06em; font-variant-numeric: lining-nums tabular-nums; text-shadow: var(--k-shadow);
+#k-shards { position: absolute; right: 36px; bottom: 30px; display: flex; align-items: center; gap: 9px; }
+#k-shards svg { width: 20px; height: 27px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+#k-shard-count { font-size: 26px; letter-spacing: .1em; font-variant-numeric: lining-nums tabular-nums; text-shadow: var(--k-shadow);
   color: var(--k-cream); min-width: 3ch; transition: color .4s; }
 #k-shards.k-bump svg { animation: k-shard-bump .6s cubic-bezier(.3,1.7,.5,1); }
 #k-shards.k-bump #k-shard-count { color: #bff3ea; }
 @keyframes k-shard-bump { 0% { transform: scale(1) rotate(0); } 35% { transform: scale(1.45) rotate(-12deg); } 100% { transform: scale(1) rotate(0); } }
-#k-shard-label { font-size: 11px; letter-spacing: .32em; text-transform: uppercase; color: rgba(246,238,219,.62); text-shadow: var(--k-shadow); margin-left: 4px; }
 
 /* ---------- top-right: action ring ---------- */
 #k-actions { position: absolute; right: 26px; top: 20px; width: 196px; height: 150px; }
@@ -78,7 +69,7 @@
 #k-btn-c .k-lab { font-size: 11px; }
 
 /* ---------- bottom-right: minimap ---------- */
-#k-map { position: absolute; right: 26px; bottom: 26px; width: 208px; height: 236px; }
+#k-map { position: absolute; left: 26px; bottom: 22px; width: 208px; height: 236px; }
 #k-map-disc { position: absolute; left: 14px; top: 14px; width: 180px; height: 180px; border-radius: 50%; overflow: hidden;
   box-shadow: 0 6px 18px rgba(0,0,0,.45); }
 #k-map-canvas { width: 100%; height: 100%; display: block; }
@@ -161,3 +152,7 @@
   .k-heart { width: 20px; height: 19px; }
   #k-area-card .k-name { font-size: 34px; }
 }
+#k-who { display: flex; align-items: center; gap: 14px; margin-bottom: -4px; }
+#k-who img { width: 58px; height: 64px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
+#k-who .k-who-n { font-size: 26px; letter-spacing: .22em; font-variant: small-caps; }
+#k-who .k-who-s { font-size: 12px; letter-spacing: .3em; text-transform: uppercase; color: rgba(233,215,166,.7); }

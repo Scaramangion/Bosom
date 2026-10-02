@@ -100,6 +100,9 @@ export function makeMaterials() {
   M.redtile = weather(std(T.redTileTex()), { moss: 0.3 });
   M.soil = weather(std(T.soilTex(), { normalScale: new THREE.Vector2(1.5, 1.5) }), {});
   M.hay = weather(std(T.thatchTex()), {});
+  M.flower = weather(new THREE.MeshStandardMaterial({ roughness: 0.8, vertexColors: true }), {});
+  M.water = new THREE.MeshStandardMaterial({ color: 0x0c1a18, roughness: 0.05, metalness: 0.0, vertexColors: true });
+  M.canvas = new THREE.MeshStandardMaterial({ map: T.clothTex().map, normalMap: T.clothTex().normalMap, roughness: 0.95, vertexColors: true, side: THREE.DoubleSide });
   M.iron = new THREE.MeshStandardMaterial({ color: 0x2a2724, roughness: 0.55, metalness: 0.75, vertexColors: true });
   M.rope = new THREE.MeshStandardMaterial({ color: 0x8a7550, roughness: 1, vertexColors: true });
   const cl = T.clothTex();

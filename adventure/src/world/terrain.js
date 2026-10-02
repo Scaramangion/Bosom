@@ -8,7 +8,6 @@ import { heightAt, normalAt, WORLD_SIZE, ridged, fbm, smoothstep } from './layou
 import { getTerrainData, DATA_GLSL, HALF } from './terrainData.js';
 import { noiseTexture, grassGround, dirtGround, rockSurface, sandGround, normalMap } from './textures.js';
 import { buildBackdrop } from './backdrop.js';
-import { devEnvironment } from './devenv.js';
 
 export const GRASS_COLORS = { lush: '#5f9431', dry: '#a5a843', deep: '#3c6e27', forest: '#3d4a22' };
 
@@ -16,7 +15,6 @@ const CHUNK = 50;
 const LODS = [{ step: 1, dist: 0 }, { step: 2, dist: 115 }, { step: 5, dist: 250 }];
 
 export async function init(ctx) {
-  devEnvironment(ctx);
   const D = getTerrainData();
   const N = D.N;
   const H = (i, j) => D.heights[Math.min(N - 1, Math.max(0, j)) * N + Math.min(N - 1, Math.max(0, i))];
@@ -175,22 +173,32 @@ const TERRAIN_SPLAT = /* glsl */`
   vec3 gn = tnrm(uGrassN, gu1); vec3 dn = tnrm(uDirtN, P.xz * 0.33);
   pert += vec3(gn.x, 0.0, gn.y) * (1.0 - fw) * 0.5 + vec3(dn.x, 0.0, dn.y) * fw * 0.6;
   float rough = 0.96;
-  // ---------- dirt paths: height-blended against grass
+  // ---------- dirt paths: worn, rutted, height-blended against grass
   vec2 du = P.xz * 0.26;
   vec4 dP = texture2D(uDirt, du);
-  float pm = TD.b + (nzC.g - 0.5) * 0.35;
-  float pw = smoothstep(-0.12, 0.12, pm - 0.5 + (dP.a - baseH) * 0.5);
-  vec3 dirt = dP.rgb * (0.85 + 0.3 * nzB.r) * vec3(1.02, 0.97, 0.9);
-  // grassy edge darkening (worn wheel ruts & shadowed tufts)
-  dirt *= 1.0 - 0.25 * smoothstep(0.35, 0.6, TD.b) * (1.0 - smoothstep(0.6, 0.95, TD.b));
+  vec4 dP2 = texture2D(uDirt, mat2(0.6,0.8,-0.8,0.6) * P.xz * 0.09 + 0.13);
+  float pdist = TD.b + (nzC.g - 0.5) * 0.7 + (nzB.a - 0.5) * 0.5;
+  float pm = 1.0 - smoothstep(1.0, 2.4, pdist);
+  // grass encroaching: tufts creep in at the edges and down the crown between ruts
+  float strip = (1.0 - smoothstep(0.05, 0.45, TD.b)) * smoothstep(0.4, 0.7, nzC.b);
+  pm *= 1.0 - 0.75 * strip;
+  float dH = mix(dP.a, dP2.a, 0.4);
+  float pw = smoothstep(-0.1, 0.1, pm - 0.5 + (dH - gH) * 0.6);
+  float rut = exp(-pow((TD.b - 0.95 + (nzC.r - 0.5) * 0.2) / 0.3, 2.0)) * smoothstep(0.2, 0.5, nzB.g + 0.15);
+  vec3 dirt = mix(dP.rgb, dP2.rgb, 0.4) * (0.85 + 0.3 * nzB.r) * vec3(1.04, 0.97, 0.88);
+  dirt = mix(dirt, dirt * vec3(0.62, 0.58, 0.55), rut);                // compacted wheel ruts
+  dirt = mix(dirt, dirt * vec3(1.12, 1.1, 1.05), (1.0 - rut) * smoothstep(0.6, 0.2, TD.b) * 0.6); // dusty crown
+  // shadowed tufts along the edge
+  dirt *= 1.0 - 0.22 * smoothstep(0.3, 0.55, pm) * (1.0 - smoothstep(0.55, 0.85, pm));
   col = mix(col, dirt, pw);
   vec3 dpn = tnrm(uDirtN, du);
-  pert = mix(pert, vec3(dpn.x, 0.0, dpn.y) * 0.9, pw);
+  pert = mix(pert, vec3(dpn.x, 0.0, dpn.y) * 1.1, pw);
+  rough = mix(rough, mix(0.95, 0.8, rut), pw);
   // ---------- sand / wet shore / lake bed
   vec2 su = P.xz * 0.3;
   vec4 sS = texture2D(uSand, su);
-  float sh = P.y + (nzB.g - 0.5) * 1.1 + (sS.a - 0.5) * 0.4;
-  float sw = 1.0 - smoothstep(0.75, 1.45, sh);
+  float sh = P.y + (nzB.g - 0.5) * 0.5 + (sS.a - 0.5) * 0.3;
+  float sw = 1.0 - smoothstep(0.35, 0.75, sh);
   vec3 sand = sS.rgb * vec3(1.0, 0.95, 0.85);
   sand = mix(sand, sand * vec3(0.48, 0.47, 0.4), smoothstep(0.35, -0.6, P.y));   // wet / submerged
   sand = mix(sand, vec3(0.13, 0.14, 0.08), smoothstep(-1.0, -4.0, P.y) * 0.7); // deep murky bed

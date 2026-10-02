@@ -202,7 +202,7 @@ export function init(ctx) {
       // ---- framed hero shot: over-the-shoulder 3/4, hero on the left third ----
       if (!target) {
         const fy = shot.yaw ?? 0;
-        rig.yaw = fy + Math.PI - 0.42; rig.pitch = 0.2; rig.distance = 4.6;
+        rig.yaw = fy + Math.PI + 0.38; rig.pitch = 0.2; rig.distance = 5.2;
       }
     } else if (target) {
       // Z-targeting: swing behind the hero, facing the target

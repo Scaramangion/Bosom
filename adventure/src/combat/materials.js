@@ -29,6 +29,9 @@ uniform float uDissolve; uniform vec3 uFlash; uniform vec3 uEdge; uniform float 
 varying float vShell; varying float vFurLen; varying vec2 vFurUv; varying vec3 vBindPos;
 ${NOISE}`)
     .replace('#include <color_fragment>', `#include <color_fragment>
+#ifdef USE_AOMAP
+  diffuseColor.rgb *= mix(1.0, texture2D(aoMap, vAoMapUv).r, 0.75);
+#endif
 float cbEdge = 0.0;
 if (uDissolve > 0.0) {
   float dn = cbFbm(vBindPos * 7.0);
@@ -62,20 +65,68 @@ totalEmissiveRadiance += uEdge * cbEdge * 6.0 + uFlash;
 if (uHard > 0.5) totalEmissiveRadiance += uGlowColor * uGlow * vFurLen;`);
 }
 
-export function creatureMaterials({ density = 140, comb = [0, -0.35, -0.6], furScale = 1, roughness = 0.82, sheen = 0.8, sheenColor = 0xc9c2b4, normalMap = null, normalScale = 0.6, hardRoughness = 0.55 } = {}) {
+export function creatureMaterials({ density = 140, comb = [0, -0.35, -0.6], furScale = 1, roughness = 0.82, sheen = 0.8, sheenColor = 0xc9c2b4, normalMap = null, aoMap = null, normalScale = 0.6, hardRoughness = 0.55 } = {}) {
   const u = {
     uDissolve: { value: 0 }, uFlash: { value: new THREE.Vector3() }, uEdge: { value: new THREE.Color(1.0, 0.35, 0.9) },
     uDensity: { value: density }, uComb: { value: new THREE.Vector3(...comb) }, uFurScale: { value: furScale },
     uGlow: { value: 0 }, uGlowColor: { value: new THREE.Color(1.0, 0.35, 0.08) }, uHard: { value: 0 },
   };
-  const skin = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness, metalness: 0, sheen, sheenColor: new THREE.Color(sheenColor), sheenRoughness: 0.55, normalMap, normalScale: new THREE.Vector2(normalScale, normalScale) });
+  const skin = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness, metalness: 0, sheen, sheenColor: new THREE.Color(sheenColor), sheenRoughness: 0.55, normalMap, aoMap, aoMapIntensity: 1, normalScale: new THREE.Vector2(normalScale, normalScale) });
   skin.onBeforeCompile = sh => common(sh, u);
-  skin.customProgramCacheKey = () => 'cbSkin' + (normalMap ? 'N' : '');
+  skin.customProgramCacheKey = () => 'cbSkin' + (normalMap ? 'N' : '') + (aoMap ? 'A' : '');
   const hu = { ...u, uHard: { value: 1 } };
   const hard = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: hardRoughness, metalness: 0.05 });
   hard.onBeforeCompile = sh => common(sh, hu);
   hard.customProgramCacheKey = () => 'cbHard';
   return { skin, hard, uniforms: u };
+}
+
+// Tileable overlapping-scale normal map (reptilian/goblin hide), 1024².
+let _scales = null;
+export function scaleNormalMap() {
+  if (_scales) return _scales;
+  const N = 1024, h = new Float32Array(N * N);
+  const rnd = (i, j, s) => { let x = (i * 374761393 + j * 668265263 + s * 1442695041) | 0; x = (x ^ (x >>> 13)) * 1274126177 | 0; return ((x ^ (x >>> 16)) >>> 0) / 4294967295; };
+  const COLS = 16, ROWS = 24; // scale grid (tileable)
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const fy = y / N * ROWS; const row = Math.floor(fy);
+    let best = -1, bestRow = -1e9;
+    for (let dr = -1; dr <= 1; dr++) {
+      const r = row + dr; const shift = (((r % 2) + 2) % 2) * 0.5;
+      const fx = x / N * COLS - shift; const col = Math.floor(fx);
+      for (let dc = -1; dc <= 1; dc++) {
+        const c = col + dc;
+        const jr = rnd(((c % COLS) + COLS) % COLS, ((r % ROWS) + ROWS) % ROWS, 9) * 0.15;
+        const lx = (fx - (c + 0.5)) / 0.62, ly = (fy - (r + 0.25 + jr)) / 0.95;
+        const d = lx * lx + ly * ly;
+        if (d < 1 && r > bestRow) { bestRow = r; best = (1 - d) * (0.6 + 0.4 * Math.min(1, (ly + 1))) ; }
+      }
+    }
+    const fine = rnd(x, y, 3) * 0.04;
+    h[y * N + x] = Math.max(0, best) * 0.9 + fine;
+  }
+  _scales = { normal: heightToNormal(h, N, 2.6, [1.5, 1.5]), ao: heightToAO(h, N, [1.5, 1.5]) };
+  return _scales;
+}
+function heightToAO(h, N, rep) {
+  const data = new Uint8Array(N * N * 4);
+  for (let i = 0; i < N * N; i++) { const v = Math.min(1, 0.35 + Math.pow(Math.min(1, h[i] / 0.55), 0.6) * 0.65) * 255; data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v; data[i * 4 + 3] = 255; }
+  const t = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.repeat.set(rep[0], rep[1]); t.needsUpdate = true;
+  return t;
+}
+function heightToNormal(h, N, s, rep) {
+  const data = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const l = h[y * N + ((x - 1 + N) % N)], r = h[y * N + ((x + 1) % N)], d = h[((y - 1 + N) % N) * N + x], u = h[((y + 1) % N) * N + x];
+    const nx = (l - r) * s, ny = (d - u) * s, nz = 1; const L = Math.hypot(nx, ny, nz);
+    const o = (y * N + x) * 4;
+    data[o] = (nx / L * 0.5 + 0.5) * 255; data[o + 1] = (ny / L * 0.5 + 0.5) * 255; data[o + 2] = (nz / L * 0.5 + 0.5) * 255; data[o + 3] = 255;
+  }
+  const t = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true; t.anisotropy = 4; t.repeat.set(rep[0], rep[1]); t.needsUpdate = true;
+  return t;
 }
 
 // Tileable leathery hide normal map (1024²): warts + creases + fine pores.

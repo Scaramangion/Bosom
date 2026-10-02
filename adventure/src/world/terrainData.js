@@ -1,6 +1,6 @@
 // Baked terrain data shared by terrain rendering + GPU foliage.
 // 1 m height grid over the 800 x 800 world and an RGBA half-float data texture:
-//   R = height (m), G = grass density 0..1, B = path mask 0..1, A = forest density 0..1
+//   R = height (m), G = grass density 0..1, B = path distance (m, 0 = centre, ~1.8 = dirt edge, cap 12), A = forest density 0..1
 import * as THREE from 'three';
 import { heightAt, pathDist, forestDensity, riverDist, smoothstep, noise2, fbm, LANDMARKS, WORLD_SIZE } from './layout.js';
 
@@ -31,7 +31,7 @@ export function getTerrainData() {
     const pd = pathDist(x, z) + noise2(x * 0.35, z * 0.35) * 0.45;
     const pm = 1 - smoothstep(1.1, 2.4, pd);
     const f = forestDensity(x, z);
-    let g = smoothstep(0.35, 1.3, h);                 // no grass under water / on wet shore
+    let g = smoothstep(0.3, 0.75, h);                 // no grass under water / on wet shore
     g *= 1 - smoothstep(0.16, 0.32, slope);          // none on rock slopes
     g *= 1 - 0.95 * (1 - smoothstep(0.7, 2.0, pd));   // thin on paths
     g *= 1 - 0.7 * f;                                 // sparse under canopy
@@ -40,7 +40,7 @@ export function getTerrainData() {
     const dv = Math.hypot(x - V.x, z - V.z); g *= 0.45 + 0.55 * smoothstep(8, 30, dv);
     g *= 0.72 + 0.28 * smoothstep(-0.3, 0.3, fbm(x * 0.06, z * 0.06, 3));
     pathMask[k] = pm; grass[k] = g; forest[k] = f;
-    tex[k * 4] = toH(h); tex[k * 4 + 1] = toH(g); tex[k * 4 + 2] = toH(pm); tex[k * 4 + 3] = toH(f);
+    tex[k * 4] = toH(h); tex[k * 4 + 1] = toH(g); tex[k * 4 + 2] = toH(Math.max(0, pd)); tex[k * 4 + 3] = toH(f);
   }
   const dataTex = new THREE.DataTexture(tex, N, N, THREE.RGBAFormat, THREE.HalfFloatType);
   dataTex.minFilter = THREE.LinearFilter; dataTex.magFilter = THREE.LinearFilter;

@@ -81,10 +81,8 @@ export async function init(ctx) {
   const hurtFlash = el('div', { id: 'k-hurt-flash' }, hud);
 
   const vitals = el('div', { id: 'k-vitals' }, hud);
-  el('div', { id: 'k-badge' }, vitals, '<img src="/ui/hero-avatar-badge.webp" alt="">');
-  const vr = el('div', { id: 'k-vit-right' }, vitals);
-  const heartsEl = el('div', { id: 'k-hearts' }, vr);
-  const shardsEl = el('div', { id: 'k-shards' }, vr, SHARD_SVG + '<span id="k-shard-count">0</span><span id="k-shard-label">Bosom Shards</span>');
+  const heartsEl = el('div', { id: 'k-hearts' }, vitals);
+  const shardsEl = el('div', { id: 'k-shards' }, hud, SHARD_SVG + '<span id="k-shard-count">000</span>');
   const shardCountEl = shardsEl.querySelector('#k-shard-count');
 
   // action ring
@@ -156,6 +154,7 @@ export async function init(ctx) {
       <div><div id="k-memory"><video src="/ui/opening-video.mp4" muted loop playsinline preload="none"></video></div>
         <div id="k-memory-cap">A memory of home</div></div>
       <div id="k-pause-info">
+        <div id="k-who"><img src="/ui/hero-avatar-badge.webp" alt=""><div><div class="k-who-n">Koto</div><div class="k-who-s">of Brennan's Hollow</div></div></div>
         <div class="k-row"><span class="k-k">Region</span><span class="k-v" data-f="region"></span></div>
         <div class="k-row"><span class="k-k">Vitality</span><span class="k-v" data-f="hearts"></span></div>
         <div class="k-row"><span class="k-k">Bosom Shards</span><span class="k-v" data-f="shards"></span></div>
@@ -275,7 +274,7 @@ export async function init(ctx) {
   // events
   ctx.on('rupee', d => {
     shards += (d && Number.isFinite(d.amount)) ? d.amount : (Number.isFinite(d) ? d : 1);
-    shardCountEl.textContent = shards;
+    shardCountEl.textContent = String(shards).padStart(3, '0');
     shardsEl.classList.remove('k-bump'); void shardsEl.offsetWidth; shardsEl.classList.add('k-bump');
   });
   ctx.on('hero-hurt', () => {

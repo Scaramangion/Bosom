@@ -71,11 +71,12 @@ function riverDist(x, z) {
 }
 
 // --- dirt path network (spawn -> village -> shrine, spawn -> lake, spawn -> forest edge)
-const PATH_CTRL = [
-  [[0, 0], [10, 6], [22, 8], [34, 15], [46, 17], [55, 20]],
-  [[55, 20], [56, 2], [50, -18], [40, -42], [33, -68], [34, -92], [27, -114], [21, -130], [20, -140]],
-  [[0, 0], [-7, -9], [-13, -16], [-22, -21], [-29, -29]],
-  [[0, 0], [-8, 10], [-14, 22], [-22, 33], [-27, 44]],
+const PATH_CTRL = [ // [halfWidth, control points]
+  [2.6, [[0, 0], [3, -14], [7, -28], [8, -40], [10, -56], [14, -74], [16, -95], [19, -114], [21, -130], [20, -140]]], // spawn -> shrine trail
+  [2.0, [[0, 0], [10, 6], [22, 8], [34, 15], [46, 17], [55, 20]]],                         // spawn -> village
+  [1.8, [[55, 20], [56, 0], [48, -22], [35, -44], [22, -62], [14, -74]]],                  // village -> shrine trail
+  [1.8, [[0, 0], [-7, -9], [-13, -16], [-22, -21], [-29, -29]]],                           // spawn -> lake
+  [1.5, [[0, 0], [-8, 10], [-14, 22], [-22, 33], [-27, 44]]],                              // spawn -> forest edge
 ];
 function catmull(pts, sub) {
   const out = [];
@@ -93,13 +94,14 @@ function catmull(pts, sub) {
   out.push(pts[pts.length - 1]);
   return out;
 }
-export const PATHS = PATH_CTRL.map(c => {
+export const PATHS = PATH_CTRL.map(([w, c]) => {
   const pts = catmull(c, 6);
   let minx = 1e9, minz = 1e9, maxx = -1e9, maxz = -1e9;
   for (const [x, z] of pts) { minx = Math.min(minx, x); maxx = Math.max(maxx, x); minz = Math.min(minz, z); maxz = Math.max(maxz, z); }
-  return { pts, minx: minx - 12, maxx: maxx + 12, minz: minz - 12, maxz: maxz + 12 };
+  return { w, pts, minx: minx - 12, maxx: maxx + 12, minz: minz - 12, maxz: maxz + 12 };
 });
-// distance (m) to the nearest path centre line (capped at 12)
+// distance (m) from the nearest path, normalised so the dirt edge sits at ~1.8 m
+// for every path (wider trails subtract their extra half-width). Capped at 12.
 export function pathDist(x, z) {
   let best = 12;
   for (const p of PATHS) {
@@ -108,7 +110,7 @@ export function pathDist(x, z) {
     for (let i = 0; i < pts.length - 1; i++) {
       const ax = pts[i][0], az = pts[i][1], dx = pts[i + 1][0] - ax, dz = pts[i + 1][1] - az;
       const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz + 1e-9)));
-      const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      const d = Math.max(0, Math.hypot(x - ax - dx * t, z - az - dz * t) - (p.w - 1.8));
       if (d < best) best = d;
     }
   }
@@ -133,22 +135,28 @@ export function forestDensity(x, z) {
 
 export function heightAt(x, z) {
   const r = Math.hypot(x, z);
-  let h = 7.5 + fbm(x * 0.008, z * 0.008) * 9 + fbm(x * 0.04, z * 0.04, 3) * 1.2;
+  // central lowland plain (~1.2-2.6 m above water, like a river valley floor),
+  // rolling into bigger hills towards the rim
+  const outer = 7.5 + fbm(x * 0.008, z * 0.008) * 9 + fbm(x * 0.04, z * 0.04, 3) * 1.2;
+  const central = 1.9 + fbm(x * 0.012 + 5, z * 0.012) * 1.1 + fbm(x * 0.045, z * 0.045, 3) * 0.35;
+  let h = central + (outer - central) * smoothstep(70, 200, r);
   // mountain rim: foothills then craggy ridged peaks, capped so the corners stay sane
-  const rt = smoothstep(215, 345, r);
+  const rt = smoothstep(205, 380, r);
   if (rt > 0) {
-    const rg = ridged(x * 0.0065 + 3, z * 0.0065 - 5);
-    const cliff = smoothstep(0.35, 0.6, rt); // steep cliff band
-    h += rt * 30 + cliff * (55 + 150 * rg) + rt * rt * 40 * fbm(x * 0.02, z * 0.02, 3);
+    // foothills -> ridges -> peaks; massifs vary so the skyline has saddles and summits
+    const rg = ridged(x * 0.0062 + 3, z * 0.0062 - 5);
+    const massif = 0.45 + 0.55 * smoothstep(-0.35, 0.35, fbm(x * 0.0045 + 11, z * 0.0045 - 4, 3));
+    const lift = Math.pow(rt, 1.6);
+    h += rt * 22 + lift * (35 + 190 * rg * massif) + rt * 18 * fbm(x * 0.025, z * 0.025, 4);
   }
   // shrine hill
   h += bump(x, z, 20, -140, 70) * 22;
   // flatten village
   const vb = bump(x, z, 55, 20, 55);
-  h = h * (1 - vb) + 5 * vb;
+  h = h * (1 - vb) + 1.8 * vb;
   // spawn meadow gentle rise
   const sb = bump(x, z, 0, 0, 40);
-  h = h * (1 - sb) + (6 + fbm(x * 0.03, z * 0.03) * 0.8) * sb;
+  h = h * (1 - sb) + (2.1 + fbm(x * 0.03, z * 0.03) * 0.5) * sb;
   // lake basin
   const lb = bump(x, z, -60, -60, 70);
   h = h * (1 - lb) + (-6) * lb * lb;

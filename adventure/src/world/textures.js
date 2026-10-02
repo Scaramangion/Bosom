@@ -121,17 +121,18 @@ export function dirtGround() {
       const u = x / S * 8, v = y / S * 8;
       const n = tfbm(u, v, 8, 6, 21), m = tfbm(u * 0.5, v * 0.5, 4, 3, 22);
       const [f1, f2] = worley(u * 3, v * 3, 24, 23);
-      const pebble = Math.max(0, 1 - f1 * 3.2); // round pebbles
-      const crack = 1 - Math.min(1, (f2 - f1) * 9);
+      const pebble = Math.max(0, 1 - f1 * 4.2) * (h2(Math.floor(u * 3), Math.floor(v * 3), 9) > 0.55 ? 1 : 0);
+      const crack = 1 - Math.min(1, (f2 - f1) * 12);
       const [p1] = worley(u * 9, v * 9, 72, 24);
       const grit = Math.max(0, 1 - p1 * 3.5);
-      let hgt = 0.45 + n * 0.25 + pebble * 0.45 + grit * 0.15 - crack * 0.25 * (m > 0.45 ? 1 : 0.3);
+      const streak = tfbm(u * 0.5, v * 4, 4, 4, 25); // trodden streaks
+      let hgt = 0.45 + n * 0.3 + pebble * 0.35 + grit * 0.1 - crack * 0.15 * (m > 0.5 ? 1 : 0.2);
       hf[y * S + x] = hgt;
-      let r = 0.42 + n * 0.16 + m * 0.06, g = 0.32 + n * 0.12 + m * 0.03, b = 0.21 + n * 0.08;
-      const pc = 0.85 + h2(Math.floor(u * 3), Math.floor(v * 3), 5) * 0.3;
-      r = r * (1 - pebble * 0.6) + pebble * 0.58 * pc; g = g * (1 - pebble * 0.6) + pebble * 0.54 * pc; b = b * (1 - pebble * 0.6) + pebble * 0.48 * pc;
-      r += grit * 0.06; g += grit * 0.05; b += grit * 0.04;
-      r *= 1 - crack * 0.3; g *= 1 - crack * 0.3; b *= 1 - crack * 0.3;
+      let r = 0.50 + n * 0.16 + m * 0.07 + streak * 0.06, g = 0.43 + n * 0.13 + m * 0.05 + streak * 0.05, b = 0.33 + n * 0.1 + streak * 0.03;
+      const pc = 0.85 + h2(Math.floor(u * 3), Math.floor(v * 3), 5) * 0.25;
+      r = r * (1 - pebble * 0.5) + pebble * 0.6 * pc; g = g * (1 - pebble * 0.5) + pebble * 0.57 * pc; b = b * (1 - pebble * 0.5) + pebble * 0.52 * pc;
+      r += grit * 0.04; g += grit * 0.035; b += grit * 0.03;
+      r *= 1 - crack * 0.15; g *= 1 - crack * 0.15; b *= 1 - crack * 0.15;
       put(d, (y * S + x) * 4, r, g, b, hgt);
     }
     cache.dirtN = makeTex(normalFromHeight(hf, S, 5), S, { srgb: false });

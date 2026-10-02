@@ -67,7 +67,8 @@ export function skinBySegments(g, segs, { power = 4, eps = 0.012 } = {}) {
     for (let s = 0; s < segs.length; s++) {
       const S = segs[s];
       const d = segDist(p, S.a, S.b);
-      tmp[s].i = S.index; tmp[s].w = (S.bias ?? 1) / Math.pow(d + eps, power);
+      const b = typeof S.bias === 'function' ? S.bias(p) : (S.bias ?? 1);
+      tmp[s].i = S.index; tmp[s].w = b / Math.pow(d + eps, power);
     }
     tmp.sort((x, y) => y.w - x.w);
     let tot = 0; for (let k = 0; k < 4 && k < tmp.length; k++) tot += tmp[k].w;
