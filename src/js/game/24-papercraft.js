@@ -905,7 +905,8 @@
             const med = v => { const s = v.slice().sort((p, q) => p - q); return s[s.length >> 1]; };
             const half = [[], []]; for (const y of band) { const r = central(y); if (r) { half[0].push(cx - r[0]); half[1].push(r[1] - cx); } } // the body's own half-widths, row by row (arms held out widen only their few rows)
             const low = (v, f) => { if (!v.length) return 0; const q = v.slice().sort((a, b) => a - b); return q[Math.min(q.length - 1, Math.floor(q.length * f))]; };
-            const guess = side => inner.length >= 3 ? med(inner.map(q => q[side])) + 1 : Math.min(chest * 0.31, low(half[side], 0.35) + 1); // arms by the body with gaps: the gaps say; else the narrow rows (a T-pose's arms are a band of wide rows)
+            const gaps = inner.length >= Math.max(3, band.length * 0.05); // enough rows show a gap between arm and body (a share of the torso's rows, so the answer does not change with the picture's size)
+            const guess = side => gaps ? med(inner.map(q => q[side])) + 1 : Math.min(chest * 0.31, low(half[side], 0.35) + 1); // arms by the body with gaps: the gaps say; else the narrow rows (a T-pose's arms are a band of wide rows)
             const coreL = J.armL ? Math.max(1, cx - J.armL[0]) : guess(0), coreR = J.armR ? Math.max(1, J.armR[0] - cx) : guess(1);
             const humanoid = (forced || (hasNeck && crotch >= 0)) && hip > neck + H * 0.1 && bot - hip > H * 0.05, lab = new Int8Array(w * h).fill(-1); // 0 torso, 1 head, 2 arm L, 3 arm R, 4 leg L, 5 leg R (L = the picture's left)
             let legX = cx; if (J.legL && J.legR) legX = (J.legL[0] + J.legR[0]) / 2; else if (crotch >= 0) { const r = runs(crotch); const c = Math.round(cx); let l = 0, rr = w - 1; for (const q of r) { if (q[1] < c) l = Math.max(l, q[1]); if (q[0] > c) rr = Math.min(rr, q[0]); } legX = (l + rr) / 2; }
@@ -946,7 +947,57 @@
                 mx /= any; my /= any; const pv = pivots[k]; idx[k] = parts.length;
                 parts.push({ name: names[k], parent: k ? idx[up[k]] : -1, pivot: pv, mask: m, dir: Math.atan2(mx - pv[0], my - pv[1]) }); }
             if (!humanoid) parts[0].mask = whole;
-            return { humanoid, parts, neck, hip, crotch, cx, core: [coreL, coreR] };
+            return { humanoid, parts, neck, hip, crotch, cx, core: [coreL, coreR], top, bot, w, h, found: { neck: hasNeck, legs: crotch >= 0, arms: gaps }, placed: Object.keys(J) };
+        }
+
+        // ---- the rig as a proportional skeleton: the character measured first, then normalised, so one rig works at any size and for any
+        // proportions (a chibi, a tall knight, a creature). The torso is the unit: TORSO_HEIGHT = 1, from the hips (TORSO, the root) to the neck
+        // (HEAD). Every joint has a stable prime ID (an identity, not the maths), a parent, its position in px and normalised (origin at the
+        // hips, y up, torso = 1), an evidence state with a confidence, and default rotation limits; every bone its length in px and its ratio
+        // to the torso; left/right pairs are kept as references (with how far from mirror images they sit), never forced equal. L and R are
+        // the CHARACTER'S own sides: a figure facing you has its left on the picture's right (rig part armR holds SHOULDER_L).
+        // rig: from paperRig (its parts' pivots and masks). o.joints: the joints placed by hand (as paperRig's o.joints): USER_CONFIRMED, or only
+        // those named in o.confirmed (part names) when the others were merely held in place.
+        const PAPER_SKELETON = {
+            ID: { TORSO: 2, HEAD: 3, HIP_L: 5, HIP_R: 7, KNEE_L: 11, KNEE_R: 13, ANKLE_L: 17, ANKLE_R: 19, SHOULDER_L: 23, SHOULDER_R: 29, ELBOW_L: 31, ELBOW_R: 37, WRIST_L: 41, WRIST_R: 43, HEAD_TOP: 47 },
+            PARENT: { TORSO: null, HEAD: 'TORSO', HEAD_TOP: 'HEAD', SHOULDER_L: 'TORSO', ELBOW_L: 'SHOULDER_L', WRIST_L: 'ELBOW_L', SHOULDER_R: 'TORSO', ELBOW_R: 'SHOULDER_R', WRIST_R: 'ELBOW_R',
+                      HIP_L: 'TORSO', KNEE_L: 'HIP_L', ANKLE_L: 'KNEE_L', HIP_R: 'TORSO', KNEE_R: 'HIP_R', ANKLE_R: 'KNEE_R' },
+            CONFIDENCE: { USER_CONFIRMED: 1, OBSERVED: 0.9, INFERRED: 0.7, GEOMETRIC_FIT: 0.5, UNCERTAIN: 0.3 },
+            // the default profile (ratios of the torso), used where a part is missing; a character's own measurements always win
+            PROFILE: { torso: 1, head: 0.75, upperArm: 0.45, forearm: 0.4, upperLeg: 0.55, lowerLeg: 0.5 },
+            // default limits, degrees: th turns in the picture's plane (counter-clockwise seen from the front), ph swings forward (+) / back (-)
+            LIMITS: { HEAD: { th: [-45, 45], ph: [-40, 40] }, SHOULDER: { th: [-180, 180], ph: [-120, 170] }, ELBOW: { th: [-150, 150], ph: [0, 150] }, HIP: { th: [-60, 60], ph: [-60, 120] }, KNEE: { th: [-10, 10], ph: [-150, 0] } },
+            PAIRS: [['SHOULDER_L', 'SHOULDER_R'], ['ELBOW_L', 'ELBOW_R'], ['WRIST_L', 'WRIST_R'], ['HIP_L', 'HIP_R'], ['KNEE_L', 'KNEE_R'], ['ANKLE_L', 'ANKLE_R']]
+        };
+        function paperSkeleton(rig, o = {}) {
+            const S = PAPER_SKELETON, P = n => rig.parts.find(q => q.name === n), f = rig.found || {}, placed = new Set(o.confirmed || Object.keys(o.joints || {})); // o.confirmed: the joints the user actually moved (the rest may be held in place without being confirmed)
+            const tip = (pt, down) => { if (!pt) return null; const w = rig.w, m = pt.mask, ux = Math.sin(pt.dir), uy = Math.cos(pt.dir); let far = 0, lo = -1; // a limb's far end: its farthest reach along it (a leg: the middle of its lowest rows, the ankle)
+                for (let i = 0; i < m.length; i++) if (m[i]) { far = Math.max(far, (i % w + 0.5 - pt.pivot[0]) * ux + (((i / w) | 0) + 0.5 - pt.pivot[1]) * uy); lo = Math.max(lo, (i / w) | 0); }
+                if (!down) return [pt.pivot[0] + ux * far, pt.pivot[1] + uy * far]; let sx = 0, n = 0; for (let y = Math.max(0, lo - Math.max(1, Math.round((rig.bot - rig.top) * 0.03))); y <= lo; y++) for (let x = 0; x < w; x++) if (m[y * w + x]) { sx += x + 0.5; n++; } return [sx / n, lo + 1]; };
+            const src = { TORSO: ['torso', 'pivot'], HEAD: ['head', 'pivot'], HEAD_TOP: ['head', 'tip'], SHOULDER_R: ['armL', 'pivot'], ELBOW_R: ['foreL', 'pivot'], WRIST_R: ['foreL', 'tip'], SHOULDER_L: ['armR', 'pivot'], ELBOW_L: ['foreR', 'pivot'], WRIST_L: ['foreR', 'tip'],
+                          HIP_R: ['legL', 'pivot'], KNEE_R: ['shinL', 'pivot'], ANKLE_R: ['shinL', 'ankle'], HIP_L: ['legR', 'pivot'], KNEE_L: ['shinR', 'pivot'], ANKLE_L: ['shinR', 'ankle'] };
+            const seen = name => { const [part, what] = src[name], pt = P(part); if (!pt) return null; if (what === 'pivot' && placed.has(part)) return 'USER_CONFIRMED';
+                if (what !== 'pivot') return 'OBSERVED'; // the silhouette's own extremities: crown, hands, feet
+                if (/^(ELBOW|KNEE)/.test(name)) return 'INFERRED'; // halfway down the limb: not visible as such, measured along it
+                if (name === 'HEAD') return f.neck ? 'OBSERVED' : 'GEOMETRIC_FIT'; if (name === 'TORSO' || /^HIP/.test(name)) return f.legs ? 'OBSERVED' : 'GEOMETRIC_FIT'; return f.arms ? 'OBSERVED' : 'INFERRED'; };
+            const px = {}; for (const name in src) { const [part, what] = src[name], pt = P(part); px[name] = !pt ? null : what === 'pivot' ? pt.pivot.slice() : tip(pt, what === 'ankle'); }
+            const root = px.TORSO || [rig.cx, rig.hip], top = px.HEAD || [root[0], rig.neck], T = Math.max(1, Math.hypot(top[0] - root[0], top[1] - root[1])), d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+            const ux = (top[0] - root[0]) / T, uy = (top[1] - root[1]) / T; // the torso's own axis (up the spine), so a leaning figure is still measured upright
+            const norm = q => { const dx = q[0] - root[0], dy = q[1] - root[1]; return [+((dx * -uy + dy * ux) / T).toFixed(4) || 0, +((dx * ux + dy * uy) / T).toFixed(4) || 0]; }; // [across (+ = picture right), along the spine (+ = up)]
+            // a missing joint (no rig found, a part too small) is placed from the default profile: UNCERTAIN
+            const fill = (name, from, len, ang) => { if (px[name] || !px[from]) return; px[name] = [px[from][0] + Math.sin(ang) * len * T, px[from][1] + Math.cos(ang) * len * T]; };
+            px.TORSO = px.TORSO || root; px.HEAD = px.HEAD || top; const D = S.PROFILE, side = { L: 1, R: -1 }; // the character's left is the picture's right
+            for (const s of ['L', 'R']) { const k = side[s]; if (!px['SHOULDER_' + s]) px['SHOULDER_' + s] = [root[0] + k * 0.3 * T, root[1] - 0.92 * T]; if (!px['HIP_' + s]) px['HIP_' + s] = [root[0] + k * 0.15 * T, root[1]];
+                fill('ELBOW_' + s, 'SHOULDER_' + s, D.upperArm, k * 0.15); fill('WRIST_' + s, 'ELBOW_' + s, D.forearm, k * 0.1); fill('KNEE_' + s, 'HIP_' + s, D.upperLeg, 0); fill('ANKLE_' + s, 'KNEE_' + s, D.lowerLeg, 0); }
+            if (!px.HEAD_TOP) px.HEAD_TOP = [top[0] + ux * D.head * T, top[1] + uy * D.head * T];
+            const joints = Object.keys(S.ID).map(name => { const ev = seen(name) || 'UNCERTAIN', lim = S.LIMITS[name.replace(/_[LR]$/, '')];
+                return { id: S.ID[name], name, parent: S.PARENT[name] ? S.ID[S.PARENT[name]] : null, px: px[name].map(v => +v.toFixed(2)), pos: norm(px[name]), evidence: ev, confidence: S.CONFIDENCE[ev], limits: lim ? JSON.parse(JSON.stringify(lim)) : null }; });
+            const bones = joints.filter(j => j.parent).map(j => { const a = joints.find(q => q.id === j.parent), len = d(a.px, j.px); return { name: a.name + '>' + j.name, from: a.id, to: j.id, length: +len.toFixed(2), ratio: +(len / T).toFixed(4) }; });
+            const r = (a, b) => bones.find(q => q.name === a + '>' + b).ratio, avg = (a, b) => +((a + b) / 2).toFixed(4);
+            const profile = { torso: 1, head: r('HEAD', 'HEAD_TOP'), upperArm: avg(r('SHOULDER_L', 'ELBOW_L'), r('SHOULDER_R', 'ELBOW_R')), forearm: avg(r('ELBOW_L', 'WRIST_L'), r('ELBOW_R', 'WRIST_R')),
+                upperLeg: avg(r('HIP_L', 'KNEE_L'), r('HIP_R', 'KNEE_R')), lowerLeg: avg(r('KNEE_L', 'ANKLE_L'), r('KNEE_R', 'ANKLE_R')), shoulders: +(d(px.SHOULDER_L, px.SHOULDER_R) / T).toFixed(4), hips: +(d(px.HIP_L, px.HIP_R) / T).toFixed(4) };
+            const symmetry = S.PAIRS.map(([a, b]) => { const A = joints.find(q => q.name === a).pos, B = joints.find(q => q.name === b).pos; return { a: S.ID[a], b: S.ID[b], offset: +Math.hypot(A[0] + B[0], A[1] - B[1]).toFixed(4) }; }); // 0: mirror images across the spine
+            return { version: 1, unit: 'torso height', torsoPx: +T.toFixed(2), humanoid: !!rig.humanoid, joints, bones, profile, symmetry };
         }
 
         // ---- the GPU half: the shaders that draw the folded mesh (the game's camera in the vertex stage, the paper look in the fragment stage) ----

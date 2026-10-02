@@ -17,7 +17,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 .word{font-weight:600;font-size:17px;letter-spacing:-.01em;pointer-events:auto}button.word{padding:6px 8px;margin:-6px -8px;border-radius:10px}button.word:active{opacity:.55}
 .tr{display:flex;gap:8px}.round{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;pointer-events:auto}
 .bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:6px;border-radius:22px}
-.joint{position:fixed;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.4);pointer-events:none}.joint.edit{width:16px;height:16px;margin:-8px 0 0 -8px;background:var(--tint);box-shadow:0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.35)}.joint.edit.torso{border-radius:4px}.joint.drag{transform:scale(1.4)}#skel{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.tab{min-width:52px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
+.joint{position:fixed;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.4);pointer-events:none}.joint.edit{width:16px;height:16px;margin:-8px 0 0 -8px;background:var(--tint);box-shadow:0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.35)}.joint.edit.torso{border-radius:4px}.joint.edit.ev-OBSERVED{background:#fff;box-shadow:0 0 0 3.5px var(--tint),0 1px 4px rgba(0,0,0,.35)}.joint.edit.ev-INFERRED,.joint.edit.ev-GEOMETRIC_FIT,.joint.edit.ev-UNCERTAIN{background:rgba(255,255,255,.35);box-shadow:none;border:2.5px dashed var(--tint);margin:-10.5px 0 0 -10.5px}.joint.drag{transform:scale(1.4)}#skel{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.tab{min-width:52px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
 .tab[aria-pressed="true"]{color:var(--tint);background:var(--fill)}label.tab{font-size:11px}
 .panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
 .panel.col{flex-direction:column;align-items:stretch}.panel .line{display:flex;align-items:center;gap:10px}.panel.col>.seg{flex:none}.panel .line .seg{flex:1}.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
@@ -997,7 +997,8 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
             const med = v => { const s = v.slice().sort((p, q) => p - q); return s[s.length >> 1]; };
             const half = [[], []]; for (const y of band) { const r = central(y); if (r) { half[0].push(cx - r[0]); half[1].push(r[1] - cx); } } // the body's own half-widths, row by row (arms held out widen only their few rows)
             const low = (v, f) => { if (!v.length) return 0; const q = v.slice().sort((a, b) => a - b); return q[Math.min(q.length - 1, Math.floor(q.length * f))]; };
-            const guess = side => inner.length >= 3 ? med(inner.map(q => q[side])) + 1 : Math.min(chest * 0.31, low(half[side], 0.35) + 1); // arms by the body with gaps: the gaps say; else the narrow rows (a T-pose's arms are a band of wide rows)
+            const gaps = inner.length >= Math.max(3, band.length * 0.05); // enough rows show a gap between arm and body (a share of the torso's rows, so the answer does not change with the picture's size)
+            const guess = side => gaps ? med(inner.map(q => q[side])) + 1 : Math.min(chest * 0.31, low(half[side], 0.35) + 1); // arms by the body with gaps: the gaps say; else the narrow rows (a T-pose's arms are a band of wide rows)
             const coreL = J.armL ? Math.max(1, cx - J.armL[0]) : guess(0), coreR = J.armR ? Math.max(1, J.armR[0] - cx) : guess(1);
             const humanoid = (forced || (hasNeck && crotch >= 0)) && hip > neck + H * 0.1 && bot - hip > H * 0.05, lab = new Int8Array(w * h).fill(-1); // 0 torso, 1 head, 2 arm L, 3 arm R, 4 leg L, 5 leg R (L = the picture's left)
             let legX = cx; if (J.legL && J.legR) legX = (J.legL[0] + J.legR[0]) / 2; else if (crotch >= 0) { const r = runs(crotch); const c = Math.round(cx); let l = 0, rr = w - 1; for (const q of r) { if (q[1] < c) l = Math.max(l, q[1]); if (q[0] > c) rr = Math.min(rr, q[0]); } legX = (l + rr) / 2; }
@@ -1038,7 +1039,57 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
                 mx /= any; my /= any; const pv = pivots[k]; idx[k] = parts.length;
                 parts.push({ name: names[k], parent: k ? idx[up[k]] : -1, pivot: pv, mask: m, dir: Math.atan2(mx - pv[0], my - pv[1]) }); }
             if (!humanoid) parts[0].mask = whole;
-            return { humanoid, parts, neck, hip, crotch, cx, core: [coreL, coreR] };
+            return { humanoid, parts, neck, hip, crotch, cx, core: [coreL, coreR], top, bot, w, h, found: { neck: hasNeck, legs: crotch >= 0, arms: gaps }, placed: Object.keys(J) };
+        }
+
+        // ---- the rig as a proportional skeleton: the character measured first, then normalised, so one rig works at any size and for any
+        // proportions (a chibi, a tall knight, a creature). The torso is the unit: TORSO_HEIGHT = 1, from the hips (TORSO, the root) to the neck
+        // (HEAD). Every joint has a stable prime ID (an identity, not the maths), a parent, its position in px and normalised (origin at the
+        // hips, y up, torso = 1), an evidence state with a confidence, and default rotation limits; every bone its length in px and its ratio
+        // to the torso; left/right pairs are kept as references (with how far from mirror images they sit), never forced equal. L and R are
+        // the CHARACTER'S own sides: a figure facing you has its left on the picture's right (rig part armR holds SHOULDER_L).
+        // rig: from paperRig (its parts' pivots and masks). o.joints: the joints placed by hand (as paperRig's o.joints): USER_CONFIRMED, or only
+        // those named in o.confirmed (part names) when the others were merely held in place.
+        const PAPER_SKELETON = {
+            ID: { TORSO: 2, HEAD: 3, HIP_L: 5, HIP_R: 7, KNEE_L: 11, KNEE_R: 13, ANKLE_L: 17, ANKLE_R: 19, SHOULDER_L: 23, SHOULDER_R: 29, ELBOW_L: 31, ELBOW_R: 37, WRIST_L: 41, WRIST_R: 43, HEAD_TOP: 47 },
+            PARENT: { TORSO: null, HEAD: 'TORSO', HEAD_TOP: 'HEAD', SHOULDER_L: 'TORSO', ELBOW_L: 'SHOULDER_L', WRIST_L: 'ELBOW_L', SHOULDER_R: 'TORSO', ELBOW_R: 'SHOULDER_R', WRIST_R: 'ELBOW_R',
+                      HIP_L: 'TORSO', KNEE_L: 'HIP_L', ANKLE_L: 'KNEE_L', HIP_R: 'TORSO', KNEE_R: 'HIP_R', ANKLE_R: 'KNEE_R' },
+            CONFIDENCE: { USER_CONFIRMED: 1, OBSERVED: 0.9, INFERRED: 0.7, GEOMETRIC_FIT: 0.5, UNCERTAIN: 0.3 },
+            // the default profile (ratios of the torso), used where a part is missing; a character's own measurements always win
+            PROFILE: { torso: 1, head: 0.75, upperArm: 0.45, forearm: 0.4, upperLeg: 0.55, lowerLeg: 0.5 },
+            // default limits, degrees: th turns in the picture's plane (counter-clockwise seen from the front), ph swings forward (+) / back (-)
+            LIMITS: { HEAD: { th: [-45, 45], ph: [-40, 40] }, SHOULDER: { th: [-180, 180], ph: [-120, 170] }, ELBOW: { th: [-150, 150], ph: [0, 150] }, HIP: { th: [-60, 60], ph: [-60, 120] }, KNEE: { th: [-10, 10], ph: [-150, 0] } },
+            PAIRS: [['SHOULDER_L', 'SHOULDER_R'], ['ELBOW_L', 'ELBOW_R'], ['WRIST_L', 'WRIST_R'], ['HIP_L', 'HIP_R'], ['KNEE_L', 'KNEE_R'], ['ANKLE_L', 'ANKLE_R']]
+        };
+        function paperSkeleton(rig, o = {}) {
+            const S = PAPER_SKELETON, P = n => rig.parts.find(q => q.name === n), f = rig.found || {}, placed = new Set(o.confirmed || Object.keys(o.joints || {})); // o.confirmed: the joints the user actually moved (the rest may be held in place without being confirmed)
+            const tip = (pt, down) => { if (!pt) return null; const w = rig.w, m = pt.mask, ux = Math.sin(pt.dir), uy = Math.cos(pt.dir); let far = 0, lo = -1; // a limb's far end: its farthest reach along it (a leg: the middle of its lowest rows, the ankle)
+                for (let i = 0; i < m.length; i++) if (m[i]) { far = Math.max(far, (i % w + 0.5 - pt.pivot[0]) * ux + (((i / w) | 0) + 0.5 - pt.pivot[1]) * uy); lo = Math.max(lo, (i / w) | 0); }
+                if (!down) return [pt.pivot[0] + ux * far, pt.pivot[1] + uy * far]; let sx = 0, n = 0; for (let y = Math.max(0, lo - Math.max(1, Math.round((rig.bot - rig.top) * 0.03))); y <= lo; y++) for (let x = 0; x < w; x++) if (m[y * w + x]) { sx += x + 0.5; n++; } return [sx / n, lo + 1]; };
+            const src = { TORSO: ['torso', 'pivot'], HEAD: ['head', 'pivot'], HEAD_TOP: ['head', 'tip'], SHOULDER_R: ['armL', 'pivot'], ELBOW_R: ['foreL', 'pivot'], WRIST_R: ['foreL', 'tip'], SHOULDER_L: ['armR', 'pivot'], ELBOW_L: ['foreR', 'pivot'], WRIST_L: ['foreR', 'tip'],
+                          HIP_R: ['legL', 'pivot'], KNEE_R: ['shinL', 'pivot'], ANKLE_R: ['shinL', 'ankle'], HIP_L: ['legR', 'pivot'], KNEE_L: ['shinR', 'pivot'], ANKLE_L: ['shinR', 'ankle'] };
+            const seen = name => { const [part, what] = src[name], pt = P(part); if (!pt) return null; if (what === 'pivot' && placed.has(part)) return 'USER_CONFIRMED';
+                if (what !== 'pivot') return 'OBSERVED'; // the silhouette's own extremities: crown, hands, feet
+                if (/^(ELBOW|KNEE)/.test(name)) return 'INFERRED'; // halfway down the limb: not visible as such, measured along it
+                if (name === 'HEAD') return f.neck ? 'OBSERVED' : 'GEOMETRIC_FIT'; if (name === 'TORSO' || /^HIP/.test(name)) return f.legs ? 'OBSERVED' : 'GEOMETRIC_FIT'; return f.arms ? 'OBSERVED' : 'INFERRED'; };
+            const px = {}; for (const name in src) { const [part, what] = src[name], pt = P(part); px[name] = !pt ? null : what === 'pivot' ? pt.pivot.slice() : tip(pt, what === 'ankle'); }
+            const root = px.TORSO || [rig.cx, rig.hip], top = px.HEAD || [root[0], rig.neck], T = Math.max(1, Math.hypot(top[0] - root[0], top[1] - root[1])), d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+            const ux = (top[0] - root[0]) / T, uy = (top[1] - root[1]) / T; // the torso's own axis (up the spine), so a leaning figure is still measured upright
+            const norm = q => { const dx = q[0] - root[0], dy = q[1] - root[1]; return [+((dx * -uy + dy * ux) / T).toFixed(4) || 0, +((dx * ux + dy * uy) / T).toFixed(4) || 0]; }; // [across (+ = picture right), along the spine (+ = up)]
+            // a missing joint (no rig found, a part too small) is placed from the default profile: UNCERTAIN
+            const fill = (name, from, len, ang) => { if (px[name] || !px[from]) return; px[name] = [px[from][0] + Math.sin(ang) * len * T, px[from][1] + Math.cos(ang) * len * T]; };
+            px.TORSO = px.TORSO || root; px.HEAD = px.HEAD || top; const D = S.PROFILE, side = { L: 1, R: -1 }; // the character's left is the picture's right
+            for (const s of ['L', 'R']) { const k = side[s]; if (!px['SHOULDER_' + s]) px['SHOULDER_' + s] = [root[0] + k * 0.3 * T, root[1] - 0.92 * T]; if (!px['HIP_' + s]) px['HIP_' + s] = [root[0] + k * 0.15 * T, root[1]];
+                fill('ELBOW_' + s, 'SHOULDER_' + s, D.upperArm, k * 0.15); fill('WRIST_' + s, 'ELBOW_' + s, D.forearm, k * 0.1); fill('KNEE_' + s, 'HIP_' + s, D.upperLeg, 0); fill('ANKLE_' + s, 'KNEE_' + s, D.lowerLeg, 0); }
+            if (!px.HEAD_TOP) px.HEAD_TOP = [top[0] + ux * D.head * T, top[1] + uy * D.head * T];
+            const joints = Object.keys(S.ID).map(name => { const ev = seen(name) || 'UNCERTAIN', lim = S.LIMITS[name.replace(/_[LR]$/, '')];
+                return { id: S.ID[name], name, parent: S.PARENT[name] ? S.ID[S.PARENT[name]] : null, px: px[name].map(v => +v.toFixed(2)), pos: norm(px[name]), evidence: ev, confidence: S.CONFIDENCE[ev], limits: lim ? JSON.parse(JSON.stringify(lim)) : null }; });
+            const bones = joints.filter(j => j.parent).map(j => { const a = joints.find(q => q.id === j.parent), len = d(a.px, j.px); return { name: a.name + '>' + j.name, from: a.id, to: j.id, length: +len.toFixed(2), ratio: +(len / T).toFixed(4) }; });
+            const r = (a, b) => bones.find(q => q.name === a + '>' + b).ratio, avg = (a, b) => +((a + b) / 2).toFixed(4);
+            const profile = { torso: 1, head: r('HEAD', 'HEAD_TOP'), upperArm: avg(r('SHOULDER_L', 'ELBOW_L'), r('SHOULDER_R', 'ELBOW_R')), forearm: avg(r('ELBOW_L', 'WRIST_L'), r('ELBOW_R', 'WRIST_R')),
+                upperLeg: avg(r('HIP_L', 'KNEE_L'), r('HIP_R', 'KNEE_R')), lowerLeg: avg(r('KNEE_L', 'ANKLE_L'), r('KNEE_R', 'ANKLE_R')), shoulders: +(d(px.SHOULDER_L, px.SHOULDER_R) / T).toFixed(4), hips: +(d(px.HIP_L, px.HIP_R) / T).toFixed(4) };
+            const symmetry = S.PAIRS.map(([a, b]) => { const A = joints.find(q => q.name === a).pos, B = joints.find(q => q.name === b).pos; return { a: S.ID[a], b: S.ID[b], offset: +Math.hypot(A[0] + B[0], A[1] - B[1]).toFixed(4) }; }); // 0: mirror images across the spine
+            return { version: 1, unit: 'torso height', torsoPx: +T.toFixed(2), humanoid: !!rig.humanoid, joints, bones, profile, symmetry };
         }
 
         // ---- the GPU half: the shaders that draw the folded mesh (the game's camera in the vertex stage, the paper look in the fragment stage) ----
@@ -1241,7 +1292,8 @@ function joints(t) { // the rig drawn over the figure: a see-through ragdoll ske
   BONES = bones; const held = grab ? idx(grab.nm) : -2, ln = (w, c, only) => bones.filter(q => only == null || q[2] === only).map(([a, b]) => `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`).join('');
   sk.innerHTML = ln(ST.editJ ? 8 : 7, 'rgba(0,0,0,.22)') + ln(ST.editJ ? 4.5 : 3.5, 'rgba(255,255,255,.78)') + (held >= 0 ? ln(5.5, css('--tint'), held) : ''); // the bone in your hand, tinted
   while (box.children.length < G.length) { const d = document.createElement('div'); d.className = 'joint'; box.appendChild(d); } while (box.children.length > G.length) box.lastChild.remove();
-  G.forEach((g, k) => { const d = box.children[k]; d.className = 'joint' + (ST.editJ ? ' edit ' + g.name : '') + (jdrag && jdrag.name === g.name ? ' drag' : ''); d.dataset.name = g.name; d.title = g.name; d.style.left = piv[k][0] + 'px'; d.style.top = piv[k][1] + 'px'; });
+  const EV = { torso: 'TORSO', head: 'HEAD', armL: 'SHOULDER_R', armR: 'SHOULDER_L', foreL: 'ELBOW_R', foreR: 'ELBOW_L', legL: 'HIP_R', legR: 'HIP_L', shinL: 'KNEE_R', shinR: 'KNEE_L' }, ev = n => { const j = MINE.skel && MINE.skel.joints.find(q => q.name === EV[n]); return j ? ' ev-' + j.evidence : ''; }; // the picture's left arm is the character's right
+  G.forEach((g, k) => { const d = box.children[k]; d.className = 'joint' + (ST.editJ ? ' edit ' + g.name + ev(g.name) : '') + (jdrag && jdrag.name === g.name ? ' drag' : ''); d.dataset.name = g.name; d.title = g.name; d.style.left = piv[k][0] + 'px'; d.style.top = piv[k][1] + 'px'; });
   JOINT_AT = G.map((g, k) => [g.name, piv[k]]); }
 let JOINT_AT = [], BONES = []; // BONES: [screen a, screen b, the part that turns it (-1: none)] // where each joint was drawn last (Edit joints picks the nearest to the finger)
 let jdrag = null; // a joint being moved by hand
@@ -1250,8 +1302,9 @@ function screenToPicture(x, y) { // the point of the picture (px) under the fing
   const d = [0, 1, 2].map(i => f[i] + r[i] * nx * a / FOV + u[i] * ny / FOV); if (Math.abs(d[1]) < 1e-6) return null; const l = -e[1] / d[1], X = e[0] + l * d[0], Z = e[2] + l * d[2], s = MINE.fold.s, A = MINE.S.anchor;
   return l > 0 ? [X / s + A[0], A[1] - Z / s] : null; }
 function placeJoint(x, y) { const p = screenToPicture(x, y), nm = jdrag.name; jdrag = null; if (!p) return; // place the joint, and rebuild the rig round it
-  const J = MINE.joints = MINE.joints || {}; for (const g of MINE.geo) if (!J[g.name]) { const q = MINE.rig.parts.find(r => r.name === g.name); if (q) J[g.name] = q.pivot.slice(); } J[nm] = p;
-  rigMine(true, true); build(); window.JOINT_MOVED = (window.JOINT_MOVED || 0) + 1; }
+  const J = MINE.joints = MINE.joints || {}; for (const g of MINE.geo) if (!J[g.name]) { const q = MINE.rig.parts.find(r => r.name === g.name); if (q) J[g.name] = q.pivot.slice(); } J[nm] = p; // the others are held where they are, so only this one moves
+  MINE.confirmed = [...new Set([...(MINE.confirmed || []), nm])]; rigMine(true, true); build(); if (ST.editJ) skelHint(); window.JOINT_MOVED = (window.JOINT_MOVED || 0) + 1; }
+function skelHint() { const P = MINE.skel && MINE.skel.humanoid && MINE.skel.profile; $('poseHint').textContent = 'Drag a joint to where it is. Filled: yours. Ringed: seen. Dashed: estimated.' + (P ? ` Head ${P.head.toFixed(2)}, arm ${(P.upperArm + P.forearm).toFixed(2)}, leg ${(P.upperLeg + P.lowerLeg).toFixed(2)} torsos.` : ''); }
 const nearestJoint = (x, y) => { let best = null, bd = 34 * 34; for (const [nm, q] of JOINT_AT) { const d = (q[0] - x) ** 2 + (q[1] - y) ** 2; if (d < bd) { bd = d; best = nm; } } return best; }; // the finger needs no exact hit: the nearest joint within 34 px
 let grab = null; // a part being posed by a drag
 function pickPart(x, y) { if (BONES.length) { let best = null, bd = 30 * 30; for (const [a, b, k] of BONES) { if (k < 0) continue; const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, u = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)); // the nearest bone under the finger
@@ -1299,10 +1352,10 @@ function setTool(t) { if (ST.tool === t) t = null; const was = ST.tool; ST.tool 
 for (const b of document.querySelectorAll('[data-mark]')) b.onclick = () => { MINE.mark = b.dataset.mark; document.querySelectorAll('[data-mark]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('cutHint').textContent = MINE.mark === 'keep' ? 'Tap the person or thing you want to keep.' : 'Tap what you want removed.'; };
 $('tCut').onclick = () => setTool('cut'); $('tPose').onclick = () => setTool('pose');
 for (const b of document.querySelectorAll('[data-anim]')) b.onclick = () => { if (ST.editJ && b.dataset.anim !== 'still') $('editJ').click(); /* a motion ends Edit joints */ ST.anim = b.dataset.anim; document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x === b)); if (ST.anim === 'walk') { cam.zoom = 0; cam.to = { yaw: 0.9, pitch: 0.18 }; } };
-$('reset').onclick = () => { ST.pose = {}; if (ST.editJ && (MINE.joints || MINE.forceRig)) { MINE.joints = null; rigMine(true, true); build(); } };
+$('reset').onclick = () => { ST.pose = {}; if (ST.editJ && (MINE.joints || MINE.forceRig)) { MINE.joints = null; MINE.confirmed = null; rigMine(true, true); build(); skelHint(); } };
 $('editJ').onclick = () => { ST.editJ = !ST.editJ; $('editJ').classList.toggle('tinted', ST.editJ); $('editJ').textContent = ST.editJ ? 'Done' : 'Edit joints';
   if (ST.editJ && MINE.rig && !MINE.rig.humanoid) { MINE.forceRig = true; rigMine(true, true); build(); } // no rig found: start from the usual proportions, to be placed by hand
-  if (ST.editJ) { ST.animBefore = ST.anim; ST.anim = 'still'; ST.pose = {}; cam.to = { yaw: 0, pitch: 0.05 }; $('poseHint').textContent = 'Drag a joint to where it really is.'; setTimeout(fitFigure, 40); }
+  if (ST.editJ) { ST.animBefore = ST.anim; ST.anim = 'still'; ST.pose = {}; cam.to = { yaw: 0, pitch: 0.05 }; skelHint(); setTimeout(fitFigure, 40); }
   else { ST.anim = ST.animBefore || 'idle'; $('poseHint').textContent = MINE.rig && MINE.rig.humanoid ? 'Drag an arm, a leg or the head to pose it.' : 'No arms or legs found: Edit joints to place them.'; }
   document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim)); };
 $('tViews').onclick = () => setTool('views'); $('turn').onclick = () => { cam.zoom = 0; cam.to = { yaw: Math.cos(cam.yaw) > 0 ? Math.PI : 0, pitch: 0.12 }; };
@@ -1390,6 +1443,7 @@ function rigMine(keepRig, rerig) { const R = MINE.rig = keepRig && MINE.rig && !
   let tex = px; if (ST.abs === 'polygon') { tex = new Uint8ClampedArray(px); for (let k = 0; k < P; k++) for (const x0 of [0, w]) { // Polygon: each part's paint spread outward over its half, so no face is cut by the alpha (the facets are the outline); the geometry still reads the real alpha
     const q = [], at = (x, y) => (((k * h + y) * W2) + x0 + x) * 4; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (tex[at(x, y) + 3]) q.push(x, y);
     for (let hd = 0; hd < q.length; hd += 2) { const x = q[hd], y = q[hd + 1], o = at(x, y); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const n = at(xx, yy); if (tex[n + 3]) continue; tex[n] = tex[o]; tex[n + 1] = tex[o + 1]; tex[n + 2] = tex[o + 2]; tex[n + 3] = 255; q.push(xx, yy); } } } }
+  MINE.skel = paperSkeleton(R, { joints: MINE.joints, confirmed: MINE.confirmed }); // the rig measured as a proportional skeleton (torso = 1): saved with the file and the model
   MINE.backDU = B ? w / W2 : 0; MINE.rigPx = px; MINE.rigTex = tex; MINE.rigW = W2; MINE.rigS = R.parts.map((pt, k) => paperTrace(px, W2, [0, k * h, w, h])); TEX.rig = texOf({ px: paintLive() ? depthView() : tex, w: W2, h: h * P }, false, TEX.rig);
   document.querySelectorAll('[data-back]').forEach(x => x.setAttribute('aria-pressed', x.dataset.back === MINE.backMode)); $('tViews').disabled = false;
   document.querySelectorAll('[data-side]').forEach(x => x.setAttribute('aria-pressed', x.dataset.side === (SD ? 'picture' : 'round'))); $('flipSide').hidden = $('otherSide').hidden = !SD;
@@ -1403,7 +1457,7 @@ function makeMine(first) { if (!MINE.img) return; if (busy) { again = true; retu
 function cutNow(first) { const t0 = performance.now();
   const C = paperCutout(MINE.img, { max: ST.detail, tol: ST.tol, one: ST.one, keep: MINE.marks.filter(m => m[2]).map(m => [m[0], m[1]]), drop: MINE.marks.filter(m => !m[2]).map(m => [m[0], m[1]]), method: ST.method });
   MINE.S = paperTrace(C.px, C.w, [0, 0, C.w, C.h]); if (MINE.S) { const P = MINE.S.pts; let x0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < P.length; i += 2) { x0 = Math.min(x0, P[i]); x1 = Math.max(x1, P[i]); y1 = Math.max(y1, P[i + 1]); } MINE.S.anchor = [(x0 + x1) / 2, y1]; } // it stands on its lowest painted pixel
-  if (MINE.pend) { const r = MINE.pend; MINE.pend = null; if (r.depthMap) { const b = atob(r.depthMap); if (b.length === C.w * C.h) MINE.depthMap = Uint8Array.from(b, c => c.charCodeAt(0)); } if (r.depthFrom) ST.dsrc = r.depthFrom; if (r.layers) { ST.layersOn = true; MINE.layers = r.layers; } } // a saved Papercraft file: its depth
+  if (MINE.pend) { const r = MINE.pend; MINE.pend = null; if (r.depthMap) { const b = atob(r.depthMap); if (b.length === C.w * C.h) MINE.depthMap = Uint8Array.from(b, c => c.charCodeAt(0)); } if (r.depthFrom) ST.dsrc = r.depthFrom; if (r.layers) { ST.layersOn = true; MINE.layers = r.layers; } if (r.joints) MINE.joints = r.joints; if (r.confirmed) MINE.confirmed = r.confirmed; } // a saved Papercraft file: its depth
   if (MINE.depthMap && MINE.depthMap.length !== C.w * C.h) MINE.depthMap = null; MINE.w = C.w; MINE.px = C.px; MINE.h = C.h; MINE.area = 0; for (let i = 3; i < C.px.length; i += 4) if (C.px[i] >= 128) MINE.area++; rigMine(); MINE.ms = performance.now() - t0; MINE.method = C.method; TEX.mine = texOf(C, false, TEX.mine);
   { const v = new Uint8ClampedArray(C.full); for (let i = 0; i < C.w * C.h; i++) { if (!C.px[i * 4 + 3]) { const l = 0.299 * v[i * 4] + 0.587 * v[i * 4 + 1] + 0.114 * v[i * 4 + 2], k = ((i % C.w) + ((i / C.w) | 0)) % 6 < 3 ? 0.22 : 0.3; v[i * 4] = v[i * 4 + 1] = v[i * 4 + 2] = l * k + 18; } v[i * 4 + 3] = 255; } /* the Cut view: removed parts dark, grey and lightly striped */
     TEX.cutview = texOf({ px: v, w: C.w, h: C.h }, false, TEX.cutview); MINE.fullS = paperTrace(new Uint8ClampedArray(C.w * C.h * 4).fill(255), C.w, [0, 0, C.w, C.h]); }
@@ -1413,13 +1467,13 @@ function cutNow(first) { const t0 = performance.now();
   ST.mode = 'mine'; $('save').disabled = false; build(); depthUI(); }
 $('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); MINE.name = (f.name || 'papercraft').replace(/\.papercraft\.json$|\.[^.]+$/, '').replace(/[^\w-]+/g, '-').slice(0, 40) || 'papercraft';
   if (/json/.test(f.type) || /\.json$/i.test(f.name)) { f.text().then(t => { try { const r = JSON.parse(t); if (!r.picture) throw 0; MINE.pend = r; im.src = r.picture; if (r.shape) { ST.shape = r.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim)); } if (r.depth != null) $('thick').value = r.depth; } catch (_) { toast('That is not a Papercraft file.'); } }); e.target.value = ''; }
-  im.onload = () => { if (!MINE.pend) { MINE.depthMap = null; MINE.layers = null; } MINE.img = im; MINE.marks = []; MINE.joints = null; MINE.forceRig = false; MINE.backMode = null; MINE.backC = null; MINE.backImg = null; MINE.sideMode = null; MINE.sides = []; MINE.addSide = false; $('tCut').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
+  im.onload = () => { if (!MINE.pend) { MINE.depthMap = null; MINE.layers = null; } MINE.img = im; MINE.marks = []; MINE.joints = null; MINE.confirmed = null; MINE.forceRig = false; MINE.backMode = null; MINE.backC = null; MINE.backImg = null; MINE.sideMode = null; MINE.sides = []; MINE.addSide = false; $('tCut').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
   im.onerror = () => toast('That file could not be opened as a picture.'); if (!im.src) im.src = URL.createObjectURL(f); e.target.value = ''; };
 cv.addEventListener('webglcontextlost', e => { e.preventDefault(); toast('The phone paused the 3D view. It comes back by itself; if not, tap Papercraft.', true); }); // e.g. low memory, or the app went to the background
 cv.addEventListener('webglcontextrestored', () => { initGL(); for (const k in TEX) if (TEX[k] && TEX[k]._src) TEX[k] = texOf(TEX[k]._src, TEX[k]._rep); gbuf = gl.createBuffer(); wire = null; groups = []; build(); if (MINE.rig) depthUI(); hideToast(); window.GL_RESTORED = (window.GL_RESTORED || 0) + 1; });
 function goHome() { // the wordmark: back to the start, whatever state things are in (a stuck tool, a lost 3D view)
   if (gl.isContextLost()) { location.reload(); return; } frame.err = 0; if (ST.editJ) $('editJ').click(); setTool(null); closeSheet(); $('saveSheet').hidden = true; stroke = null; grab = null; jdrag = null;
-  Object.assign(MINE, { img: null, px: null, S: null, fullS: null, rig: null, geo: null, marks: [], joints: null, forceRig: false, backMode: null, backC: null, backImg: null, sideMode: null, sides: [], addSide: false, depthMap: null, layers: null, pend: null });
+  Object.assign(MINE, { img: null, px: null, S: null, fullS: null, rig: null, geo: null, marks: [], joints: null, confirmed: null, skel: null, forceRig: false, backMode: null, backC: null, backImg: null, sideMode: null, sides: [], addSide: false, depthMap: null, layers: null, pend: null });
   ST.mode = 'start'; ST.pose = {}; ST.anim = 'idle'; ST.dsrc = 'shape'; ST.layersOn = false; document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === 'idle'));
   for (const id of ['tCut', 'tViews', 'tPose', 'save']) $(id).disabled = true; cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; hideToast(); build(); depthUI(); refreshHello(); window.HOME = (window.HOME || 0) + 1; }
 $('home').onclick = goHome;
@@ -1466,7 +1520,7 @@ async function modelZip(m) { // glTF 2.0 binary: a node per part at its pivot (a
       if (tr) { samplers.push({ input: tIn, output: accessor(tr, 'VEC3', { anim: true }), interpolation: 'LINEAR' }); channels.push({ sampler: samplers.length - 1, target: { node: 1 + i, path: 'translation' } }); } });
     animations.push({ name: an[0].toUpperCase() + an.slice(1), channels, samplers }); }
   const imgView = view(png);
-  const gltf = { asset: { version: '2.0', generator: 'Papercraft (Saga of Koto)' }, extensionsUsed: ['KHR_materials_unlit'], scene: 0, scenes: [{ nodes: [0] }], nodes, meshes, ...(animations.length ? { animations } : {}),
+  const gltf = { asset: { version: '2.0', generator: 'Papercraft (Saga of Koto)' }, extensionsUsed: ['KHR_materials_unlit'], scene: 0, scenes: [{ nodes: [0], ...(MINE.skel && m.rig ? { extras: { papercraftSkeleton: MINE.skel } } : {}) }], nodes, meshes, ...(animations.length ? { animations } : {}),
     materials: [{ name: 'paper', pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0, roughnessFactor: 1 }, alphaMode: 'MASK', alphaCutoff: 0.5, doubleSided: true, extensions: { KHR_materials_unlit: {} } }],
     textures: [{ source: 0, sampler: 0 }], samplers: [{ magFilter: 9728, minFilter: 9728, wrapS: 33071, wrapT: 33071 }], images: [{ bufferView: imgView, mimeType: 'image/png' }],
     buffers: [{ byteLength: off }], bufferViews: views, accessors: acc };
@@ -1503,7 +1557,7 @@ for (const b of document.querySelectorAll('[data-save]')) b.onclick = async () =
   try { if (kind === 'model') { const m = meshNow(); await offer(m.name + '-papercraft.zip', await modelZip(m)); }
     else if (kind === 'png') { const p = await cutoutPng(); if (p) await offer((MINE.name || 'cutout') + '.png', p); else toast('Nothing to save: everything was removed.'); }
     else { const png = await pngOf(MINE.px, MINE.w, MINE.h); let bin = ''; for (let i = 0; i < png.length; i += 32768) bin += String.fromCharCode.apply(null, png.subarray(i, i + 32768));
-      const S = MINE.S, rec = { papercraft: 1, name: MINE.name || 'papercraft', prime: PAPER.PRIME, picture: 'data:image/png;base64,' + btoa(bin), size: [MINE.w, MINE.h], sprite: { rect: S.rect, anchor: S.anchor, pts: S.pts, rings: S.rings, tris: S.tris, ein: S.ein }, shape: ST.shape, depth: depth(), depthFrom: ST.dsrc.startsWith('p:') ? 'paint' : ST.dsrc, depthMap: MINE.depthMap ? btoa(Array.from(MINE.depthMap, c => String.fromCharCode(c)).join('')) : null, layers: ST.layersOn ? Object.assign({}, MINE.layers) : null };
+      const S = MINE.S, rec = { papercraft: 1, name: MINE.name || 'papercraft', prime: PAPER.PRIME, picture: 'data:image/png;base64,' + btoa(bin), size: [MINE.w, MINE.h], sprite: { rect: S.rect, anchor: S.anchor, pts: S.pts, rings: S.rings, tris: S.tris, ein: S.ein }, shape: ST.shape, depth: depth(), depthFrom: ST.dsrc.startsWith('p:') ? 'paint' : ST.dsrc, depthMap: MINE.depthMap ? btoa(Array.from(MINE.depthMap, c => String.fromCharCode(c)).join('')) : null, layers: ST.layersOn ? Object.assign({}, MINE.layers) : null, joints: MINE.joints || null, confirmed: MINE.confirmed || null, skeleton: MINE.skel || null };
       await offer(rec.name + '.papercraft.json', JSON.stringify(rec)); } }
   catch (e) { toast('Could not save: ' + (e && e.message || e)); } };
 // ---------- start ----------
