@@ -126,16 +126,15 @@ export function dirtGround() {
       const [p1] = worley(u * 9, v * 9, 72, 24);
       const grit = Math.max(0, 1 - p1 * 3.5);
       const streak = tfbm(u * 0.5, v * 4, 4, 4, 25); // trodden streaks
-      let hgt = 0.45 + n * 0.3 + pebble * 0.35 + grit * 0.1 - crack * 0.15 * (m > 0.5 ? 1 : 0.2);
+      let hgt = 0.45 + n * 0.3 + pebble * 0.35 + grit * 0.1;
       hf[y * S + x] = hgt;
       let r = 0.50 + n * 0.16 + m * 0.07 + streak * 0.06, g = 0.43 + n * 0.13 + m * 0.05 + streak * 0.05, b = 0.33 + n * 0.1 + streak * 0.03;
       const pc = 0.85 + h2(Math.floor(u * 3), Math.floor(v * 3), 5) * 0.25;
       r = r * (1 - pebble * 0.5) + pebble * 0.6 * pc; g = g * (1 - pebble * 0.5) + pebble * 0.57 * pc; b = b * (1 - pebble * 0.5) + pebble * 0.52 * pc;
       r += grit * 0.04; g += grit * 0.035; b += grit * 0.03;
-      r *= 1 - crack * 0.15; g *= 1 - crack * 0.15; b *= 1 - crack * 0.15;
-      put(d, (y * S + x) * 4, r, g, b, hgt);
+            put(d, (y * S + x) * 4, r, g, b, hgt);
     }
-    cache.dirtN = makeTex(normalFromHeight(hf, S, 5), S, { srgb: false });
+    cache.dirtN = makeTex(normalFromHeight(hf, S, 3), S, { srgb: false });
     return makeTex(d, S);
   });
 }

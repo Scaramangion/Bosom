@@ -69,7 +69,7 @@ const PLACE = /* glsl */`
   // soft "field" normal: mostly up, a little blade facing
   objectNormal = normalize(vec3(0.0, 1.0, 0.0) + vec3(fw.x, 0.0, fw.y) * position.x * 0.6 + vec3(bend.x, 0.0, bend.y) * 0.25);
   // colour variation shared with the terrain splat
-  vec3 tint = mix(uGLush, uGDry, smoothstep(0.42, 0.85, nz.r));
+  vec3 tint = mix(uGLush, uGDry, smoothstep(0.55, 0.95, nz.r));
   tint = mix(tint, uGDeep, smoothstep(0.45, 0.8, nz.g) * 0.75);
   tint *= 0.85 + 0.3 * nz2.g;
   tint = mix(tint, uGDry * 1.15, step(0.93, hash1(aOff.z * 7.3)) * 0.6); // a few straw blades
@@ -98,8 +98,8 @@ function makeLayerMaterial(opts) {
         varying float vT; varying vec3 vTint; varying vec3 vWPos2;
         uniform vec3 uRoot, uSunDirW, uSunCol;`)
       .replace('#include <color_fragment>', `
-        vec3 gc = mix(vTint * 0.42, vTint, smoothstep(0.0, 0.6, vT));   // base matches the shaded ground
-        gc = mix(gc, vTint * vec3(1.35, 1.3, 0.8), smoothstep(0.55, 1.0, vT)); // sun-bleached lighter tips
+        vec3 gc = mix(vTint * 0.5, vTint, smoothstep(0.0, 0.6, vT));   // base matches the shaded ground
+        gc = mix(gc, vTint * vec3(1.2, 1.28, 0.95), smoothstep(0.55, 1.0, vT)); // sun-bleached lighter tips
         diffuseColor.rgb = gc;`)
       .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n#ifdef DOUBLE_SIDED\n normal *= faceDirection;\n#endif')
       .replace('#include <opaque_fragment>', `
@@ -184,7 +184,7 @@ export function buildGrass(ctx, dataTex, colors) {
   const col = { lush: { value: new THREE.Color(colors.lush) }, dry: { value: new THREE.Color(colors.dry) }, deep: { value: new THREE.Color(colors.deep) } };
   const mul = qualityScale(ctx);
   const layers = [
-    { key: 'near', S: 44, n: 6, count: Math.round(170000 * mul), segs: 3, height: 0.7, width: 0.05, fade0: 15, fade1: 21, inner0: -1, inner1: 0, densMul: 1.0, clump: 0.7 },
+    { key: 'near', S: 44, n: 6, count: Math.round(200000 * mul), segs: 3, height: 0.7, width: 0.04, fade0: 15, fade1: 21, inner0: -1, inner1: 0, densMul: 1.0, clump: 0.7 },
     { key: 'mid', S: 120, n: 8, count: Math.round(100000 * mul), segs: 3, height: 0.75, width: 0.11, fade0: 42, fade1: 58, inner0: 14, inner1: 18, densMul: 1.0, clump: 1.4 },
   ];
   const fields = [];

@@ -181,7 +181,7 @@ export function init(ctx) {
     if (first) {
       pivot.set(hp.x, desiredPivotY, hp.z); lookAhead.set(0, 0, 0);
       if (shot && !shot.cam) rig.yaw = (shot.yaw ?? 0) + Math.PI;
-      else if (ctx.hero?.root) rig.yaw = ctx.hero.root.rotation.y + Math.PI;
+      else if (ctx.hero?.root) rig.yaw = (ctx.hero.yaw ?? ctx.hero.root.rotation.y) + Math.PI;
       rig.pitch = PITCH_DEFAULT;
     } else {
       pivot.x = damp(pivot.x, hp.x, 14, dt);
@@ -191,7 +191,6 @@ export function init(ctx) {
       pivot.y = damp(pivot.y, desiredPivotY, grounded ? 9 : 3, dt);
       if (Math.abs(pivot.y - desiredPivotY) > 3) pivot.y = desiredPivotY + Math.sign(pivot.y - desiredPivotY) * 3;
     }
-    const leadK = Math.min(1, speedXZ / 6);
     tmp.set(heroVel.x, 0, heroVel.z).multiplyScalar(0.28);
     if (tmp.length() > 1.6) tmp.setLength(1.6);
     lookAhead.lerp(tmp.multiplyScalar(1 - lockBlend), 1 - Math.exp(-2.2 * dt));
@@ -222,7 +221,7 @@ export function init(ctx) {
       }
       // auto-recentre behind the direction of travel
       if (recenterSnap && ctx.hero?.root) {
-        const behind = ctx.hero.root.rotation.y + Math.PI;
+        const behind = (ctx.hero.yaw ?? ctx.hero.root.rotation.y) + Math.PI;
         rig.yaw += wrap(behind - rig.yaw) * (1 - Math.exp(-10 * dt));
         rig.pitch = damp(rig.pitch, PITCH_DEFAULT, 8, dt);
         if (Math.abs(wrap(behind - rig.yaw)) < 0.02) recenterSnap = false;

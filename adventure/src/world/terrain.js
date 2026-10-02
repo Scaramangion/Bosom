@@ -9,7 +9,7 @@ import { getTerrainData, DATA_GLSL, HALF } from './terrainData.js';
 import { noiseTexture, grassGround, dirtGround, rockSurface, sandGround, normalMap } from './textures.js';
 import { buildBackdrop } from './backdrop.js';
 
-export const GRASS_COLORS = { lush: '#5f9431', dry: '#a5a843', deep: '#3c6e27', forest: '#3d4a22' };
+export const GRASS_COLORS = { lush: '#5f9431', dry: '#9ca844', deep: '#3c6e27', forest: '#3d4a22' };
 
 const CHUNK = 50;
 const LODS = [{ step: 1, dist: 0 }, { step: 2, dist: 115 }, { step: 5, dist: 250 }];
@@ -158,7 +158,7 @@ const TERRAIN_SPLAT = /* glsl */`
   vec4 g1 = texture2D(uGrass, gu1); vec4 g2 = texture2D(uGrass, gu2);
   float gDet = mix(lum(g1.rgb), lum(g2.rgb), 0.45) / 0.2;
   float gH = mix(g1.a, g2.a, 0.45);
-  vec3 gTint = mix(uGLush, uGDry, smoothstep(0.42, 0.85, nzA.r));
+  vec3 gTint = mix(uGLush, uGDry, smoothstep(0.55, 0.95, nzA.r));
   gTint = mix(gTint, uGDeep, smoothstep(0.45, 0.8, nzA.g) * 0.75);
   gTint *= 0.8 + 0.4 * nzB.b;
   vec3 grass = gTint * mix(1.0, gDet, 0.55) * 0.72;

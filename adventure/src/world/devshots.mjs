@@ -31,8 +31,8 @@ const logs = [];
 page.on('console', m => { if (['error', 'warning'].includes(m.type())) logs.push(`[${m.type()}] ${m.text()}`); });
 page.on('pageerror', e => logs.push(`[pageerror] ${e.message}`));
 for (const n of names) {
-  await page.goto(`${url}src/world/dev.html?shot=${n}`, { waitUntil: "commit", timeout: 120000 });
-  try { await page.waitForFunction(() => window.__ready || window.__error, null, { timeout: 120000 }); } catch { logs.push(`[timeout] ${n}`); }
+  await page.goto(`${url}src/world/dev.html?shot=${n}`, { waitUntil: "commit", timeout: 400000 });
+  try { await page.waitForFunction(() => window.__ready || window.__error, null, { timeout: 400000 }); } catch { logs.push(`[timeout] ${n}`); }
   await page.waitForTimeout(WAIT);
   const fps = await page.evaluate(async () => { const f0 = window.__ctx?.frames || 0; await new Promise(r => setTimeout(r, 2000)); return ((window.__ctx?.frames || 0) - f0) / 2; });
   await page.screenshot({ path: `${out}/${n}.png`, timeout: 180000 });
