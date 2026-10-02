@@ -467,10 +467,11 @@
 
         // ---- any picture -> a cut-out ready for paperTrace. Shrunk so its long side is at most o.max px (an area average done here, not by the
         // browser, so the same pixels give the same cut on every device). A picture with its own transparency keeps it; any other picture has its
-        // background keyed out: a flood fill from the border through every pixel within o.tol (0..441, RGB distance) of the border's median colour.
+        // background keyed out: a flood fill from the border through every pixel within o.tol (0..441, RGB distance) of any of the border's main colours
+        // (up to six, each at least 4% of the border: one for a plain backdrop, a few for a grid, a check or a pattern).
         // o.seeds [[u, v], ...] (0..1 across the picture): extra spots to key out (tap to erase). From each one the fill spreads while the colour changes
-        // smoothly (each step within 0.4 tol of the last pixel) and stays within 3 tol of the tapped colour, so a shaded or vignetted backdrop goes in one tap.
-        // o.one keeps only the biggest piece. Alpha ends up 0 or 255. Returns { cv (a canvas to use as the texture), px (its RGBA), w, h, keyed }.
+        // smoothly (each step within 0.6 tol of the last pixel) and stays within 3 tol of the tapped colour, so a shaded or vignetted backdrop goes in one tap.
+        // o.one keeps one subject: the biggest piece and whatever lies within a few px of it. Alpha ends up 0 or 255. Returns { cv (a canvas to use as the texture), px (its RGBA), w, h, keyed }.
         function paperFlood(px, w, h, seeds, ok) { // 4-connected flood fill from the seed pixels through every pixel j that ok(j, from) accepts
             const seen = new Uint8Array(w * h), q = []; for (const i of seeds) if (!seen[i]) { seen[i] = 1; q.push(i); }
             for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && !seen[j] && ok(j, i)) { seen[j] = 1; q.push(j); } }
@@ -489,20 +490,25 @@
             const keyed = !(air && paper);
             if (keyed) { // no transparency of its own: key the background out from the border
                 const border = []; for (let x = 0; x < w; x++) border.push(x, (h - 1) * w + x); for (let y = 1; y < h - 1; y++) border.push(y * w, y * w + w - 1);
-                const med = c => { const v = border.map(i => px[i * 4 + c]).sort((p, q) => p - q); return v[v.length >> 1]; }, key = [med(0), med(1), med(2)];
-                const near = i => { const dr = px[i * 4] - key[0], dg = px[i * 4 + 1] - key[1], db = px[i * 4 + 2] - key[2]; return dr * dr + dg * dg + db * db <= tol * tol; };
+                const bins = new Map(); for (const i of border) { const q = (px[i * 4] >> 4) << 8 | (px[i * 4 + 1] >> 4) << 4 | px[i * 4 + 2] >> 4, b = bins.get(q) || [0, 0, 0, 0, q]; b[0]++; b[1] += px[i * 4]; b[2] += px[i * 4 + 1]; b[3] += px[i * 4 + 2]; bins.set(q, b); }
+                const keys = [...bins.values()].sort((p, q) => q[0] - p[0] || p[4] - q[4]).filter((b, n) => n === 0 || (n < 6 && b[0] >= Math.max(3, border.length * 0.04))).map(b => [b[1] / b[0], b[2] / b[0], b[3] / b[0]]); // the border's palette: a plain backdrop has one colour, a grid or a pattern a few
+                const near = i => keys.some(c => (px[i * 4] - c[0]) ** 2 + (px[i * 4 + 1] - c[1]) ** 2 + (px[i * 4 + 2] - c[2]) ** 2 <= tol * tol);
                 const seen = paperFlood(px, w, h, border.filter(near), near); for (let i = 0; i < w * h; i++) px[i * 4 + 3] = seen[i] ? 0 : 255;
             } else for (let i = 3; i < px.length; i += 4) px[i] = px[i] >= 128 ? 255 : 0;
             for (const [u, v] of o.seeds || []) { const i0 = Math.min(h - 1, Math.max(0, Math.floor(v * h))) * w + Math.min(w - 1, Math.max(0, Math.floor(u * w))); if (!px[i0 * 4 + 3]) continue; // tap to erase
-                const d2 = (i, j) => (px[i * 4] - px[j * 4]) ** 2 + (px[i * 4 + 1] - px[j * 4 + 1]) ** 2 + (px[i * 4 + 2] - px[j * 4 + 2]) ** 2, step = (0.4 * tol) ** 2, far = (3 * tol) ** 2;
+                const d2 = (i, j) => (px[i * 4] - px[j * 4]) ** 2 + (px[i * 4 + 1] - px[j * 4 + 1]) ** 2 + (px[i * 4 + 2] - px[j * 4 + 2]) ** 2, step = (0.6 * tol) ** 2, far = (3 * tol) ** 2;
                 const near = (j, i) => px[j * 4 + 3] > 0 && d2(j, i) <= step && d2(j, i0) <= far;
                 const seen = paperFlood(px, w, h, [i0], near); for (let i = 0; i < w * h; i++) if (seen[i]) px[i * 4 + 3] = 0; }
-            if (o.one) { // only the biggest piece (8-connected), so stray specks of a photo do not come along
+            if (o.one) { // one subject: the biggest piece, plus any piece within a few px of it (a handle split off by a dark seam, a held spear); a second figure standing apart is dropped
                 const lab = new Int32Array(w * h), size = [0]; let best = 0;
-                for (let s = 0; s < w * h; s++) { if (!px[s * 4 + 3] || lab[s]) continue; const id = size.length, q = [s]; lab[s] = id;
+                for (let s0 = 0; s0 < w * h; s0++) { if (!px[s0 * 4 + 3] || lab[s0]) continue; const id = size.length, q = [s0]; lab[s0] = id;
                     for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy, j = yy * w + xx; if (xx >= 0 && yy >= 0 && xx < w && yy < h && px[j * 4 + 3] && !lab[j]) { lab[j] = id; q.push(j); } } }
                     size.push(q.length); if (q.length > size[best]) best = id; }
-                for (let i = 0; i < w * h; i++) if (lab[i] !== best) px[i * 4 + 3] = 0; }
+                const keep = new Uint8Array(size.length); keep[best] = 1; const gap = Math.max(2, Math.round(0.02 * Math.max(w, h))), min = size[best] * 0.01;
+                for (let pass = 0; pass < 3; pass++) { const near = new Uint8Array(w * h); // grow what is kept by `gap` px, take in every piece it reaches
+                    for (let i = 0; i < w * h; i++) if (keep[lab[i]] && lab[i]) { const x = i % w, y = (i / w) | 0; for (let yy = Math.max(0, y - gap); yy <= Math.min(h - 1, y + gap); yy++) for (let xx = Math.max(0, x - gap); xx <= Math.min(w - 1, x + gap); xx++) near[yy * w + xx] = 1; }
+                    let added = 0; for (let i = 0; i < w * h; i++) if (near[i] && lab[i] && !keep[lab[i]] && size[lab[i]] >= min) { keep[lab[i]] = 1; added++; } if (!added) break; }
+                for (let i = 0; i < w * h; i++) if (!keep[lab[i]]) px[i * 4 + 3] = 0; }
             const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').putImageData(new ImageData(px, w, h), 0, 0);
             return { cv, px, w, h, keyed };
         }

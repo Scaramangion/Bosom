@@ -82,6 +82,15 @@ Goal: any sprite frame (hero, townsfolk, animals, props, the stalker) becomes a 
 - Check: `node tools/shoot_upload.js` uploads a sprite with alpha, a dagger on black, a pair on white and a character on a vignetted backdrop at phone size, taps to erase, and goes RED on any page error or picture that fails to fold. GREEN. Shots: `papercraft/shots/phone-*.png`.
 - Limits today: busy photographic backgrounds need taps (or, later, a cut-out model); holes in the subject are left to the alpha cut, so a thick card's rim does not run round them.
 
+**Step 6, the phone app look (Apple-style simplicity)** and the fixes your first real test showed:
+- One screen: a calm studio stage (floor and dome drawn with the same paper shader, so they meet without a seam; it follows light / dark mode), a first-run card with one button (**Choose Photo**), and one bottom bar with four tools: **Photo, Erase, Depth, Look**. Everything else lives in one **Options** sheet (Detail, Background removal, Keep one piece, Turn slowly, Wireframe, the Saga of Koto examples, and the numbers). Double-tap the stage to reset the view.
+- **Erase** turns the model to face you; tap the background *on the model itself* (a ray from the tap to the card's face finds the pixel) and it is keyed out from there. Undo / Done.
+- **Look**: Clean (studio) or PS1 (the game's grade and flagstones).
+- Background key now uses the border's palette (up to six colours), so grid paper, checks and patterns come out, not just plain backdrops. Your spear-girl on grid paper folded as a plain rectangle because the grid lines survived and "one piece" joined them up; fixed (`tools/fixtures/grid-paper.jpg` is the test).
+- "Keep one piece" keeps one subject: the biggest piece plus any piece within ~2% of the picture's size of it (a handle split off by a dark seam comes along; a second figure standing apart does not).
+- Your picture stands on its lowest painted pixel, not on the bottom of the frame.
+- Checks: `node tools/check_cutout.js` (cut-outs contact sheet, `papercraft/shots/cutouts.png`), `node tools/shoot_upload.js` (phone-size: start, five pictures, Erase by tapping the model, Options, dark mode). GREEN.
+
 **Next:** save what you made (the polygon + its cut-out as one file, and a .glb so it opens in other 3D apps); make the viewer an installable phone app (it is already one self-contained page); then the cast in the town demo, layer stacks, hinges and the Heads system.
 
 **Later:** fold the cast into the town demo beside the town mesh (and into the game in place of `asCard` for standing poses), the layer stack (cloak, arm, head) for parallax, hinge folds for cloaks and banners, and the Heads system (headless body + head docking at a neck hinge). Walk cycles can swap frames on the same card: each frame is its own outline, so rebuild just that card's slice of the buffer.
@@ -89,5 +98,6 @@ Goal: any sprite frame (hero, townsfolk, animals, props, the stalker) becomes a 
 ## Gotchas we hit
 - `//` comments inserted mid-line swallow the rest of the line in a minified or joined file; use `/* */`.
 - Inside-out faces mean the winding is mirrored: check `frontFace` before touching the geometry.
+- The orbit cameras in the demos used to show the world mirrored (east on the left): in this left-handed world (x east, y south, z up) the camera's right is up x forward and its up is forward x right. Fixed in both demos; with no mirror, faces wind counter-clockwise as seen from outside, as documented, so `frontFace(gl.CCW)`.
 - A shared uniform name between two programs clashed (`uZ0` vs `uZc`); keep per-program names distinct.
 - Cottage-sized textures do not fit a 48 x 78 cell; give them their own strip of the sheet and use explicit UVs.

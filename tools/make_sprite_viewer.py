@@ -1,35 +1,100 @@
-"""Assembles papercraft/sprite-viewer.html: the game's REAL paper module (src/js/game/24-papercraft.js, verbatim), the traced sprite
-outlines (assets/papercraft/sprite-polys.json) and their atlases, plus a small orbit-camera harness. Every piece on screen is folded by
-paperSprite() at load time, exactly as the game would fold it. Run: python3 tools/make_sprite_viewer.py
+"""Assembles papercraft/sprite-viewer.html (the Papercraft Viewer): the game's REAL paper module (src/js/game/24-papercraft.js, verbatim),
+the traced sprite outlines (assets/papercraft/sprite-polys.json) and their atlases, plus a small orbit-camera harness and a phone-first UI.
+Any picture you choose is cut out (paperCutout), traced (paperTrace) and folded (paperSprite) on the device.
+Run: python3 tools/make_sprite_viewer.py [--artifact OUT]   (--artifact also writes the page without its document wrapper, for publishing)
 
-URL options (handy for screenshots): ?s=farm/f_elder  &mode=cast|one  &t=1.5 (thickness)  &wire=1  &ps1=0  &yaw=0.6  &pitch=0.35  &dist=90  &spin=0
+URL options (handy for screenshots): ?mode=start|cast|one  &s=farm/f_elder  &t=1.5 (depth)  &wire=1  &ps1=1  &yaw=0.6  &pitch=0.35  &dist=90  &spin=0
 """
-import base64, json, os
+import base64, json, os, re, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 rd = lambda p: open(os.path.join(ROOT, p), encoding='utf-8', newline='').read()
 module = rd('src/js/game/24-papercraft.js')
 db = json.loads(rd('assets/papercraft/sprite-polys.json'))
 uri = lambda p: 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(ROOT, p), 'rb').read()).decode()
 atlases = ''.join('<script type="text/plain" id="atlas-%s">%s</script>\n' % (k, uri(v['file'])) for k, v in db['atlases'].items())
+ICON = { # 24 px line icons, drawn in currentColor
+    'photo': '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-5 4 4 3-3 4 4"/>',
+    'erase': '<path d="M14.5 4.5l5 5-8.5 8.5H6l-2.5-2.5z"/><path d="M9 10l5 5"/><path d="M11 18h9"/>',
+    'depth': '<path d="M5 8l7-4 7 4v8l-7 4-7-4z"/><path d="M5 8l7 4 7-4M12 12v8"/>',
+    'look': '<circle cx="12" cy="12" r="8"/><path d="M12 4v16"/><path d="M12 4a8 8 0 0 1 0 16" fill="currentColor" stroke="none"/>',
+    'more': '<circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/>',
+}
+svg = lambda k: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">%s</svg>' % ICON[k]
 
 html = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Papercraft Viewer</title><style>
-/* one dark workbench round a full-bleed 3D stage; a floating control bar on top, the cut-out preview bottom right */
-:root{--bg:#14161c;--panel:rgba(12,14,22,.86);--line:rgba(255,255,255,.14);--fg:#e8e6df;--muted:#a9a69c;--gold:#c9a24a;--ink:#14161c;--control:#222733;--edge:#555b68;--check1:#3a3f4c;--check2:#2a2e38;color-scheme:dark}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:12px system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;touch-action:none}
-canvas{display:block;width:100%;height:100%}#ui{position:fixed;left:12px;right:12px;top:calc(8px + env(safe-area-inset-top, 0px));display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-#ui label{display:flex;gap:6px;align-items:center}select,button{background:var(--control);color:var(--fg);border:1px solid var(--edge);border-radius:5px;padding:4px 6px;max-width:46vw;font:inherit}
-:focus-visible{outline:2px solid var(--gold);outline-offset:2px}#stats{color:var(--muted);font-variant-numeric:tabular-nums}
-#msg{position:fixed;left:12px;bottom:calc(8px + env(safe-area-inset-bottom, 0px));right:124px;color:var(--muted)}.pick{background:var(--gold);color:var(--ink);font-weight:700;border-radius:5px;padding:5px 9px;cursor:pointer}.pick:focus-within{outline:2px solid var(--fg)}
-#yours{display:none;gap:10px;flex-wrap:wrap;align-items:center;width:100%}
-#cut{position:fixed;right:12px;bottom:calc(8px + env(safe-area-inset-bottom, 0px));width:104px;height:104px;cursor:crosshair;transition:width .15s,height .15s;object-fit:contain;image-rendering:pixelated;border:1px solid var(--line);border-radius:6px;display:none;background:repeating-conic-gradient(var(--check1) 0 25%,var(--check2) 0 50%) 0 0/12px 12px}
-#cut.big{width:min(86vw,420px);height:min(60vh,420px)}#cutx{position:fixed;right:12px;bottom:calc(min(60vh,420px) + 16px + env(safe-area-inset-bottom, 0px));display:none}
-@media (prefers-reduced-motion:reduce){#cut{transition:none}}
-@media (max-width:600px){#ui{gap:6px;padding:6px 8px;font-size:11px}#ui b{display:none}#msg{display:none}}</style></head><body><canvas id="c"></canvas>
-<div id="ui"><b>PAPERCRAFT</b><label class="pick">+ picture<input id="file" type="file" accept="image/*" hidden></label><select id="mode"><option value="cast">the cast</option><option value="one">one sprite</option><option value="mine" disabled>your picture</option></select><select id="spr"></select>
-<label>thick <input id="thick" type="range" min="0" max="4" step="0.25" value="1.25"></label><label><input id="wire" type="checkbox"> wire</label>
-<label><input id="spin" type="checkbox" checked> spin</label><label><input id="grade" type="checkbox" checked> PS1 look</label><span id="stats"></span><div id="yours"><label>detail <select id="detail"><option>96</option><option selected>160</option><option>256</option></select></label><label id="tolL">background <input id="tol" type="range" min="0" max="160" step="4" value="48"></label><label><input id="one" type="checkbox" checked> one piece</label></div></div><canvas id="cut" title="tap the background to erase it"></canvas><button id="cutx">undo erase</button>
-<div id="msg">drag: orbit &middot; wheel / pinch: zoom &middot; + picture: any image becomes a paper polygon &middot; each sprite is traced to an outline, folded into a card, painted front, darker back</div>
+/* a calm studio stage, full bleed; one floating tool bar at the bottom; everything else tucked into one Options sheet */
+:root{--scene:#ececf1;--floor:#dcdce4;--shadow:rgba(20,20,30,.30);--label:#1d1d1f;--label2:#6e6e73;--material:rgba(250,250,252,.78);--hair:rgba(0,0,0,.10);
+  --tint:#a8670f;--tint-ink:#ffffff;--fill:rgba(118,118,128,.12);--sheet:#f2f2f7;--group:#ffffff;--wire:#d9a030;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;--r:14px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--scene:#1b1b1f;--floor:#2b2b31;--shadow:rgba(0,0,0,.55);--label:#f5f5f7;--label2:#98989d;--material:rgba(36,36,40,.72);--hair:rgba(255,255,255,.12);
+  --tint:#e0a447;--tint-ink:#1d1d1f;--fill:rgba(118,118,128,.24);--sheet:#1c1c1e;--group:#2c2c2e;--wire:#f0c060;color-scheme:dark}}
+:root[data-theme="dark"]{--scene:#1b1b1f;--floor:#2b2b31;--shadow:rgba(0,0,0,.55);--label:#f5f5f7;--label2:#98989d;--material:rgba(36,36,40,.72);--hair:rgba(255,255,255,.12);
+  --tint:#e0a447;--tint-ink:#1d1d1f;--fill:rgba(118,118,128,.24);--sheet:#1c1c1e;--group:#2c2c2e;--wire:#f0c060;color-scheme:dark}
+html,body{margin:0;height:100%;background:var(--scene);color:var(--label);font:15px/1.35 var(--font);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}canvas#c{display:block;width:100%;height:100%}
+button,label.btn{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(--tint);outline-offset:2px;border-radius:8px}
+.glass{background:var(--material);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border:.5px solid var(--hair)}
+.top{position:fixed;left:16px;right:16px;top:calc(10px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;pointer-events:none}
+.word{font-weight:600;font-size:17px;letter-spacing:-.01em;pointer-events:auto}
+.round{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;pointer-events:auto}
+.bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:6px;border-radius:22px}
+.tab{min-width:64px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
+.tab[aria-pressed="true"]{color:var(--tint);background:var(--fill)}
+.panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
+.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
+.panel input[type=range]{flex:1;min-width:0;accent-color:var(--tint)}.small{font-size:13px;color:var(--label2)}
+.pill{height:32px;padding:0 14px;border-radius:16px;background:var(--fill);font-size:14px;font-weight:500}.pill.tinted{background:var(--tint);color:var(--tint-ink)}
+.seg{display:flex;flex:1;background:var(--fill);border-radius:9px;padding:2px;gap:2px}.seg button{flex:1;height:30px;border-radius:7px;font-size:13px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--group);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.hello{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:20px;padding:20px;text-align:center}
+.hello h1{margin:0 0 6px;font-size:22px;line-height:1.2;font-weight:700;letter-spacing:-.02em;text-wrap:balance}.hello p{margin:0 0 16px;color:var(--label2);font-size:15px;text-wrap:balance}
+.primary{display:flex;align-items:center;justify-content:center;height:50px;border-radius:14px;background:var(--tint);color:var(--tint-ink);font-weight:600;font-size:17px;cursor:pointer}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.25)}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:78%;overflow:auto;background:var(--sheet);border-radius:16px 16px 0 0;padding:8px 16px calc(24px + env(safe-area-inset-bottom,0px));box-sizing:border-box;touch-action:pan-y}
+@media (min-width:640px){.sheet{left:50%;right:auto;width:420px;transform:translateX(-50%)}}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--hair);margin:0 auto 6px}
+.sheet header{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px}.sheet h2{margin:0;font-size:17px;font-weight:600}.link{color:var(--tint);font-weight:600;font-size:17px}
+.cap{margin:18px 4px 6px;font-size:13px;color:var(--label2);text-transform:uppercase;letter-spacing:.04em}
+.group{background:var(--group);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;min-height:46px;padding:6px 14px;box-sizing:border-box}.row+.row{border-top:.5px solid var(--hair)}.row>span:first-child{flex:1;min-width:0}
+.row input[type=range]{flex:1.4;min-width:0;accent-color:var(--tint)}.row select{font:inherit;color:var(--label2);background:none;border:0;max-width:55%;text-align:right}
+.switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:16px;background:var(--fill);position:relative;cursor:pointer;flex:none;margin:0;transition:background .2s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:transform .2s}
+.switch:checked{background:#34c759}.switch:checked::after{transform:translateX(20px)}
+.info{margin:10px 4px 0;font-size:13px;color:var(--label2);font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;top:calc(56px + env(safe-area-inset-top,0px));transform:translate(-50%,-8px);max-width:calc(100vw - 32px);box-sizing:border-box;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.ripple{position:fixed;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:2px solid var(--tint);pointer-events:none;animation:rip .5s ease-out forwards}
+@keyframes rip{from{transform:scale(.3);opacity:1}to{transform:scale(1.4);opacity:0}}
+@media (prefers-reduced-motion:reduce){.toast,.switch,.switch::after{transition:none}.ripple{animation:none;opacity:0}}
+</style></head><body><canvas id="c" aria-label="3D view of the paper model"></canvas>
+<input id="file" type="file" accept="image/*" hidden>
+<div class="top"><span class="word">Papercraft</span><button id="more" class="round glass" aria-label="Options">''' + svg('more') + '''</button></div>
+<div id="hello" class="hello glass" hidden><h1>Turn any picture into a paper model</h1><p>Choose a photo or a drawing. Papercraft cuts out the subject and folds it into 3D.</p><label class="primary" for="file">Choose Photo</label></div>
+<div id="pDepth" class="panel glass" hidden><span class="small">Flat</span><input id="thick" type="range" min="0" max="4" step="0.25" value="1" aria-label="Depth"><span class="small">Thick</span></div>
+<div id="pErase" class="panel glass" hidden><span class="hint" id="eraseHint">Tap the background to remove it.</span><button id="undo" class="pill">Undo</button><button id="done" class="pill tinted">Done</button></div>
+<div id="pLook" class="panel glass" hidden><div class="seg" role="group" aria-label="Look"><button data-look="clean" aria-pressed="true">Clean</button><button data-look="ps1" aria-pressed="false">PS1</button></div></div>
+<nav class="bar glass" aria-label="Tools">
+<label class="tab btn" for="file" id="tPhoto">''' + svg('photo') + '''Photo</label>
+<button class="tab" id="tErase" aria-pressed="false" disabled>''' + svg('erase') + '''Erase</button>
+<button class="tab" id="tDepth" aria-pressed="false">''' + svg('depth') + '''Depth</button>
+<button class="tab" id="tLook" aria-pressed="false">''' + svg('look') + '''Look</button></nav>
+<div id="scrim" class="scrim" hidden></div>
+<div id="sheet" class="sheet" role="dialog" aria-label="Options" hidden><div class="grab"></div><header><h2>Options</h2><button id="close" class="link">Done</button></header>
+<div class="cap">Picture</div><div class="group">
+<div class="row"><span>Detail</span><div class="seg" style="flex:1.4" role="group" aria-label="Detail"><button data-detail="96" aria-pressed="false">Low</button><button data-detail="160" aria-pressed="false">Medium</button><button data-detail="256" aria-pressed="true">High</button></div></div>
+<div class="row"><span>Background removal</span><input id="tol" type="range" min="12" max="120" step="4" value="48" aria-label="Background removal"></div>
+<div class="row"><span>Keep one piece</span><input id="one" class="switch" type="checkbox" checked aria-label="Keep one piece"></div></div>
+<div class="cap">View</div><div class="group">
+<div class="row"><span>Turn slowly</span><input id="spin" class="switch" type="checkbox" checked aria-label="Turn slowly"></div>
+<div class="row"><span>Show wireframe</span><input id="wire" class="switch" type="checkbox" aria-label="Show wireframe"></div></div>
+<div class="cap">Examples from Saga of Koto</div><div class="group">
+<div class="row"><span>The whole cast</span><button id="cast" class="link" style="font-size:15px">Show</button></div>
+<div class="row"><span>One sprite</span><select id="spr" aria-label="Sprite"></select></div></div>
+<p class="info" id="info"></p></div>
+<div id="toast" class="toast glass" role="status"></div>
 ''' + atlases + '''<script>
 // ---------- harness: the handful of globals the paper module expects from the game (none of the town is built here) ----------
 const TILE_BUMPER = 15, TILE_SIZE = 16, MAP_COLS = 1, MAP_ROWS = 1, MAP_DATA = [[0]], PAPER_STALLS = new Set(), PAPER_FOUNT = new Set();
@@ -43,100 +108,147 @@ const CAST = [['farm/f_elder', 24], ['farm/f_farmer', 24], ['farm/f_franz', 24],
   ['hero/basic_down', 24], ['farm/f_child', 18], ['hero/kael_idle', 26], ['hero/rj_down', 34], ['farm/farmhorse', 26], ['farm/cow', 19], ['farm/goat', 17], ['farm/sheep', 14], ['farm/dog', 13], ['farm/cat', 11],
   ['farm/pig', 12], ['farm/rooster', 13], ['farm/goose', 12], ['farm/duck', 10], ['farm/chicken', 10], ['farm/well', 40], ['farm/i_basket', 8], ['farm/i_milk', 8], ['farm/stall', 46]];
 const STALKER = ['farm/f_farmer', 24 * 1.35]; // the tall one, at the back
-// ---------- a tiny renderer: an orbit camera, the SAME fragment shader as the game (PAPER_GLSL.frag) ----------
+// ---------- state: everything the page shows comes from here ----------
 const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
+const ST = { mode: Q.get('mode') || (Q.get('s') ? 'one' : 'start'), sprite: Q.get('s') || 'sud/stand', tool: null, look: Q.get('ps1') === '1' ? 'ps1' : 'clean', detail: 256, tol: 48, one: true };
+const MINE = { img: null, S: null, w: 0, h: 0, seeds: [], ms: 0, fold: null };
+// ---------- a tiny renderer: an orbit camera, the SAME fragment shader as the game (PAPER_GLSL.frag) ----------
 const cv = $('c'), gl = cv.getContext('webgl', { antialias: false, preserveDrawingBuffer: true });
 const vsrc = `attribute vec3 aP;attribute vec2 aT;attribute vec2 aS;uniform mat4 uM;varying vec2 vT;varying vec3 vW;varying float vZ,vSh,vEm;
   void main(){vec4 p=uM*vec4(aP,1.);gl_Position=p;vT=aT;vW=aP;vZ=p.w;vSh=aS.x;vEm=aS.y;}`;
 const mk = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
 const link = (vs, fs) => { const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.bindAttribLocation(p, 0, 'aP'); gl.bindAttribLocation(p, 1, 'aT'); gl.bindAttribLocation(p, 2, 'aS'); gl.linkProgram(p); return p; };
-const prog = link(vsrc, PAPER_GLSL.frag), wprog = link('attribute vec3 aP;uniform mat4 uM;void main(){gl_Position=uM*vec4(aP,1.);}', 'precision mediump float;void main(){gl_FragColor=vec4(1.,.82,.25,1.);}');
-const texOf = (src, rep) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, rep ? gl.REPEAT : gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, rep ? gl.REPEAT : gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
+const prog = link(vsrc, PAPER_GLSL.frag), wprog = link('attribute vec3 aP;uniform mat4 uM;void main(){gl_Position=uM*vec4(aP,1.);}', 'precision mediump float;uniform vec3 uC;void main(){gl_FragColor=vec4(uC,1.);}');
+const texOf = (src, rep, old) => { if (old) gl.deleteTexture(old); const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); const f = rep === 'smooth' ? gl.LINEAR : gl.NEAREST, wr = rep === true ? gl.REPEAT : gl.CLAMP_TO_EDGE;
+  [[gl.TEXTURE_MIN_FILTER, f], [gl.TEXTURE_MAG_FILTER, f], [gl.TEXTURE_WRAP_S, wr], [gl.TEXTURE_WRAP_T, wr]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
   if (src.px) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, src.w, src.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(src.px.buffer)); else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); return t; };
-const TEX = {}, ATLAS_IMG = {}; let loaded = 0; const names = Object.keys(SPRITE_POLYS.atlases);
-const ground = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#5c5246'; g.fillRect(0, 0, 64, 64); // flagstones, jittered by the prime
-  for (let y = 0, r = 0; y < 64; y += 16, r++) for (let x = -(r % 2) * 8; x < 64; x += 16) { const k = paperPrime(x * 7 + y), v = 150 + k * 30 | 0; g.fillStyle = `rgb(${v},${v - 8},${v - 22})`; g.fillRect(x + 1, y + 1, 14, 14); }
-  return c; })();
-let groups = [], wire = null, wireN = 0, gbuf = gl.createBuffer(), focus = [0, 0, 12], radius = 60;
-function build() { // fold every piece on stage; one buffer per atlas, so each draws with its own texture
-  const mode = $('mode').value, th = +$('thick').value, per = {}, put = (key, h, x, y, ang, flip) => { const S = SPRITE_POLYS.sprites[key]; if (!S) return; const at = key.split('/')[0];
-    paperSprite(per[at] || (per[at] = []), S, SPRITE_POLYS.atlases[at].size, { x, y, ang, flip, s: h / S.rect[3], thick: th * h / 24 }); };
-  if (mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; paperSprite(per.mine = [], S, [MINE.w, MINE.h], { s, thick: th * hh / 24 }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; }
-  else if (mode === 'one') { const key = $('spr').value, S = SPRITE_POLYS.sprites[key]; put(key, 24 * S.rect[3] / 85, 0, 0, 0, false); const h = 24 * S.rect[3] / 85; focus = [0, 0, h / 2]; radius = Math.max(h, 24 * S.rect[2] / 85) * 1.9; }
-  else { // two arcs on the plaza, each piece turned to the lens' default spot and nudged by the prime, so it never looks set out with a ruler
-    const n0 = 14, look = [150, 260];
+const TEX = {}; let loaded = 0; const names = Object.keys(SPRITE_POLYS.atlases);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const rgb = c => { const m = c.match(/^#([0-9a-f]{6})$/i); if (m) return [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16) / 255); const n = c.match(/[\\d.]+/g) || [0, 0, 0]; return n.slice(0, 3).map(v => +v / 255); };
+const flags = () => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#5c5246'; g.fillRect(0, 0, 64, 64); // the town's flagstones, jittered by the prime (the PS1 look)
+  for (let y = 0, r = 0; y < 64; y += 16, r++) for (let x = -(r % 2) * 8; x < 64; x += 16) { const k = paperPrime(x * 7 + y), v = 150 + k * 30 | 0; g.fillStyle = `rgb(${v},${v - 8},${v - 22})`; g.fillRect(x + 1, y + 1, 14, 14); } return c; };
+const studio = shadowW => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), sc = css('--scene'), fl = css('--floor'); // a soft disc of floor fading into the stage, with a contact shadow
+  g.fillStyle = sc; g.fillRect(0, 0, 256, 256); let gr = g.createRadialGradient(128, 128, 8, 128, 128, 127); gr.addColorStop(0, fl); gr.addColorStop(0.35, fl); gr.addColorStop(1, sc); g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  if (shadowW) { g.save(); g.translate(128, 128); g.scale(1, 0.32); gr = g.createRadialGradient(0, 0, 0, 0, 0, shadowW); gr.addColorStop(0, css('--shadow')); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, shadowW, 0, 7); g.fill(); g.restore(); }
+  return c; };
+let groups = [], wire = null, wireN = 0, gbuf = gl.createBuffer(), gN = 0, focus = [0, 0, 12], radius = 60, tris = 0;
+function stage(R, shadowW) { // the floor: studio disc (clean) or flagstones (PS1). Shade 1/0.9 so the disc's rim meets the stage colour.
+  const ps1 = ST.look === 'ps1', G = ps1 ? 600 : R, u1 = ps1 ? G / 24 : 1, u0 = ps1 ? 0 : 0, s = ps1 ? .85 : 1 / 0.9;
+  TEX.ground = ps1 ? texOf(flags(), true, TEX.ground) : texOf(studio(shadowW ? shadowW / R * 128 : 0), 'smooth', TEX.ground);
+  const V = [-G, G, 0, u0, u1, s, 0, G, G, 0, u1, u1, s, 0, G, -G, 0, u1, u0, s, 0, -G, G, 0, u0, u1, s, 0, G, -G, 0, u1, u0, s, 0, -G, -G, 0, u0, u0, s, 0];
+  if (!ps1) { const D = 2400, c = 1 / 512, P = (a, b) => [Math.cos(a) * Math.cos(b) * D, Math.sin(a) * Math.cos(b) * D, Math.sin(b) * D - 1]; // the studio dome (and a skirt of floor out to it), all the stage colour
+    for (let i = 0; i < 32; i++) for (let j = 0; j < 8; j++) { const a0 = i / 32 * 2 * Math.PI, a1 = (i + 1) / 32 * 2 * Math.PI, b0 = j / 8 * Math.PI / 2, b1 = (j + 1) / 8 * Math.PI / 2;
+      for (const q of [P(a0, b0), P(a1, b0), P(a1, b1), P(a0, b0), P(a1, b1), P(a0, b1)]) V.push(q[0], q[1], q[2], c, c, s, 0); }
+    for (let i = 0; i < 32; i++) { const a0 = i / 32 * 2 * Math.PI, a1 = (i + 1) / 32 * 2 * Math.PI; for (const q of [[0, 0], [Math.cos(a0) * D, Math.sin(a0) * D], [Math.cos(a1) * D, Math.sin(a1) * D]]) V.push(q[0], q[1], -1, c, c, s, 0); } }
+  gl.bindBuffer(gl.ARRAY_BUFFER, gbuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW); gN = V.length / 7; }
+const depth = () => +$('thick').value;
+function build() { // fold every piece on stage; one buffer per texture
+  const th = depth(), per = {}, put = (key, h, x, y, ang, flip) => { const S = SPRITE_POLYS.sprites[key]; if (!S) return 0; const at = key.split('/')[0];
+    paperSprite(per[at] || (per[at] = []), S, SPRITE_POLYS.atlases[at].size, { x, y, ang, flip, s: h / S.rect[3], thick: th * h / 24 }); return h * S.rect[2] / S.rect[3]; };
+  let shadow = 0, R = 120;
+  if (ST.mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; MINE.fold = { s, hh, th: th * hh / 24 }; paperSprite(per.mine = [], S, [MINE.w, MINE.h], { s, thick: MINE.fold.th }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
+  else if (ST.mode === 'cast') { const n0 = 14, look = [150, 260]; // two arcs on the plaza, each piece turned toward the lens and nudged by the prime
     CAST.forEach(([key, h], i) => { const row = i < n0 ? 0 : 1, k = row ? i - n0 : i, n = row ? CAST.length - n0 : n0, x = (k - (n - 1) / 2) * (row ? 30 : 17) + (paperPrime(i) - 0.5) * 5, y = row ? -40 + Math.abs(k - (n - 1) / 2) * 5 : 10 + Math.abs(k - (n - 1) / 2) * 3;
       put(key, h, x, y, Math.atan2(-(look[0] - x), look[1] - y) + (paperPrime(i + 50) - 0.5) * 0.6, paperPrime(i + 99) < 0.3); });
-    put(STALKER[0], STALKER[1], -30, -95, 0.3, false); focus = [-20, -25, 12]; radius = 155; }
-  $('spr').style.display = mode === 'mine' ? 'none' : '';
-  const tris = Object.values(per).reduce((n, v) => n + v.length / 21, 0);
+    put(STALKER[0], STALKER[1], -30, -95, 0.3, false); focus = [-20, -25, 12]; radius = 155; R = 420; }
+  else { const S = SPRITE_POLYS.sprites[ST.sprite], h = 24 * S.rect[3] / 85, w = put(ST.sprite, h, 0, 0, 0, false), hi = ST.mode === 'start' && !MINE.img; focus = [0, 0, hi ? -h * 0.32 : h / 2]; radius = Math.max(h, w) * (hi ? 2.5 : 1.9); shadow = w * 0.55; R = Math.max(h, w) * 4.2; }
+  stage(R, shadow);
+  tris = Object.values(per).reduce((n, v) => n + v.length / 21, 0);
+  for (const g of groups) gl.deleteBuffer(g.b);
   groups = Object.entries(per).map(([at, v]) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.STATIC_DRAW); return { at, b, n: v.length / 7 }; });
   const L = []; for (const v of Object.values(per)) for (let t = 0; t < v.length / 7; t += 3) for (let i = 0; i < 3; i++) { const a = (t + i) * 7, b = (t + (i + 1) % 3) * 7; L.push(v[a], v[a + 1], v[a + 2], v[b], v[b + 1], v[b + 2]); }
   wire = wire || gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(L), gl.STATIC_DRAW); wireN = L.length / 3;
-  const G = 600, u1 = G / 24; gl.bindBuffer(gl.ARRAY_BUFFER, gbuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-G, G, 0, 0, u1, .85, 0, G, G, 0, u1, u1, .85, 0, G, -G, 0, u1, 0, .85, 0, -G, G, 0, 0, u1, .85, 0, G, -G, 0, u1, 0, .85, 0, -G, -G, 0, 0, 0, .85, 0]), gl.STATIC_DRAW);
-  $('stats').textContent = (mode === 'mine' && MINE.S ? MINE.w + ' x ' + MINE.h + ' px, ' + MINE.S.pts.length / 2 + ' corners, ' + (MINE.ms | 0) + ' ms, ' : '') + tris + ' triangles, prime ' + PAPER.PRIME;
-}
-const cam = { yaw: +(Q.get('yaw') || 0.5), pitch: +(Q.get('pitch') || 0.42), zoom: +(Q.get('dist') || 0) };
+  info(); }
+function info() { $('info').textContent = (ST.mode === 'mine' && MINE.S ? `Your picture: ${MINE.w} × ${MINE.h} px, ${MINE.S.pts.length / 2} corners, cut in ${MINE.ms | 0} ms. ` : '') + `${tris} triangles on stage. Prime ${PAPER.PRIME}.`; }
+// ---------- the camera ----------
+const cam = { yaw: +(Q.get('yaw') || 0.5), pitch: +(Q.get('pitch') || 0.22), zoom: +(Q.get('dist') || 0), to: null };
+function eye() { const d = cam.zoom || radius * 1.6, [tx, ty, tz] = focus, cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const e = [tx + Math.sin(cam.yaw) * cp * d, ty + Math.cos(cam.yaw) * cp * d, tz + sp * d], f = [tx - e[0], ty - e[1], tz - e[2]], fl = Math.hypot(...f); f[0] /= fl; f[1] /= fl; f[2] /= fl;
+  let r = [-f[1], f[0], 0]; const rl = Math.hypot(r[0], r[1]); r = [r[0] / rl, r[1] / rl, 0]; const u = [f[1] * r[2] - f[2] * r[1], f[2] * r[0] - f[0] * r[2], f[0] * r[1] - f[1] * r[0]]; return { e, f, r, u }; } // x east, y SOUTH, z up is left-handed: right = up x forward, up = forward x right (no mirror)
+const FOV = 1 / Math.tan(0.4);
 function matrix(w, h) { // perspective * lookAt(focus), z up
-  const d = cam.zoom || radius * 1.6, [tx, ty, tz] = focus, cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-  const e = [tx + Math.sin(cam.yaw) * cp * d, ty + Math.cos(cam.yaw) * cp * d, tz + sp * d];
-  const f = [tx - e[0], ty - e[1], tz - e[2]], fl = Math.hypot(...f); f[0] /= fl; f[1] /= fl; f[2] /= fl;
-  let r = [f[1], -f[0], 0]; const rl = Math.hypot(r[0], r[1]); r = [r[0] / rl, r[1] / rl, 0];
-  const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
-  const V = [r[0], u[0], -f[0], 0, r[1], u[1], -f[1], 0, r[2], u[2], -f[2], 0, -(r[0] * e[0] + r[1] * e[1] + r[2] * e[2]), -(u[0] * e[0] + u[1] * e[1] + u[2] * e[2]), (f[0] * e[0] + f[1] * e[1] + f[2] * e[2]), 1];
-  const n = 1, fa = 3000, t = 1 / Math.tan(0.4), a = w / h, P = [t / a, 0, 0, 0, 0, t, 0, 0, 0, 0, -(fa + n) / (fa - n), -1, 0, 0, -2 * fa * n / (fa - n), 0];
-  const M = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += P[k * 4 + j] * V[i * 4 + k]; M[i * 4 + j] = s; } return M;
-}
+  const { e, f, r, u } = eye(), V = [r[0], u[0], -f[0], 0, r[1], u[1], -f[1], 0, r[2], u[2], -f[2], 0, -(r[0] * e[0] + r[1] * e[1] + r[2] * e[2]), -(u[0] * e[0] + u[1] * e[1] + u[2] * e[2]), (f[0] * e[0] + f[1] * e[1] + f[2] * e[2]), 1];
+  const n = 1, fa = 4000, t = FOV, a = w / h, P = [t / a, 0, 0, 0, 0, t, 0, 0, 0, 0, -(fa + n) / (fa - n), -1, 0, 0, -2 * fa * n / (fa - n), 0];
+  const M = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += P[k * 4 + j] * V[i * 4 + k]; M[i * 4 + j] = s; } return M; }
 let last = 0;
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000 || 0); last = now; if ($('spin').checked && !drag) cam.yaw += dt * 0.35;
+  const dt = Math.min(0.05, (now - last) / 1000 || 0); last = now;
+  if (cam.to) { const k = 1 - Math.exp(-dt * 9); let dy = ((cam.to.yaw - cam.yaw + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; cam.yaw += dy * k; cam.pitch += (cam.to.pitch - cam.pitch) * k; if (Math.abs(dy) + Math.abs(cam.to.pitch - cam.pitch) < 0.002) { cam.yaw = cam.to.yaw; cam.pitch = cam.to.pitch; } }
+  else if ($('spin').checked && !held && ST.tool !== 'erase') cam.yaw += dt * 0.3;
   const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth * dpr | 0, h = cv.clientHeight * dpr | 0; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-  gl.viewport(0, 0, w, h); gl.clearColor(0.55, 0.62, 0.7, 1); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CW); // x east, y SOUTH, z up is a left-handed world, so the folded faces wind clockwise here
+  const ps1 = ST.look === 'ps1', sc = ps1 ? [0.55, 0.62, 0.7] : rgb(css('--scene'));
+  gl.viewport(0, 0, w, h); gl.clearColor(sc[0], sc[1], sc[2], 1); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW); // faces are wound counter-clockwise seen from outside, and this camera does not mirror the world
   const M = matrix(w, h); gl.useProgram(prog); for (let i = 0; i < 3; i++) gl.enableVertexAttribArray(i);
   gl.uniformMatrix4fv(gl.getUniformLocation(prog, 'uM'), false, M); const U = n => gl.getUniformLocation(prog, n);
   gl.uniform1i(U('uSheet'), 7); gl.uniform1f(U('uAmb'), 0.9); gl.uniform1f(U('uFogD'), 5); gl.uniform1f(U('uZc'), 0); gl.uniform1f(U('uGlow'), 0); gl.uniform1f(U('uDS'), w / 240); gl.uniform2f(U('uRes'), w, h);
-  gl.uniform1f(U('uTime'), now / 1000 % 1000); gl.uniform3f(U('uTint'), 1, 1, 1); gl.uniform1f(U('uDesat'), 0.2); gl.uniform1f(U('uGrade'), $('grade').checked ? 1 : 0); gl.uniform3f(U('uFogC'), 0.55, 0.62, 0.72); gl.uniform3fv(U('uLW[0]'), new Float32Array(24));
+  gl.uniform1f(U('uTime'), now / 1000 % 1000); gl.uniform3f(U('uTint'), 1, 1, 1); gl.uniform1f(U('uDesat'), 0.2); gl.uniform1f(U('uGrade'), ps1 ? 1 : 0); gl.uniform3f(U('uFogC'), sc[0], sc[1], sc[2]); gl.uniform3fv(U('uLW[0]'), new Float32Array(24));
   gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(1, 1); gl.activeTexture(gl.TEXTURE7);
   const draw = (b, n) => { gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 28, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 28, 12); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 28, 20); gl.drawArrays(gl.TRIANGLES, 0, n); };
-  gl.bindTexture(gl.TEXTURE_2D, TEX.ground); draw(gbuf, 6);
-  for (const g of groups) { gl.bindTexture(gl.TEXTURE_2D, TEX[g.at]); draw(g.b, g.n); }
+  gl.disable(gl.CULL_FACE); gl.bindTexture(gl.TEXTURE_2D, TEX.ground); draw(gbuf, gN); gl.enable(gl.CULL_FACE);
+  for (const g of groups) if (TEX[g.at]) { gl.bindTexture(gl.TEXTURE_2D, TEX[g.at]); draw(g.b, g.n); }
   gl.disable(gl.POLYGON_OFFSET_FILL);
-  if ($('wire').checked && wire) { gl.useProgram(wprog); gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.uniformMatrix4fv(gl.getUniformLocation(wprog, 'uM'), false, M); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0); gl.drawArrays(gl.LINES, 0, wireN); }
-  requestAnimationFrame(frame);
-}
-let drag = null; cv.addEventListener('pointerdown', e => { if (!e.isPrimary) { drag = null; return; } drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointerup', () => drag = null);
-cv.addEventListener('pointermove', e => { if (!drag || !e.isPrimary) return; cam.yaw -= (e.clientX - drag[0]) * 0.006; cam.pitch = Math.max(0.02, Math.min(1.45, cam.pitch + (e.clientY - drag[1]) * 0.005)); drag = [e.clientX, e.clientY]; });
+  if ($('wire').checked && wire) { gl.useProgram(wprog); gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.uniformMatrix4fv(gl.getUniformLocation(wprog, 'uM'), false, M); gl.uniform3fv(gl.getUniformLocation(wprog, 'uC'), rgb(css('--wire'))); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0); gl.drawArrays(gl.LINES, 0, wireN); }
+  requestAnimationFrame(frame); }
+// ---------- touch: drag to turn, pinch or wheel to zoom, tap to erase (in Erase), double-tap to reset ----------
+const pts = new Map(); let held = false, pd = 0, down = null, lastTap = 0;
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); held = true; cam.to = null; if (pts.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() }; else down = null; closeSheet(); });
+cv.addEventListener('pointermove', e => { const p = pts.get(e.pointerId); if (!p) return; const dx = e.clientX - p[0], dy = e.clientY - p[1]; pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pd) cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * pd / d)); pd = d; return; }
+  if (ST.tool === 'erase') return; cam.yaw -= dx * 0.006; cam.pitch = Math.max(0.02, Math.min(1.45, cam.pitch + dy * 0.005)); });
+const up = e => { pts.delete(e.pointerId); pd = 0; if (!pts.size) held = false;
+  if (down && e.type === 'pointerup' && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && performance.now() - down.t < 400) {
+    if (ST.tool === 'erase') eraseAt(e.clientX, e.clientY); else { const t = performance.now(); if (t - lastTap < 320) { cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; } lastTap = t; } }
+  down = null; };
+cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
 cv.addEventListener('wheel', e => { e.preventDefault(); cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * (1 + e.deltaY * 0.001))); }, { passive: false });
-{ const sel = $('spr'); for (const at of names) { const og = document.createElement('optgroup'); og.label = at; for (const k of Object.keys(SPRITE_POLYS.sprites)) if (k.startsWith(at + '/')) { const o = document.createElement('option'); o.value = o.textContent = k; og.appendChild(o); } sel.appendChild(og); }
-  sel.value = Q.get('s') || 'farm/f_elder'; $('mode').value = Q.get('mode') || (Q.get('s') ? 'one' : 'cast'); if (Q.get('t')) $('thick').value = Q.get('t');
-  $('wire').checked = Q.get('wire') === '1'; $('grade').checked = Q.get('ps1') !== '0'; $('spin').checked = Q.get('spin') !== '0';
-  const re = () => { cam.zoom = +(Q.get('dist') || 0); build(); }; sel.onchange = () => { $('mode').value = 'one'; re(); }; $('mode').onchange = re; $('thick').oninput = build; }
+function eraseAt(x, y) { // cast a ray from the tap onto the card's face, and key out from the pixel it lands on
+  if (ST.mode !== 'mine' || !MINE.S || !MINE.fold) return; const rc = cv.getBoundingClientRect(), nx = (x - rc.left) / rc.width * 2 - 1, ny = 1 - (y - rc.top) / rc.height * 2, a = rc.width / rc.height, { e, f, r, u } = eye();
+  const d = [0, 1, 2].map(i => f[i] + r[i] * nx * a / FOV + u[i] * ny / FOV), yp = (e[1] >= 0 ? 1 : -1) * MINE.fold.th / 2; if (Math.abs(d[1]) < 1e-6) return;
+  const l = (yp - e[1]) / d[1], X = e[0] + l * d[0], Z = e[2] + l * d[2], s = MINE.fold.s, A = MINE.S.anchor, U = (X / s + A[0]) / MINE.w, V = (A[1] - Z / s) / MINE.h;
+  if (l <= 0 || U < 0 || V < 0 || U > 1 || V > 1) return; const rp = document.createElement('div'); rp.className = 'ripple'; rp.style.left = x + 'px'; rp.style.top = y + 'px'; document.body.appendChild(rp); setTimeout(() => rp.remove(), 600);
+  MINE.seeds.push([U, V]); makeMine(); $('undo').disabled = false; }
+window.screenOf = (U, V) => { // where a point of your picture's front face is on screen (used by the tests)
+  const s = MINE.fold.s, A = MINE.S.anchor, P = [(U * MINE.w - A[0]) * s, MINE.fold.th / 2, (A[1] - V * MINE.h) * s, 1], rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), o = [0, 1, 2, 3].map(j => P[0] * M[j] + P[1] * M[4 + j] + P[2] * M[8 + j] + P[3] * M[12 + j]);
+  return [rc.left + (o[0] / o[3] + 1) / 2 * rc.width, rc.top + (1 - o[1] / o[3]) / 2 * rc.height]; };
+// ---------- the tools: Photo, Erase, Depth, Look (one panel at a time) ----------
+const PANELS = { erase: 'pErase', depth: 'pDepth', look: 'pLook' }, TABS = { erase: 'tErase', depth: 'tDepth', look: 'tLook' };
+function setTool(t) { if (ST.tool === t) t = null; ST.tool = t; for (const k in PANELS) { $(PANELS[k]).hidden = k !== t; $(TABS[k]).setAttribute('aria-pressed', k === t); }
+  if (t === 'erase' && ST.mode !== 'mine' && MINE.S) { ST.mode = 'mine'; build(); }
+  if (t === 'erase') { cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; $('undo').disabled = !MINE.seeds.length; } refreshHello(); }
+$('tErase').onclick = () => setTool('erase'); $('tDepth').onclick = () => setTool('depth'); $('tLook').onclick = () => setTool('look'); $('done').onclick = () => setTool(null);
+$('undo').onclick = () => { MINE.seeds.pop(); makeMine(); $('undo').disabled = !MINE.seeds.length; };
+$('thick').oninput = build;
+for (const b of document.querySelectorAll('[data-look]')) b.onclick = () => { ST.look = b.dataset.look; document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); };
+// ---------- Options sheet ----------
+function openSheet() { info(); $('sheet').hidden = $('scrim').hidden = false; } function closeSheet() { $('sheet').hidden = $('scrim').hidden = true; }
+$('more').onclick = openSheet; $('close').onclick = closeSheet; $('scrim').onclick = closeSheet;
+for (const b of document.querySelectorAll('[data-detail]')) b.onclick = () => { ST.detail = +b.dataset.detail; document.querySelectorAll('[data-detail]').forEach(x => x.setAttribute('aria-pressed', x === b)); makeMine(); };
+let redo = 0; $('tol').oninput = () => { ST.tol = +$('tol').value; clearTimeout(redo); redo = setTimeout(makeMine, 120); }; $('one').onchange = () => { ST.one = $('one').checked; makeMine(); };
+$('cast').onclick = () => { ST.mode = 'cast'; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.42 }; build(); closeSheet(); };
+{ const sel = $('spr'); for (const at of names) { const og = document.createElement('optgroup'); og.label = at; for (const k of Object.keys(SPRITE_POLYS.sprites)) if (k.startsWith(at + '/')) { const o = document.createElement('option'); o.value = k; o.textContent = k.split('/')[1]; og.appendChild(o); } sel.appendChild(og); }
+  sel.value = ST.sprite; sel.onchange = () => { ST.sprite = sel.value; ST.mode = 'one'; setTool(null); cam.zoom = 0; build(); closeSheet(); }; }
 // ---------- your picture: cut out (paperCutout), traced (paperTrace), folded (paperSprite), all on this device ----------
-const MINE = { img: null, S: null, w: 0, h: 0, seeds: [] };
-function makeMine() { if (!MINE.img) return; const t0 = performance.now();
-  const C = paperCutout(MINE.img, { max: +$('detail').value, tol: +$('tol').value, one: $('one').checked, seeds: MINE.seeds });
-  MINE.S = paperTrace(C.px, C.w, [0, 0, C.w, C.h]); MINE.w = C.w; MINE.h = C.h; MINE.ms = performance.now() - t0; $('tolL').style.display = C.keyed ? '' : 'none';
-  const cut = $('cut'); cut.width = C.w; cut.height = C.h; cut.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(C.px), C.w, C.h), 0, 0); cut.style.display = 'block'; $('cutx').style.display = MINE.seeds.length && cut.classList.contains('big') ? 'block' : 'none';
-  if (TEX.mine) gl.deleteTexture(TEX.mine); TEX.mine = texOf(C);
-  if (!MINE.S) { $('stats').textContent = 'nothing left to cut: lower the background slider'; groups = []; return; }
-  $('mode').value = 'mine'; cam.zoom = 0; build(); }
-$('cut').onclick = e => { const c = $('cut'); if (!c.classList.contains('big')) { c.classList.add('big'); $('cutx').style.display = MINE.seeds.length ? 'block' : 'none'; return; } // first tap: open big; then each tap erases from that spot
-  const r = c.getBoundingClientRect(), k = Math.min(r.width / c.width, r.height / c.height), ox = (r.width - c.width * k) / 2, oy = (r.height - c.height * k) / 2, u = (e.clientX - r.left - ox) / (c.width * k), v = (e.clientY - r.top - oy) / (c.height * k);
-  if (u < 0 || v < 0 || u > 1 || v > 1) { c.classList.remove('big'); $('cutx').style.display = 'none'; return; } MINE.seeds.push([u, v]); makeMine(); };
-$('cutx').onclick = () => { MINE.seeds.pop(); makeMine(); };
-cv.addEventListener('pointerdown', () => { $('cut').classList.remove('big'); $('cutx').style.display = 'none'; });
-$('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); im.onload = () => { MINE.img = im; MINE.seeds = []; $('cut').classList.remove('big'); $('mode').querySelector('[value=mine]').disabled = false; $('yours').style.display = 'flex'; makeMine(); window.MINE_READY = (window.MINE_READY || 0) + 1; }; im.src = URL.createObjectURL(f); };
-let redo = 0; for (const id of ['detail', 'tol', 'one']) $(id).addEventListener(id === 'tol' ? 'input' : 'change', () => { clearTimeout(redo); redo = setTimeout(makeMine, 120); });
-{ const pts = new Map(); let pd = 0; // two fingers: pinch to zoom
-  cv.addEventListener('pointerdown', e => pts.set(e.pointerId, [e.clientX, e.clientY])); for (const ev of ['pointerup', 'pointercancel']) cv.addEventListener(ev, e => { pts.delete(e.pointerId); pd = 0; });
-  cv.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size !== 2) return; drag = null;
-    const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pd) cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * pd / d)); pd = d; }); }
-TEX.ground = texOf(ground, true);
-for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); if (++loaded === names.length) { build(); requestAnimationFrame(frame);  window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }
+let toastT = 0; function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3200); }
+function makeMine(first) { if (!MINE.img) return; const t0 = performance.now();
+  const C = paperCutout(MINE.img, { max: ST.detail, tol: ST.tol, one: ST.one, seeds: MINE.seeds });
+  MINE.S = paperTrace(C.px, C.w, [0, 0, C.w, C.h]); if (MINE.S) { const P = MINE.S.pts; let x0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < P.length; i += 2) { x0 = Math.min(x0, P[i]); x1 = Math.max(x1, P[i]); y1 = Math.max(y1, P[i + 1]); } MINE.S.anchor = [(x0 + x1) / 2, y1]; } // it stands on its lowest painted pixel
+  MINE.w = C.w; MINE.h = C.h; MINE.ms = performance.now() - t0; TEX.mine = texOf(C, false, TEX.mine);
+  let air = 0; for (let i = 3; i < C.px.length; i += 4) if (!C.px[i]) air++;
+  if (!MINE.S) { toast('Everything was removed. Tap Undo, or turn Background removal down in Options.'); groups = []; tris = 0; return; }
+  if (first && !air) toast('No background found. Tap Erase, then tap the background.');
+  ST.mode = 'mine'; build(); }
+$('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image();
+  im.onload = () => { MINE.img = im; MINE.seeds = []; $('tErase').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
+  im.onerror = () => toast('That file could not be opened as a picture.'); im.src = URL.createObjectURL(f); e.target.value = ''; };
+function refreshHello() { $('hello').hidden = !(ST.mode === 'start' && !MINE.img && !ST.tool); }
+// ---------- start ----------
+if (Q.get('t')) $('thick').value = Q.get('t'); $('wire').checked = Q.get('wire') === '1'; $('spin').checked = Q.get('spin') !== '0';
+document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x.dataset.look === ST.look));
+const retheme = () => { if (loaded === names.length) build(); }; matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme); new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); if (++loaded === names.length) { build(); refreshHello(); requestAnimationFrame(frame); window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }
 </script></body></html>'''
-import re, sys
-if '--artifact' in sys.argv: # the same page without its own document wrapper (the artifact host adds one)
+if '--artifact' in sys.argv:  # the same page without its own document wrapper (the artifact host adds one)
     body = re.sub(r'^<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport"[^>]*>', '', html).replace('</style></head><body>', '</style>', 1).replace('</body></html>', '')
     dst = sys.argv[sys.argv.index('--artifact') + 1]; open(dst, 'w', encoding='utf-8').write(body); print('wrote', dst)
 out = os.path.join(ROOT, 'papercraft/sprite-viewer.html'); open(out, 'w', encoding='utf-8', newline='').write(html); print('wrote', out, round(len(html) / 1024), 'KB')

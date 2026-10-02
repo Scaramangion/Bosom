@@ -52,8 +52,8 @@ function matrix(w, h) { // perspective * lookAt(target), z up
     const tx = MAP_COLS * 8, ty = MAP_ROWS * 8 + 90, tz = 20, cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
     const e = [tx + Math.sin(cam.yaw) * cp * cam.dist, ty + Math.cos(cam.yaw) * cp * cam.dist, tz + sp * cam.dist];
     const f = [tx - e[0], ty - e[1], tz - e[2]], fl = Math.hypot(...f); f[0] /= fl; f[1] /= fl; f[2] /= fl;
-    let r = [f[1] * 1 - f[2] * 0, f[2] * 0 - f[0] * 1, 0]; const rl = Math.hypot(r[0], r[1]); r = [r[0] / rl, r[1] / rl, 0];
-    const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+    let r = [-f[1], f[0], 0]; const rl = Math.hypot(r[0], r[1]); r = [r[0] / rl, r[1] / rl, 0]; // x east, y SOUTH, z up is left-handed: right = up x forward,
+    const u = [f[1] * r[2] - f[2] * r[1], f[2] * r[0] - f[0] * r[2], f[0] * r[1] - f[1] * r[0]];                                   // up = forward x right, so east shows on the right (no mirror)
     const V = [r[0], u[0], -f[0], 0, r[1], u[1], -f[1], 0, r[2], u[2], -f[2], 0, -(r[0] * e[0] + r[1] * e[1] + r[2] * e[2]), -(u[0] * e[0] + u[1] * e[1] + u[2] * e[2]), (f[0] * e[0] + f[1] * e[1] + f[2] * e[2]), 1];
     const n = 4, fa = 4000, t = 1 / Math.tan(0.4), a = w / h, P = [t / a, 0, 0, 0, 0, t, 0, 0, 0, 0, -(fa + n) / (fa - n), -1, 0, 0, -2 * fa * n / (fa - n), 0];
     const M = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += P[k * 4 + j] * V[i * 4 + k]; M[i * 4 + j] = s; } return M;
@@ -62,7 +62,7 @@ function frame(now) {
     const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth * dpr | 0, h = cv.clientHeight * dpr | 0; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     gl.viewport(0, 0, w, h); const night = +document.getElementById('night').value, amb = 0.85 - night * 0.43;
     gl.clearColor(0.55 - night * 0.4, 0.62 - night * 0.45, 0.7 - night * 0.4, 1); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CW); // x east, y SOUTH, z up is a left-handed world, so the folded faces wind clockwise here
+    gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CCW); // faces are wound counter-clockwise seen from outside, and this camera does not mirror the world
     gl.useProgram(prog); gl.bindBuffer(gl.ARRAY_BUFFER, buf); for (let i = 0; i < 3; i++) gl.enableVertexAttribArray(i);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 28, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 28, 12); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 28, 20);
     gl.activeTexture(gl.TEXTURE7); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(U('uSheet'), 7); gl.uniformMatrix4fv(U('uM'), false, matrix(w, h));
