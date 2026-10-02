@@ -134,7 +134,7 @@ export function init(ctx) {
     sun.color.setRGB(L.r / m, L.g / m, L.b / m);
     // golden key: slight warm push
     sun.color.lerp(tmpC.setRGB(1.0, 0.86, 0.66), useMoon ? 0 : 0.18);
-    sun.intensity = useMoon ? m * 2.2 / 0.03 * 0.03 * 9 : m * 3.4 * smooth(-0.02, 0.05, sunDir.y);
+    sun.intensity = useMoon ? m * 12 : m * 3.4 * smooth(-0.02, 0.05, sunDir.y);
     sun.userData.dir = ldir;
     sun.castShadow = sun.intensity > 0.02;
 
