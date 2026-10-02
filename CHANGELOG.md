@@ -1,0 +1,11 @@
+# Changelog
+- 2.90 (not yet published) Sudashorn's own sprite sheet: stands, runs, twirls round when you talk.
+- 2.89 Cottage film behind the BOSOM title card.
+- 2.88 New game starts in the farmhouse at night; dialogue on a side page; townsfolk at Koto's size; the Tall One stalker and the nerve bar.
+- 2.87 Pieces from the painted asset sheet blended sparingly into the town.
+- 2.86 Buildings 3-6 storeys; prime-113 paper config.
+- 2.85 Code cleanup (dead code, unused variables).
+- 2.84 Koto's story as the opening crawl; great-grandmother's scroll in the basement.
+- 2.83 Character voices, night patrol, Sudashorn keeps the farm while you patrol.
+- 2.82 Wide town and market square with fountain; steady camera; townsfolk schedules; hooded neighbours.
+- 2.81 Brennan's Theme folded into real 3D (papercraft).
