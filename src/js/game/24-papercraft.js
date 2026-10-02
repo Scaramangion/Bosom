@@ -669,7 +669,7 @@
                 const ux = p[1][0] - p[0][0], uy = p[1][1] - p[0][1], uz = p[1][2] - p[0][2], vx = p[2][0] - p[0][0], vy = p[2][1] - p[0][1], vz = p[2][2] - p[0][2];
                 const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2];
                 const cn = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx), cr = ((uy * vz - uz * vy) * Rx + (uz * vx - ux * vz) * Ry) / (cn || 1), sideways = o.sideUV && Math.abs(cr) > 0.55; // a steep face: paint it from the side view
-                for (const n of ord) { const [i, j] = q[n], t = sideways ? o.sideUV(cx(i), cy(j), side * hv(i, j, side)) : UV(i, j, side); V.push(p[n][0], p[n][1], p[n][2], t[0], t[1], shadeAt(i, j, side), em); } };
+                for (const n of ord) { const [i, j] = q[n], t = sideways ? o.sideUV(cx(i), cy(j), side * hv(i, j, side), (k > 0 ? cr : -cr) > 0) : UV(i, j, side); /* last argument: true when the face looks east (+x along R); the ordered face's cross points inward */ V.push(p[n][0], p[n][1], p[n][2], t[0], t[1], shadeAt(i, j, side), em); } };
             for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { // every grid cell that holds any paint
                 let any = false; for (let y = cy(j); y < cy(j + 1) && !any; y++) for (let x = cx(i); x < cx(i + 1); x++) if (own[y * w + x]) { any = true; break; }
                 if (!any) continue; const A = [i, j], B = [i + 1, j], C = [i + 1, j + 1], Dd = [i, j + 1], flip = (i + j) & 1; // alternate the diagonal, so the shading has no grain
