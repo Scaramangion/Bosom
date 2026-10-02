@@ -19,6 +19,17 @@ const { chromium } = require(process.env.PW || 'playwright'); const path = requi
     const posed = await p.evaluate(() => ST.pose.armL || 0); console.log(name, 'arm posed by', posed.toFixed(2), 'rad'); if (Math.abs(posed) < 0.3) errs.push(name + ' arm did not pose');
     await p.screenshot({ path: R(`papercraft/shots/rig-${name}-posed.png`) });
   }
+  { // Edit joints: move the left elbow down a little, and give the side-view child (no rig found) a rig by hand
+    await p.click('[data-anim=still]'); await p.click('#editJ'); await p.waitForTimeout(1200); await p.screenshot({ path: R('papercraft/shots/rig-joints-edit.png') });
+    const before = await p.evaluate(() => MINE.rig.parts.find(q => q.name === 'foreL').pivot.slice()), dot = await p.$('.joint.edit.foreL'), bb = await dot.boundingBox();
+    await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await p.mouse.down(); for (let k = 1; k <= 6; k++) await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2 + k * 4); await p.mouse.up();
+    await p.waitForFunction(() => (window.JOINT_MOVED || 0) >= 1, null, { timeout: 30000 }); await p.waitForTimeout(500);
+    const after = await p.evaluate(() => MINE.rig.parts.find(q => q.name === 'foreL').pivot.slice()); console.log('elbow moved from', before.map(v => v.toFixed(1)).join(','), 'to', after.map(v => v.toFixed(1)).join(','));
+    if (!(after[1] > before[1] + 2)) errs.push('elbow did not move'); await p.screenshot({ path: R('papercraft/shots/rig-joints-moved.png') }); await p.click('#editJ'); await p.waitForTimeout(300);
+    await p.goto('file://' + R('papercraft/sprite-viewer.html') + '?spin=0'); await p.waitForFunction(() => window.READY, null, { timeout: 60000 });
+    await p.setInputFiles('#file', R('art-source/characters/child_side.png')); await p.waitForFunction(() => (window.CUT_DONE || 0) >= 1, null, { timeout: 120000 }); await p.waitForTimeout(500);
+    const was = await p.evaluate(() => MINE.rig.humanoid); await p.click('#tPose'); await p.click('#editJ'); await p.waitForTimeout(800); const now = await p.evaluate(() => MINE.rig.humanoid && MINE.rig.parts.length);
+    console.log('side-view child: rig found', was, '-> after Edit joints', now, 'parts'); if (!now) errs.push('Edit joints did not make a rig'); await p.screenshot({ path: R('papercraft/shots/rig-joints-forced.png') }); await p.click('#editJ'); }
   { const fs = require('fs'), dir = R('papercraft/shots/export-rig'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true }); // save the rigged model of the last character
     await p.click('#reset'); for (const kind of ['model', 'png', 'json']) { await p.click('#save'); await p.waitForTimeout(200); const [d] = await Promise.all([p.waitForEvent('download', { timeout: 60000 }), p.click(`[data-save=${kind}]`)]); await d.saveAs(path.join(dir, d.suggestedFilename())); console.log('saved', d.suggestedFilename()); } }
   await b.close(); console.log(errs.length ? 'RED ' + errs.join(' | ') : 'GREEN rigged, animated and posed'); process.exit(errs.length ? 1 : 0);

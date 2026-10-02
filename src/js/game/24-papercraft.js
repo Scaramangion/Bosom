@@ -743,16 +743,18 @@
             const cw = y => { const r = central(y); return r ? r[1] - r[0] + 1 : 0; };
             let neck = -1, nr = 1, run = 0; // the neck: the row narrowest compared with the widest row above it (the head), in the top half
             for (let y = top; y < top + H * 0.5; y++) { const c = cw(y); if (y > top + H * 0.08 && run > 0 && c / run < nr) { nr = c / run; neck = y; } run = Math.max(run, c); }
-            const hasNeck = neck > 0 && nr < 0.95; if (!hasNeck) neck = top + Math.round(H * 0.2); // hair often hides the neck, so even a slight narrowing counts (the leg split is the stronger test)
+            const J = o.joints || {}, forced = Object.keys(J).length > 0 || !!o.force; // o.joints {name: [x, y]}: joints placed by hand win over the guesses (and make a rig even where none was found)
+            const hasNeck = neck > 0 && nr < 0.95; if (!hasNeck) neck = top + Math.round(H * 0.2); if (J.head) neck = Math.round(J.head[1]); // hair often hides the neck, so even a slight narrowing counts (the leg split is the stronger test)
             let crotch = -1; for (let y = bot - Math.round(H * 0.04); y > top + H * 0.35; y--) { const c = Math.round(cx), gap = !a[y * w + c] && runs(y).filter(r => r[1] < c).length && runs(y).filter(r => r[0] > c).length; if (gap) crotch = y; else if (crotch >= 0) break; } // the legs part here
-            const hip = crotch >= 0 ? crotch - Math.round(H * 0.02) : top + Math.round(H * 0.58);
+            let hip = J.torso ? Math.round(J.torso[1]) : crotch >= 0 ? crotch - Math.round(H * 0.02) : top + Math.round(H * 0.58);
+            if (forced && !(hip > neck + H * 0.1 && bot - hip > H * 0.05)) { if (!J.head) neck = top + Math.round(H * 0.2); if (!J.torso) hip = top + Math.round(H * 0.58); } // guesses that contradict each other give way to the usual proportions
             const band = []; for (let y = neck + 1; y < hip; y++) band.push(y); // the torso band
             const inner = []; for (const y of band) { const r = runs(y); if (r.length >= 3) { const c = r.findIndex(q => q[0] <= cx && q[1] >= cx); if (c > 0 && c < r.length - 1) inner.push([cx - r[c][0], r[c][1] - cx]); } } // rows where arm, body, arm show gaps
             let chest = 0; for (let y = neck + 1; y < neck + 1 + Math.max(1, (hip - neck) * 0.4); y++) { const r = runs(y); if (r.length) chest = Math.max(chest, r[r.length - 1][1] - r[0][0] + 1); }
             const med = v => { const s = v.slice().sort((p, q) => p - q); return s[s.length >> 1]; };
-            const coreL = inner.length >= 3 ? med(inner.map(q => q[0])) + 1 : chest * 0.31, coreR = inner.length >= 3 ? med(inner.map(q => q[1])) + 1 : chest * 0.31;
-            const humanoid = hasNeck && crotch >= 0 && hip > neck + H * 0.15 && bot - hip > H * 0.08, lab = new Int8Array(w * h).fill(-1); // 0 torso, 1 head, 2 arm L, 3 arm R, 4 leg L, 5 leg R (L = the picture's left)
-            let legX = cx; if (crotch >= 0) { const r = runs(crotch); const c = Math.round(cx); let l = 0, rr = w - 1; for (const q of r) { if (q[1] < c) l = Math.max(l, q[1]); if (q[0] > c) rr = Math.min(rr, q[0]); } legX = (l + rr) / 2; }
+            const coreL = J.armL ? Math.max(1, cx - J.armL[0]) : inner.length >= 3 ? med(inner.map(q => q[0])) + 1 : chest * 0.31, coreR = J.armR ? Math.max(1, J.armR[0] - cx) : inner.length >= 3 ? med(inner.map(q => q[1])) + 1 : chest * 0.31;
+            const humanoid = (forced || (hasNeck && crotch >= 0)) && hip > neck + H * 0.1 && bot - hip > H * 0.05, lab = new Int8Array(w * h).fill(-1); // 0 torso, 1 head, 2 arm L, 3 arm R, 4 leg L, 5 leg R (L = the picture's left)
+            let legX = cx; if (J.legL && J.legR) legX = (J.legL[0] + J.legR[0]) / 2; else if (crotch >= 0) { const r = runs(crotch); const c = Math.round(cx); let l = 0, rr = w - 1; for (const q of r) { if (q[1] < c) l = Math.max(l, q[1]); if (q[0] > c) rr = Math.min(rr, q[0]); } legX = (l + rr) / 2; }
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!a[y * w + x]) continue; const i = y * w + x;
                 lab[i] = !humanoid ? 0 : y <= neck ? 1 : y > hip && x >= cx - coreL * 1.15 && x <= cx + coreR * 1.15 ? (x < legX ? 4 : 5) : x < cx - coreL ? 2 : x > cx + coreR ? 3 : y > hip ? (x < legX ? 4 : 5) : 0; }
             if (humanoid) for (const arm of [2, 3]) { // an "arm" pixel must hang from the shoulder: flood from the upper torso band; the rest goes to the torso or a leg
@@ -765,10 +767,11 @@
                     if (!keep) lab[i] = y <= neck + 1 ? 1 : 0; } }
             const names = ['torso', 'head', 'armL', 'armR', 'legL', 'legR', 'foreL', 'foreR', 'shinL', 'shinR'], up = [-1, 0, 0, 0, 0, 0, 2, 3, 4, 5], shoulder = neck + Math.max(1, Math.round((hip - neck) * 0.12));
             const pivots = [[cx, hip], [cx, neck], [cx - coreL, shoulder], [cx + coreR, shoulder], [legX - (legX - (cx - coreL)) * 0.5, hip], [legX + ((cx + coreR) - legX) * 0.5, hip], null, null, null, null];
+            for (const [k, nm] of [[0, 'torso'], [1, 'head'], [2, 'armL'], [3, 'armR'], [4, 'legL'], [5, 'legR']]) if (J[nm]) pivots[k] = [J[nm][0], J[nm][1]];
             if (humanoid && o.bend !== false) for (let k = 2; k <= 5; k++) { // two bones per limb: the elbow / knee halfway along it, from the joint to its far tip
                 const P = pivots[k]; let tip = null, best = -1; for (let i = 0; i < w * h; i++) if (lab[i] === k) { const d = (i % w - P[0]) ** 2 + (((i / w) | 0) - P[1]) ** 2; if (d > best) { best = d; tip = [i % w, (i / w) | 0]; } }
-                if (!tip) continue; const L = Math.sqrt(best), ax = (tip[0] - P[0]) / (L || 1), ay = (tip[1] - P[1]) / (L || 1), r = (k < 4 ? 0.5 : 0.52) * L;
-                if (L < H * 0.08) continue; pivots[k + 4] = [P[0] + ax * r, P[1] + ay * r];
+                if (!tip) continue; const L = Math.sqrt(best), ax = (tip[0] - P[0]) / (L || 1), ay = (tip[1] - P[1]) / (L || 1), Jk = J[names[k + 4]], r = Jk ? Math.max(1, (Jk[0] - P[0]) * ax + (Jk[1] - P[1]) * ay) : (k < 4 ? 0.5 : 0.52) * L;
+                if (L < H * 0.08 && !Jk) continue; pivots[k + 4] = Jk ? [Jk[0], Jk[1]] : [P[0] + ax * r, P[1] + ay * r];
                 for (let i = 0; i < w * h; i++) if (lab[i] === k && ((i % w) - P[0]) * ax + (((i / w) | 0) - P[1]) * ay > r) lab[i] = k + 4; }
             if (humanoid) for (let k = 1; k <= 9; k++) { // each part is one piece: stray islands go back to the torso (or the head, above the neck)
                 const seen = new Uint8Array(w * h), comps = []; for (let s0 = 0; s0 < w * h; s0++) { if (lab[s0] !== k || seen[s0]) continue; const q = [s0]; seen[s0] = 1;
