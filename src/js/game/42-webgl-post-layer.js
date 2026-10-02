@@ -374,6 +374,17 @@
                 gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(PAPER.front || gl.CCW);
                 gl.drawArrays(gl.TRIANGLES, 0, PAPER.verts);
                 gl.disable(gl.CULL_FACE);
+                this.heroPaper = false;
+                if (heroHD.req && paperHeroLive()) { // the rigged paper hero: posed on the CPU each frame, drawn through the same shader and depth buffer
+                    const pv = paperHeroPose();
+                    if (!this.phBuf) { this.phBuf = gl.createBuffer(); this.phTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, this.phTex);
+                        [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, PAPER_HERO.img); }
+                    else gl.bindTexture(gl.TEXTURE_2D, this.phTex);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.phBuf); gl.bufferData(gl.ARRAY_BUFFER, pv, gl.DYNAMIC_DRAW);
+                    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 28, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 28, 12); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 28, 20);
+                    gl.drawArrays(gl.TRIANGLES, 0, PAPER_HERO.verts); this.heroPaper = true;
+                }
                 gl.bindTexture(gl.TEXTURE_2D, this.tex7); gl.activeTexture(gl.TEXTURE0);
                 gl.disableVertexAttribArray(2); gl.disableVertexAttribArray(1); this.bindMain(gl);
                 return true;
@@ -497,7 +508,7 @@
                 this.paperZ = mode === 1 && paperLive() && this.drawPaper(gl); // the folded town, then everything standing is depth-tested against it
                 if (this.paperZ) { gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); }
                 this.drawCards(gl, true);
-                if (heroHD.req) { this.drawHero(gl); heroHD.req = null; }
+                if (heroHD.req) { if (!this.heroPaper) this.drawHero(gl); heroHD.req = null; }
                 this.drawCards(gl, false); CARDS.list.length = 0;
                 if (this.paperZ) { gl.disable(gl.DEPTH_TEST); this.paperZ = false; }
             }

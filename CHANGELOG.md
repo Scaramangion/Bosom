@@ -29,3 +29,9 @@
 - Brighter nights (outdoor ambient 0.32 -> 0.42; farmhouse interior 0.5).
 - Papercraft isolated: 24-papercraft.js is now only the paper module (config, prime hash, sheet, folder, street painter, cottage, shaders as PAPER_GLSL); the world-state code that shared the file moved to 24b-world-state.js.
 - docs/PAPERCRAFT.md explains the concept and algorithm; papercraft/paper-demo.html runs the real module on its own (tools/make_papercraft_demo.py).
+
+## 2.95 — The paper hero
+- New `src/js/game/24c-paper-hero.js`: a small glTF player for Papercraft exports (one node per body part, looping clips). It reads `assets/models/paper-hero.glb` from the page, poses it every frame and draws it through the paper shader, so the hero stands in the folded town as real geometry with depth, fog, night grading and the cutaway.
+- Plays Idle (arms lowered from the export's T-pose), Walk (faster when running), Jump, Swing (sword/axe). Side views turn 3/4 toward the lens so the flat figure never shows as a sliver.
+- Horse, pouch and roll still use the flat sprite; held tools are not drawn on the paper hero yet. Combat and every non-town zone are unchanged.
+- `build.py` packs `.glb` files as data URIs.

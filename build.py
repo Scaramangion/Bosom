@@ -6,7 +6,7 @@ Placeholders in src/index.template.html:
    {{datauri path}}   a picture, packed as data:<type>;base64,..."""
 import base64, os, re, shutil, sys
 ROOT = os.path.dirname(os.path.abspath(__file__))
-MIME = {'mp4': 'video/mp4', 'webm': 'video/webm', 'webp': 'image/webp', 'png': 'image/png', 'jpg': 'image/jpeg', 'gif': 'image/gif', 'mp3': 'audio/mpeg'}
+MIME = {'mp4': 'video/mp4', 'webm': 'video/webm', 'webp': 'image/webp', 'png': 'image/png', 'jpg': 'image/jpeg', 'gif': 'image/gif', 'mp3': 'audio/mpeg', 'glb': 'model/gltf-binary'}
 def clean(b): # drop Content Credentials (C2PA) blocks that the file host stamps onto images and video: metadata only, the picture is untouched
     import struct
     if b[:4] == b'RIFF' and b[8:12] == b'WEBP':
