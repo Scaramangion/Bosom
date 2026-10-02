@@ -38,8 +38,8 @@ function buildWolfModel(variant = 0) {
     // face mask: cream cheeks, dark brow & muzzle bridge
     if (p.z > 0.6) {
       T.lerp(cBelly, ss(0.2, -0.4, n.y) * 0.7 * ss(0.62, 0.75, p.z));
-      if (n.y > 0.5 && p.z > 0.74) T.lerp(cDark, 0.55);
-      if (p.z > 0.92) T.lerp(cNose, 0.8);
+      if (n.y > 0.5 && p.z > 0.72) T.lerp(cDark, 0.55);
+      if (p.z > 0.88) T.lerp(cNose, 0.8);
     }
     // tail: darker tip
     if (p.z < -0.95) T.lerp(cDark, ss(-0.95, -1.12, p.z));
@@ -51,8 +51,9 @@ function buildWolfModel(variant = 0) {
     if (p.z > 0.15 && p.z < 0.58 && p.y > 0.7) f = lerp(0.032, 0.075, ss(0.15, 0.4, p.z) * ss(0.62, 0.5, p.z)); // neck ruff / mane
     if (p.z > 0.25 && p.z < 0.6 && n.y < 0 && p.y > 0.6) f = Math.max(f, 0.06); // chest ruff
     if (p.y < 0.55 && p.z > -0.62) f = lerp(0.012, f, ss(0.25, 0.55, p.y)); // legs short
-    if (p.z > 0.6) f = lerp(f, 0.008, ss(0.6, 0.7, p.z)); // face short
-    if (p.z > 0.86) f = 0.0;
+    if (p.z > 0.58 && p.z < 0.68 && Math.abs(n.x) > 0.5) f = Math.max(f, 0.05); // cheek ruff
+    if (p.z > 0.64) f = lerp(f, 0.008, ss(0.64, 0.72, p.z)); // face short
+    if (p.z > 0.83) f = 0.0;
     if (p.z < -0.6 && p.y > 0.3) f = 0.085; // tail brush
     return f;
   };
@@ -65,8 +66,8 @@ function buildWolfModel(variant = 0) {
   R.bone('neck', 'chest', 0, 0.90, 0.42);
   R.bone('head', 'neck', 0, 1.00, 0.62);
   R.bone('jaw', 'head', 0, 0.965, 0.68);
-  R.bone('ear_l', 'head', 0.06, 1.09, 0.63);
-  R.bone('ear_r', 'head', -0.06, 1.09, 0.63);
+  R.bone('ear_l', 'head', 0.08, 1.13, 0.6);
+  R.bone('ear_r', 'head', -0.08, 1.13, 0.6);
   R.bone('tail0', 'hips', 0, 0.82, -0.60);
   R.bone('tail1', 'tail0', 0, 0.76, -0.76);
   R.bone('tail2', 'tail1', 0, 0.63, -0.92);
@@ -92,11 +93,11 @@ function buildWolfModel(variant = 0) {
       { p: [0, 0.83, 0.17], b: 'chest', r: [0.185, 0.145, 0.28] },
       { p: [0, 0.87, 0.34], b: 'chest', r: [0.18, 0.155, 0.26] },
       { p: [0, 0.96, 0.50], b: 'neck', r: [0.14, 0.14, 0.165] },
-      { p: [0, 1.03, 0.63], b: 'head', r: [0.13, 0.115, 0.105] },
-      { p: [0, 1.03, 0.72], b: 'head', r: [0.105, 0.085, 0.075] },
-      { p: [0, 1.0, 0.82], b: 'head', r: [0.068, 0.058, 0.045] },
-      { p: [0, 0.99, 0.905], b: 'head', r: [0.05, 0.045, 0.03] },
-      { p: [0, 0.985, 0.95], b: 'head', r: [0.035, 0.032, 0.02] },
+      { p: [0, 1.035, 0.62], b: 'head', r: [0.15, 0.12, 0.11] },
+      { p: [0, 1.035, 0.70], b: 'head', r: [0.115, 0.09, 0.08] },
+      { p: [0, 1.005, 0.78], b: 'head', r: [0.072, 0.06, 0.047] },
+      { p: [0, 0.993, 0.855], b: 'head', r: [0.054, 0.047, 0.032] },
+      { p: [0, 0.988, 0.90], b: 'head', r: [0.037, 0.033, 0.02] },
     ],
   });
   // lower jaw
@@ -105,8 +106,8 @@ function buildWolfModel(variant = 0) {
     color: (p, n) => n.y > 0.35 ? cMouth.clone() : furColor(p, n),
     pts: [
       { p: [0, 0.958, 0.68], b: 'jaw', r: [0.07, 0.02, 0.04] },
-      { p: [0, 0.952, 0.81], b: 'jaw', r: [0.045, 0.017, 0.028] },
-      { p: [0, 0.956, 0.92], b: 'jaw', r: [0.028, 0.012, 0.016] },
+      { p: [0, 0.952, 0.78], b: 'jaw', r: [0.047, 0.017, 0.028] },
+      { p: [0, 0.956, 0.875], b: 'jaw', r: [0.03, 0.012, 0.016] },
     ],
   });
   // legs
@@ -140,20 +141,20 @@ function buildWolfModel(variant = 0) {
     }
     // ears: thick fur-covered cones, inner pinkish dark
     const ear = new THREE.ConeGeometry(0.062, 0.17, 12, 3); ear.scale(1, 1, 0.42);
-    R.part(ear, 'ear_' + k, mtx([s * 0.075, 1.16, 0.6], [-0.2, 0, -s * 0.3]), { color: (p, n) => (n.z > 0.4 ? cMouth.clone().lerp(cDark, 0.4) : furColor(p, n)), fur: (p, n) => n.z > 0.4 ? 0.0 : 0.014 });
+    R.part(ear, 'ear_' + k, mtx([s * 0.085, 1.205, 0.585], [-0.15, 0, -s * 0.32]), { color: (p, n) => (n.z > 0.4 ? cMouth.clone().lerp(cDark, 0.4) : furColor(p, n)), fur: (p, n) => n.z > 0.4 ? 0.0 : 0.014 });
     // eyelid / brow ridge for a scowl
-    R.part(sph, 'head', mtx([s * 0.07, 1.075, 0.715], [0.35, s * 0.4, s * 0.55], [0.04, 0.016, 0.032]), { color: cDark, fur: 0.008 });
+    R.part(sph, 'head', mtx([s * 0.075, 1.078, 0.69], [0.35, s * 0.4, s * 0.55], [0.042, 0.016, 0.032]), { color: cDark, fur: 0.008 });
     // fangs
     const fang = new THREE.ConeGeometry(0.0085, 0.045, 6); fang.translate(0, -0.0225, 0);
-    R.part(fang, 'head', mtx([s * 0.03, 0.968, 0.89], [0.1, 0, 0], [1.2, 1.2, 1.2]), { acc: 'hard', color: cIvory });
-    R.part(fang, 'jaw', mtx([s * 0.024, 0.962, 0.875], [Math.PI - 0.15, 0, 0], [1.0, 0.9, 1.0]), { acc: 'hard', color: cIvory });
+    R.part(fang, 'head', mtx([s * 0.03, 0.968, 0.85], [0.1, 0, 0], [1.2, 1.2, 1.2]), { acc: 'hard', color: cIvory });
+    R.part(fang, 'jaw', mtx([s * 0.024, 0.962, 0.835], [Math.PI - 0.15, 0, 0], [1.0, 0.9, 1.0]), { acc: 'hard', color: cIvory });
     for (let i = 0; i < 4; i++) {
-      R.part(fang, 'head', mtx([s * (0.034 + i * 0.006), 0.972, 0.86 - i * 0.035], [0, 0, 0], [0.55, 0.4, 0.55]), { acc: 'hard', color: cIvory });
-      R.part(fang, 'jaw', mtx([s * (0.028 + i * 0.006), 0.962, 0.85 - i * 0.035], [Math.PI, 0, 0], [0.55, 0.35, 0.55]), { acc: 'hard', color: cIvory });
+      R.part(fang, 'head', mtx([s * (0.036 + i * 0.007), 0.972, 0.82 - i * 0.03], [0, 0, 0], [0.55, 0.4, 0.55]), { acc: 'hard', color: cIvory });
+      R.part(fang, 'jaw', mtx([s * (0.03 + i * 0.007), 0.962, 0.81 - i * 0.03], [Math.PI, 0, 0], [0.55, 0.35, 0.55]), { acc: 'hard', color: cIvory });
     }
   }
   // nose leather
-  R.part(new THREE.SphereGeometry(0.03, 12, 8), 'head', mtx([0, 0.995, 0.95], [0, 0, 0], [1.25, 0.85, 0.9]), { acc: 'hard', color: cNose });
+  R.part(new THREE.SphereGeometry(0.03, 12, 8), 'head', mtx([0, 0.997, 0.902], [0, 0, 0], [1.3, 0.9, 0.9]), { acc: 'hard', color: cNose });
   // bramble thorns along the dorsal line + a vine winding over the back
   const thornCol = (p) => { const t = ss(0.0, 1.0, (p.y - 0.85) / 0.12); return cThorn.clone().lerp(cThornTip, t); };
   const thornSpots = [[-0.5, 'hips', 0.93, 0.07], [-0.38, 'hips', 0.945, 0.10], [-0.24, 'spine', 0.94, 0.09], [-0.08, 'spine', 0.935, 0.11], [0.08, 'chest', 0.955, 0.12], [0.22, 'chest', 0.97, 0.15], [0.33, 'chest', 0.985, 0.17], [0.43, 'neck', 1.02, 0.13]];
@@ -189,7 +190,7 @@ function buildWolfModel(variant = 0) {
   for (const s of [-1, 1]) {
     const e = new THREE.Mesh(new THREE.SphereGeometry(0.021, 12, 8), eyeMat);
     e.scale.set(1, 0.65, 1);
-    e.position.set(s * 0.083 - headRest.x, 1.05 - headRest.y, 0.715 - headRest.z);
+    e.position.set(s * 0.088 - headRest.x, 1.052 - headRest.y, 0.69 - headRest.z);
     e.rotation.z = s * 0.35;
     built.bones.head.add(e); eyes.push(e);
   }
@@ -501,7 +502,7 @@ export class Wolf {
     B.neck.rotation.x = -this.look.y * 0.4 + Math.sin(ph * 2) * 0.05 * tro; B.head.rotation.x = -this.look.y * 0.5;
     // ears: pricked forward, flattened back when snarling
     for (const [k, sd] of [['ear_l', 1], ['ear_r', -1]]) {
-      B[k].rotation.x = -W.snarl * 0.9 + Math.sin(t * 0.7 + this.id + sd) * 0.05;
+      B[k].rotation.x = -W.snarl * 0.5 + Math.sin(t * 0.7 + this.id + sd) * 0.05;
       B[k].rotation.z = -sd * W.snarl * 0.35;
     }
     // ---- snarl/crouch: head low, neck stretched, jaw open, shoulders hunched
@@ -510,7 +511,7 @@ export class Wolf {
     B.spine.rotation.x += c * 0.06;
     B.neck.rotation.x += sn * 0.5 + c * 0.2;
     B.head.rotation.x += -sn * 0.5 - c * 0.12;
-    B.jaw.rotation.x = sn * (0.32 + Math.sin(t * 13 + this.id) * 0.03 * sn) + W.lunge * 0.35 + W.dead * 0.3;
+    B.jaw.rotation.x = sn * (0.24 + Math.sin(t * 13 + this.id) * 0.03 * sn) + W.lunge * 0.35 + W.dead * 0.3;
     // keep paws planted while crouched (approximate leg flex)
     for (const k of ['fl', 'fr']) { B[k + '_sh'].rotation.x += c * 0.42; B[k + '_el'].rotation.x += -c * 0.62; B[k + '_wr'].rotation.x += c * 0.28; }
     for (const k of ['hl', 'hr']) { B[k + '_hip'].rotation.x += -c * 0.4; B[k + '_kn'].rotation.x += c * 0.62; B[k + '_ho'].rotation.x += -c * 0.38; }

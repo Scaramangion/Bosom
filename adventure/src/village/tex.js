@@ -491,6 +491,16 @@ export const cropTex = (kind) => memo('crop' + kind, () => {
       g.strokeStyle = 'rgba(200,230,160,0.5)'; g.lineWidth = 2; g.beginPath(); g.moveTo(cx, cy); g.lineTo(gx, gy); g.stroke();
     }
     g.fillStyle = '#a6c96a'; g.beginPath(); g.arc(W / 2, H - 40, 34, 0, Math.PI * 2); g.fill();
+  } else if (kind === 'ivy') {
+    for (let k = 0; k < 7; k++) {
+      let x = W * (0.1 + R() * 0.8), y = 0;
+      while (y < H) {
+        y += 6 + R() * 6; x += (R() - 0.5) * 6;
+        const c = R();
+        g.fillStyle = `rgb(${40 + c * 40},${80 + c * 60},${25 + c * 20})`;
+        for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(x + sd * (6 + R() * 5), y, 7 + R() * 3, 5 + R() * 2, sd * 0.6, 0, Math.PI * 2); g.fill(); }
+      }
+    }
   } else { // flowers/weeds for shrine
     for (let i = 0; i < 30; i++) {
       const x0 = W * R(), top = H * (0.3 + R() * 0.5), col = R();

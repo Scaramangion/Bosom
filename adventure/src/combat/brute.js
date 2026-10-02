@@ -48,6 +48,10 @@ function buildBruteModel() {
     if (n.z > 0.2 && p.y > 0.9 && p.y < 2.0 && Math.abs(p.x) < 0.32) T.lerp(cBelly, ss(0.2, 0.8, n.z) * 0.75);
     if (p.y < 0.5) T.lerp(cDark, ss(0.5, 0.1, p.y) * 0.35);
     T.lerp(cWart, ss(0.72, 0.9, nv) * 0.5);
+    T.lerp(cDark, ss(0.55, 0.75, nv2) * 0.45); // mottling
+    // ochre war-paint slashes across shoulders and brow
+    const paint = Math.sin((p.x * 1.4 + p.y * 1.0) * 26) * 0.5 + 0.5;
+    if ((p.y > 1.7 && p.y < 1.9 && Math.abs(p.x) > 0.3) || (p.y > 2.05 && p.z > 0.5)) T.lerp(srgb(0x8a2a12), ss(0.75, 0.9, paint) * 0.8);
     T.multiplyScalar(0.82 + nv * 0.3);
     return T.clone();
   };
@@ -109,7 +113,7 @@ function buildBruteModel() {
     R.part(sph, s > 0 ? 'l_sh' : 'r_sh', mtx([s * 0.46, 1.79, 0.13], [0, 0, s * 0.4], [0.2, 0.17, 0.19]), { color: skinColor, fur: mane });
     R.part(sph, 'chest', mtx([s * 0.22, 1.83, 0.08], [0, 0, s * 0.5], [0.2, 0.13, 0.2]), { color: skinColor, fur: (p, n) => n.z < -0.3 ? 0.06 : 0 });
     // pecs
-    R.part(sph, 'chest', mtx([s * 0.17, 1.62, 0.33], [0.2, 0, 0], [0.19, 0.15, 0.1]), { color: skinColor });
+    R.part(sph, 'chest', mtx([s * 0.15, 1.66, 0.3], [0.1, 0, s * 0.25], [0.21, 0.12, 0.07]), { color: skinColor });
   }
   for (const [k, s] of [['l', 1], ['r', -1]]) {
     R.tube({
@@ -443,8 +447,8 @@ export class Brute {
     const ro = W.roar;
     if (ro > 0.01) {
       const tr = Math.sin(t * 30) * 0.03 * ro;
-      B.spine.rotation.x -= 0.25 * ro; B.chest.rotation.x -= 0.15 * ro; B.neck.rotation.x -= 0.15 * ro + tr; B.head.rotation.x -= 0.25 * ro;
-      B.jaw.rotation.x += 0.55 * ro; B.l_sh.rotation.z += 0.5 * ro; B.r_sh.rotation.z -= 0.35 * ro; B.l_el.rotation.x -= 0.6 * ro;
+      B.spine.rotation.x -= 0.12 * ro; B.chest.rotation.x -= 0.1 * ro; B.neck.rotation.x += 0.12 * ro - tr; B.head.rotation.x -= 0.08 * ro;
+      B.jaw.rotation.x += 0.5 * ro; B.l_sh.rotation.z += 0.5 * ro; B.r_sh.rotation.z -= 0.35 * ro; B.l_el.rotation.x -= 0.6 * ro;
       B.l_ear.rotation.x -= 0.4 * ro; B.r_ear.rotation.x -= 0.4 * ro;
     }
     // windup: club raised overhead, torso coiled back

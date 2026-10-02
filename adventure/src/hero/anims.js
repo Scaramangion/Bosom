@@ -98,9 +98,9 @@ function locomotion(p, A) {
     ground: true, airLift: A.air ? A.air * pos(-Math.cos(2 * ph + A.airPh)) : 0,
   };
 }
-const WALK = { thigh: 0.36, bias: 0.04, knee0: 0.06, knee: 0.95, kneeLag: 0.45, kneeSharp: 1.8, strike: 0.12, push: 0.35, toeUp: 0.25, lean: 0.03, hipYaw: 0.09, hipRoll: 0.035, sway: 0.016, bounce: 0.0, spineLean: 0.03, breath: 0.0, clav: 0.03, arm: 0.28, armBias: 0.02, armOut: 0.0, elbow: 0.25, elbowSwing: 0.25 };
-const RUN = { thigh: 0.62, bias: 0.16, knee0: 0.28, knee: 1.75, kneeLag: 0.55, kneeSharp: 1.3, strike: 0.1, push: 0.5, toeUp: 0.25, lean: 0.12, hipYaw: 0.14, hipRoll: 0.05, sway: 0.01, bounce: 0.0, spineLean: 0.1, breath: 0.02, clav: 0.08, arm: 0.62, armBias: -0.05, armOut: 0.04, elbow: 1.2, elbowSwing: 0.25, air: 0.05, airPh: 0 };
-const SPRINT = { ...RUN, thigh: 0.78, bias: 0.22, knee: 2.0, lean: 0.2, spineLean: 0.14, arm: 0.85, elbow: 1.35, hipYaw: 0.16, air: 0.08 };
+const WALK = { thigh: 0.42, bias: 0.04, knee0: 0.06, knee: 0.95, kneeLag: 0.45, kneeSharp: 1.8, strike: 0.12, push: 0.35, toeUp: 0.25, lean: 0.03, hipYaw: 0.09, hipRoll: 0.035, sway: 0.016, bounce: 0.0, spineLean: 0.03, breath: 0.0, clav: 0.03, arm: 0.28, armBias: 0.02, armOut: 0.0, elbow: 0.25, elbowSwing: 0.25 };
+const RUN = { thigh: 0.78, bias: 0.18, knee0: 0.28, knee: 1.75, kneeLag: 0.55, kneeSharp: 1.3, strike: 0.1, push: 0.5, toeUp: 0.25, lean: 0.12, hipYaw: 0.14, hipRoll: 0.05, sway: 0.01, bounce: 0.0, spineLean: 0.1, breath: 0.02, clav: 0.08, arm: 0.62, armBias: -0.05, armOut: 0.04, elbow: 1.2, elbowSwing: 0.25, air: 0.05, airPh: 0 };
+const SPRINT = { ...RUN, thigh: 0.92, bias: 0.24, knee: 2.0, lean: 0.2, spineLean: 0.14, arm: 0.85, elbow: 1.35, hipYaw: 0.16, air: 0.08 };
 
 function jumpPose(t) { // 0..0.3 takeoff
   const crouch = K([[0, 0], [0.08, 1], [0.2, -0.3], [0.3, -0.1]])(t);
@@ -299,8 +299,10 @@ export function buildClips(rig) {
   C.idle = bake(rig, 'idle', t => idlePose(t), 2.8);
   C.combatIdle = bake(rig, 'combatIdle', t => combatIdlePose(t), 1.6);
   C.walk = bake(rig, 'walk', t => locomotion(t / 1.05, WALK), 1.05);
-  C.run = bake(rig, 'run', t => locomotion(t / 0.68, RUN), 0.68);
-  C.sprint = bake(rig, 'sprint', t => locomotion(t / 0.6, SPRINT), 0.6);
+  C.run = bake(rig, 'run', t => locomotion(t / 0.72, RUN), 0.72);
+  C.sprint = bake(rig, 'sprint', t => locomotion(t / 0.62, SPRINT), 0.62);
+  // flight phase: body keeps travelling while both feet are off the ground
+  C.run.stride *= 1.35; C.sprint.stride *= 1.45;
   C.jump = bake(rig, 'jump', jumpPose, 0.3, { loop: false });
   C.fall = bake(rig, 'fall', t => fallPose(t), 0.9);
   C.land = bake(rig, 'land', landPose, 0.35, { loop: false });

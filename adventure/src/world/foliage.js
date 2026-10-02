@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { LANDMARKS, pathDist, riverDist, smoothstep, noise2, fbm } from './layout.js';
 import { getTerrainData } from './terrainData.js';
-import { buildGrass, buildFlowers, grassUniforms, updateFields } from './grass.js';
+import { buildGrass, buildFlowers, grassUniforms, updateFields, qualityScale } from './grass.js';
 import { buildTrees, foliageUniforms, leafMaterial } from './trees.js';
 import { buildRocks } from './rocks.js';
 import { leafCard } from './textures.js';
@@ -175,7 +175,7 @@ function buildFerns(ctx, D, R, clearOf) {
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   g.setIndex(idx);
   const list = [];
-  for (let i = 0; i < 30000 && list.length < 2600; i++) {
+  for (let i = 0; i < 30000 && list.length < 2600 * Math.min(1, qualityScale(ctx)); i++) {
     const x = -140 + R() * 150, z = -10 + R() * 140; // around the old forest
     const f = D.forestAt(x, z);
     if (R() > f * 0.9 || !clearOf(x, z)) continue;

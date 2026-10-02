@@ -6,7 +6,7 @@ import { mat, box, cyl } from './kit.js';
 
 const PI = Math.PI;
 function P(M, key, g, base, local, opts) { M.add(key, g, local ? base.clone().multiply(local) : base, opts); }
-const stoneC = (R, l = 0.8) => new THREE.Color().setHSL(0.1, 0.07, l + (R() - 0.5) * 0.18);
+const stoneC = (R, l = 0.8) => new THREE.Color().setHSL(0.1, 0.06, Math.min(1.25, l * 1.18) + (R() - 0.5) * 0.2);
 
 function flutedDrum(r, h, R, broken = false) {
   const g = new THREE.CylinderGeometry(r, r * 1.02, h, 40, 2, false);
@@ -46,6 +46,57 @@ function column(M, x, y, z, height, R, colliders, broken) {
     P(M, 'ruin', box(1.5, 0.3, 1.5, 0.35, 'wall', R), B, mat(0, yy + 0.5, 0), { color: stoneC(R) });
   }
   colliders.push({ type: 'cylinder', x, z, r: 0.75, h: height, y });
+}
+
+// Course-laid wall of individual blocks (real relief), local frame: along x, base y=0, thickness z.
+// openings: [{u0,u1,y0,h}] arched-top holes; broken(u)-> metres removed from the top at u.
+function blockWall(M, FB, len, height, thick, R, { openings = [], broken = null, course = 0.8, l = 0.85, wall = [-1e4, 1e4] } = {}) {
+  let yy = 0, ci = 0;
+  while (yy < height - 0.05) {
+    const ch = Math.min(course, height - yy);
+    let u = -len / 2 - (ci % 2 ? 0.45 : 0);
+    while (u < len / 2 - 0.05) {
+      const bw = 0.9 + R() * 0.7;
+      const u0 = Math.max(u, -len / 2), u1 = Math.min(u + bw, len / 2);
+      u += bw;
+      if (u1 - u0 < 0.2) continue;
+      const uc = (u0 + u1) / 2;
+      let hole = false;
+      for (const o of openings) {
+        if (uc > o.u0 - 0.1 && uc < o.u1 + 0.1 && yy + ch / 2 > o.y0) {
+          const r = (o.u1 - o.u0) / 2, dx = uc - (o.u0 + o.u1) / 2;
+          const archTop = o.y0 + o.h + Math.sqrt(Math.max(0, r * r - dx * dx));
+          if (yy + ch / 2 < archTop) hole = true;
+        }
+      }
+      if (hole) continue;
+      if (broken && yy + ch > height - broken(uc)) continue;
+      P(M, 'ruin', box(u1 - u0 - 0.05, ch - 0.05, thick - R() * 0.1, 0.3, 'wall', R), FB, mat(uc + (R() - 0.5) * 0.03, yy + ch / 2, (R() - 0.5) * 0.06, 0, (R() - 0.5) * 0.02, (R() - 0.5) * 0.01), { color: stoneC(R, l), wall });
+    }
+    yy += ch; ci++;
+  }
+  // voussoir rings over openings
+  for (const o of openings) {
+    const r = (o.u1 - o.u0) / 2, cx = (o.u0 + o.u1) / 2, n = 7;
+    for (let i = 0; i < n; i++) {
+      const am = PI - (i + 0.5) / n * PI;
+      if (broken && o.y0 + o.h + r > height - broken(cx)) continue;
+      P(M, 'ruin', box(r * PI / n - 0.05, 0.55, thick + 0.12, 0.3, 'wall', R), FB, mat(cx + Math.cos(am) * (r + 0.27), o.y0 + o.h + Math.sin(am) * (r + 0.27), 0, 0, 0, am - PI / 2), { color: stoneC(R, l + 0.08), wall });
+    }
+  }
+}
+
+// hollow square tower tier built from four block walls + cornice
+function towerTier(M, B, y0, w, h, R, opts = {}) {
+  for (let k = 0; k < 4; k++) {
+    const FB = B.clone().multiply(mat(0, y0, 0, 0, k * PI / 2, 0)).multiply(mat(0, 0, w / 2 - 0.4));
+    blockWall(M, FB, w - (k % 2 ? 0.8 : -0.0), h, 0.8, R, {
+      openings: opts.windows ? [{ u0: -0.55, u1: 0.55, y0: h * 0.35, h: h * 0.25 }] : [],
+      broken: opts.broken ? (u) => Math.max(0, (Math.sin(u * 1.3 + k * 2.1) * 0.5 + 0.5) * opts.broken + (k === 1 ? opts.broken * 0.6 : 0)) : null,
+      l: 0.86, wall: [opts.base ?? -1e4, 1e4],
+    });
+  }
+  if (!opts.broken) P(M, 'ruin', box(w + 0.5, 0.35, w + 0.5, 0.3, 'wall', R), B, mat(0, y0 + h - 0.1, 0), { color: stoneC(R, 0.7) });
 }
 
 export function buildShrine(M, S, heightAt, R, colliders) {
@@ -112,15 +163,43 @@ export function buildShrine(M, S, heightAt, R, colliders) {
   // entablature stub atop left side
   P(M, 'ruin', box(pw + 2.5, 0.9, pd + 0.4, 0.3, 'wall', R), B2, mat(-span / 2 - pw / 2 + 0.6, springY + rOut + 0.1, gz, 0, 0, 0.04), { color: stoneC(R, 0.78) });
   P(M, 'ruin', box(2.0, 1.4, pd, 0.3, 'wall', R), B2, mat(-span / 2 - pw / 2 + 0.2, springY + rOut + 1.2, gz, 0, 0, -0.06), { color: stoneC(R, 0.8) });
-  // ---- monolith behind the gate ----
+  // ---- ruined keep behind the gate: three receding tiers, broken crown ----
   {
-    const mh = 19, mw = 2.8, md = 1.1;
+    const KB = B2.clone().multiply(mat(0, 0, -4.2));
+    towerTier(M, KB, 0, 7.2, 9.0, R, { windows: true, base: T + TT });
+    towerTier(M, KB, 9.0, 5.6, 6.4, R, { windows: true });
+    towerTier(M, KB, 15.4, 4.2, 6.0, R, { windows: true, broken: 3.2 });
+    colliders.push({ type: 'box', ...(() => { const v = new THREE.Vector3().setFromMatrixPosition(KB); return { x: v.x, z: v.z }; })(), hw: 3.6, hd: 3.6, rot: yaw, h: 21, y: T + TT });
+    // flanking arcade walls, crumbling outward
+    for (const sd of [-1, 1]) {
+      const WB = B2.clone().multiply(mat(sd * 6.2, 0, -4.2, 0, PI / 2, 0));
+      blockWall(M, WB, 6.4, 7.5, 0.9, R, {
+        openings: [{ u0: -2.3, u1: -0.7, y0: 0, h: 2.6 }, { u0: 0.7, u1: 2.3, y0: 0, h: 2.6 }],
+        broken: (u) => Math.max(0, (sd > 0 ? (u + 3.2) : (3.2 - u)) * 0.55 + Math.sin(u * 2.3) * 0.5), l: 0.82, wall: [T + TT, 1e4],
+      });
+      const v = new THREE.Vector3().setFromMatrixPosition(WB);
+      colliders.push({ type: 'box', x: v.x, z: v.z, hw: 0.45, hd: 3.2, rot: yaw, h: 7, y: T + TT });
+    }
+    // ivy curtains hanging from the keep ledges
+    for (let i = 0; i < 26; i++) {
+      const k = Math.floor(R() * 4), tier = R() < 0.6 ? 0 : 1;
+      const w = tier ? 5.6 : 7.2, y = tier ? 15.2 : 8.8;
+      const u = (R() - 0.5) * (w - 1.2), len = 1.5 + R() * 4;
+      const FB = KB.clone().multiply(mat(0, 0, 0, 0, k * PI / 2, 0)).multiply(mat(u, y - len / 2, w / 2 + 0.03));
+      const g = new THREE.PlaneGeometry(0.6 + R() * 0.8, len, 1, 3);
+      const pp = g.attributes.position; for (let j = 0; j < pp.count; j++) pp.setX(j, pp.getX(j) * (0.4 + 0.6 * (pp.getY(j) / len + 0.5)));
+      P(M, 'ivy', g, FB, null, { color: new THREE.Color().setHSL(0.26 + R() * 0.05, 0.45, 0.3 + R() * 0.15) });
+    }
+  }
+  // ---- monolith on the lower terrace (stands apart in silhouette) ----
+  {
+    const mh = 17, mw = 2.6, md = 1.1;
     const g = new THREE.BoxGeometry(mw, mh, md, 1, 6, 1);
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) { const t = (p.getY(i) + mh / 2) / mh; const k = 1 - t * 0.28; p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * (1 - t * 0.15)); if (t > 0.99) p.setY(i, p.getY(i) + (p.getX(i) > 0 ? -0.9 : 0.3)); }
     g.computeVertexNormals();
     const uvA = g.attributes.uv; for (let i = 0; i < uvA.count; i++) uvA.setXY(i, p.getX(i) * 0.3 + p.getZ(i) * 0.3, p.getY(i) * 0.3);
-    const MB = B2.clone().multiply(mat(0, 0, -5.5, 0.05, 0.1, 0.035));
+    const MB = B.clone().multiply(mat(-10.8, 0, 6.2, 0.04, 0.5, -0.05));
     P(M, 'ruin', g, MB, mat(0, mh / 2 - 0.3, 0), { color: new THREE.Color(0x8a8f96), wall: [T + TT, 1e4] });
     P(M, 'ruin', box(4.2, 0.9, 2.6, 0.3, 'wall', R), MB, mat(0, 0.2, 0), { color: stoneC(R, 0.7) });
     // rune glyphs on both faces
@@ -177,33 +256,34 @@ export function buildShrine(M, S, heightAt, R, colliders) {
   // ---- grand stairs down the north slope toward the trail ----
   {
     const dir = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-    const start = new THREE.Vector3(S.x, 0, S.z).addScaledVector(dir, 13);
-    const W = 5.5;
-    let prevTop = T;
-    for (let i = 0; i < 70; i++) {
-      const d = i * 0.55;
-      const p = start.clone().addScaledVector(dir, d);
-      const g = heightAt(p.x, p.z);
-      if (prevTop - g < 0.05 && i > 3) break;
-      const top = Math.max(g + 0.12, Math.min(prevTop - 0.02, prevTop - 0.1 > g ? prevTop - Math.min(0.32, (prevTop - g) * 0.5 + 0.12) : g + 0.12));
+    const side = new THREE.Vector3(dir.z, 0, -dir.x);
+    const start = new THREE.Vector3(S.x, 0, S.z).addScaledVector(dir, 12.6);
+    const W = 4.6;
+    let prevTop = T + 0.05;
+    for (let i = 0; i < 90; i++) {
+      const p = start.clone().addScaledVector(dir, i * 0.5);
+      let gMax = -1e9, gMin = 1e9;
+      for (const f of [-0.5, 0, 0.5]) { const q = p.clone().addScaledVector(side, f * W); const g = heightAt(q.x, q.z); gMax = Math.max(gMax, g); gMin = Math.min(gMin, g); }
+      const top = Math.max(gMax + 0.12, prevTop - 0.27);
+      if (i > 4 && prevTop - gMax < 0.15) break;
       prevTop = top;
-      const missing = R() < 0.08;
-      const cracked = R() < 0.25;
-      if (!missing) {
-        const hh = top - g + 0.6;
+      const hh = top - gMin + 0.5;
+      if (R() > 0.07) {
+        const cracked = R() < 0.25;
         for (let part = 0; part < (cracked ? 2 : 1); part++) {
           const pw2 = cracked ? W / 2 - 0.05 : W;
           const off = cracked ? (part ? 1 : -1) * W / 4 : 0;
-          P(M, 'ruin', box(pw2, hh, 0.62, 0.3, 'wall', R), mat(p.x + dir.z * off, top - hh / 2 - (cracked ? R() * 0.06 : 0), p.z - dir.x * off, (R() - 0.5) * (cracked ? 0.08 : 0.02), yaw + (R() - 0.5) * 0.03, (R() - 0.5) * (cracked ? 0.06 : 0.02)), null, { color: stoneC(R, 0.78), wall: [top - 0.25, 1e4] });
+          P(M, 'ruin', box(pw2, hh, 0.56, 0.3, 'wall', R), mat(p.x + side.x * off, top - hh / 2 - (cracked ? R() * 0.06 : 0), p.z + side.z * off, (R() - 0.5) * (cracked ? 0.08 : 0.02), yaw + (R() - 0.5) * 0.03, (R() - 0.5) * (cracked ? 0.06 : 0.02)), null, { color: stoneC(R, 0.9), wall: [top - 0.2, 1e4] });
         }
-        colliders.push({ type: 'box', x: p.x, z: p.z, hw: W / 2, hd: 0.3, rot: yaw, h: top - g + 0.3, y: g - 0.3 });
+        colliders.push({ type: 'box', x: p.x, z: p.z, hw: W / 2, hd: 0.27, rot: yaw, h: hh, y: top - hh });
       }
-      // cheek walls with occasional plinths
       if (i % 2 === 0) for (const sd of [-1, 1]) {
-        if (R() < 0.2) continue;
-        const q = p.clone().add(new THREE.Vector3(dir.z * sd * (W / 2 + 0.45), 0, -dir.x * sd * (W / 2 + 0.45)));
-        const hh = top - heightAt(q.x, q.z) + 0.9 + (i % 10 === 0 ? 1.0 : 0);
-        P(M, 'ruin', box(0.85, hh + 0.4, 1.12, 0.3, 'wall', R), mat(q.x, top + 0.9 - (hh + 0.4) / 2 + (i % 10 === 0 ? 1 : 0), q.z, 0, yaw, (R() - 0.5) * 0.04), null, { color: stoneC(R, 0.74), wall: [top, 1e4] });
+        if (R() < 0.25) continue;
+        const q = p.clone().addScaledVector(side, sd * (W / 2 + 0.4));
+        const gq = heightAt(q.x, q.z);
+        const big = i % 12 === 0;
+        const ch = top + (big ? 1.3 : 0.45) - gq + 0.4;
+        P(M, 'ruin', box(big ? 1.0 : 0.7, ch, big ? 1.0 : 1.05, 0.3, 'wall', R), mat(q.x, gq - 0.4 + ch / 2, q.z, 0, yaw, (R() - 0.5) * 0.04), null, { color: stoneC(R, 0.85), wall: [gq, 1e4] });
       }
     }
   }

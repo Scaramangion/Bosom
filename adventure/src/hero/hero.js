@@ -551,7 +551,7 @@ export async function init(ctx) {
   function locomotionWeights(s) {
     const w = {};
     const idleName = H.swordDrawn ? 'combatIdle' : 'idle';
-    const kWalk = ss((s - 0.05) / 0.55), kRun = ss((s - 2.2) / 1.6), kSprint = ss((s - 5.8) / 1.4);
+    const kWalk = ss((s - 0.05) / 0.55), kRun = ss((s - 1.7) / 1.5), kSprint = ss((s - 5.8) / 1.4);
     w[idleName] = 1 - kWalk;
     w.walk = kWalk * (1 - kRun);
     w.run = kWalk * kRun * (1 - kSprint);

@@ -257,15 +257,15 @@ export function shieldTex({ size = 1024, seed = 31 } = {}) {
       // outer ring band
       if (r > 0.62 && r < 0.72) return 1;
       // leaf: vesica shape vertical
-      const lx = x / 0.36, ly = (y + 0.02) / 0.52;
+      const lx = x / 0.40, ly = (y + 0.02) / 0.6;
       const leaf = lx * lx + ly * ly * 0.9 < 1 && Math.abs(lx) < (1 - Math.abs(ly) ** 1.6);
       // vein cutouts
-      const vein = Math.abs(x) < 0.025 && Math.abs(y) < 0.45;
-      const side = Math.abs((y - 0.05) - Math.abs(x) * 0.9 + 0.0) % 0.22 < 0.03 && Math.abs(x) < 0.25 && Math.abs(y) < 0.4;
+      const vein = Math.abs(x) < 0.016 && Math.abs(y) < 0.5;
+      const side = Math.abs(((y + 0.6 - Math.abs(x) * 0.8) % 0.2) - 0.1) < 0.012 && Math.abs(x) < 0.3 && Math.abs(y) < 0.48 && Math.abs(x) > 0.02;
       if (leaf && !vein && !side) return 2;
       return 0;
     })();
-    if (paintMask && wearN > 0.38) {
+    if (paintMask && wearN > 0.3) {
       mix3(o, paintMask === 1 ? cream : paint, 0.92); o.ro = 0.6; o.h += 0.04;
     }
     // iron rim + rivets

@@ -4,6 +4,8 @@
 // Instanced per variant with a near / far LOD swap driven by camera distance.
 import * as THREE from 'three';
 import { bark, normalMap, leafCard } from './textures.js';
+import { qualityScale } from './grass.js';
+let QD = 1, QS = 1; // leaf card density / size scale (lower on software renderers)
 
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; }
 const V3 = THREE.Vector3;
@@ -51,14 +53,14 @@ function curve(start, dir, len, n, wobble, R, up = 0) {
 function cards(out, clumps, crownC, R, opt) {
   const tmp = new V3();
   for (const c of clumps) {
-    const n = Math.round(opt.density * c.r * c.r);
+    const n = Math.round(opt.density * QD * c.r * c.r);
     for (let i = 0; i < n; i++) {
       // point biased to the clump shell
       const dir = new V3(R() * 2 - 1, R() * 2 - 1, R() * 2 - 1); if (dir.lengthSq() < 1e-4) dir.set(0, 1, 0); dir.normalize();
       dir.y = dir.y * 0.8 + (opt.droop ? -0.25 : 0.1); dir.normalize();
       const rr = c.r * (0.45 + 0.55 * Math.cbrt(R()));
       const q = c.p.clone().addScaledVector(dir, rr);
-      const s = opt.size * (0.75 + 0.5 * R());
+      const s = opt.size * QS * (0.75 + 0.5 * R());
       // card faces mostly outward with randomness
       const nn = dir.clone().add(new V3(R() - 0.5, R() - 0.5, R() - 0.5).multiplyScalar(1.4)).normalize();
       const ref = Math.abs(nn.y) < 0.95 ? new V3(0, 1, 0) : new V3(1, 0, 0);
@@ -221,6 +223,8 @@ function barkMaterial() {
 
 // ---------------------------------------------------------------- system
 export function buildTrees(ctx, placements) {
+  const q = qualityScale(ctx);
+  if (q >= 1) { QD = 0.8; QS = 1.1; } else { QD = 0.42; QS = 1.45; } // fewer, larger cards keep canopy coverage
   // placements: [{ kind:'oak'|'tall'|'fir'|'bush', x, y, z, s, rot }]
   const variants = {
     oak: [broad(11, 'oak'), broad(23, 'oak'), broad(37, 'oak')],
@@ -254,7 +258,7 @@ export function buildTrees(ctx, placements) {
     });
   }
   const last = new V3(1e9, 0, 0);
-  const NEAR = 75;
+  const NEAR = q >= 1 ? 70 : 50;
   function update(cam, force) {
     if (!force && cam.distanceToSquared(last) < 9) return;
     last.copy(cam);
