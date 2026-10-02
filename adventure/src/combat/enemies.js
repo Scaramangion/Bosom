@@ -206,6 +206,10 @@ export function init(ctx) {
         const e = ctx.enemies[i];
         if (!(e instanceof Wolf) && !(e instanceof Brute)) continue; // foreign enemies update themselves
         e.update(dt);
+        // LOD: fur shells + shadow casting only near the camera
+        const cd = ctx.camera.position.distanceTo(e.position);
+        if (e.m.fur) e.m.fur.visible = cd < 30;
+        e.m.skin.castShadow = cd < 45; if (e.m.hard) e.m.hard.castShadow = cd < 45;
         // health bar
         const locked = ctx.cameraRig?.lockTarget === e;
         const recent = mgr.now - e.lastDamaged < 4;

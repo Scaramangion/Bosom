@@ -63,7 +63,7 @@ export function combatIdlePose(t, T = 1.6) {
     spine: [0.08 + 0.01 * b, 0.12, 0], chest: [0.04 + 0.015 * b, 0.12, 0], neck: [0, 0.05, 0], head: [-0.08, 0.06, 0],
     clavicle_L: [0, 0, 0], clavicle_R: [0, 0, 0],
     upperArm_L: [-0.55, -0.2, 0.25], lowerArm_L: [-1.25, -0.3, 0], hand_L: [0, 0, 0],
-    upperArm_R: [-0.45, 0.25, -0.32], lowerArm_R: [-0.85, -0.3, 0], hand_R: [0.45, 0.0, -0.1],
+    upperArm_R: [-0.4, 0.2, -0.3], lowerArm_R: [-0.95, -0.35, 0], hand_R: [1.05, 0.0, 0.15],
     upperLeg_L: [tl, 0.25, 0.1], lowerLeg_L: [kl + 0.02 * b, 0, 0], foot_L: [flatFoot(tl, kl, 0.06), 0, -0.1],
     upperLeg_R: [tr, 0.45, -0.12], lowerLeg_R: [kr + 0.02 * b, 0, 0], foot_R: [flatFoot(tr, kr, 0.06), 0, 0.12],
     ground: true,
@@ -156,7 +156,7 @@ function rollPose(t, T = 0.62) {
   const tuck = Math.sin(Math.PI * Math.min(1, u * 1.15)) ;
   const th = -2.0 * tuck, kn = 2.3 * tuck;
   return {
-    hips_r: [spin, 0, 0], hips: [0, -0.5 * Math.sin(Math.PI * ss(u * 1.05)), 0.1 * Math.sin(Math.PI * u)],
+    hips_r: [spin, 0, 0], hips: [0, -0.36 * Math.sin(Math.PI * ss(u * 1.05)), 0.1 * Math.sin(Math.PI * u)],
     spine: [0.55 * tuck, 0, 0], chest: [0.35 * tuck, 0, 0], neck: [0.3 * tuck, 0, 0], head: [0.45 * tuck, 0, 0],
     upperArm_L: [-0.9 * tuck, -0.3 * tuck, 0.2], lowerArm_L: [-1.4 * tuck, 0, 0],
     upperArm_R: [-0.9 * tuck, 0.3 * tuck, -0.2], lowerArm_R: [-1.4 * tuck, 0, 0],

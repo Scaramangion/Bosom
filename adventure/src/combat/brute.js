@@ -219,26 +219,26 @@ function buildBruteModel() {
     const woodCol = (p, n) => { const k = Math.sin((p.x * 3 + p.y * 4) * 40 + noise2(p.z * 8, p.y * 8) * 6) * 0.5 + 0.5; return cBark.clone().lerp(cBarkLt, k * 0.55).multiplyScalar(0.85 + noise2(p.z * 30, p.x * 30) * 0.2); };
     R.tube({
       acc: 'hard', up: Y, rings: 30, segs: 14, blend: 0.3, color: woodCol, pts: [
-        { p: L(0), b: 'r_hand', r: [0.05, 0.05, 0.05] },
-        { p: L(0.18), b: 'r_hand', r: [0.045, 0.045, 0.045] },
-        { p: L(0.45), b: 'r_hand', r: [0.065, 0.065, 0.065] },
-        { p: L(0.7), b: 'r_hand', r: [0.11, 0.1, 0.11] },
-        { p: L(0.88), b: 'r_hand', r: [0.15, 0.14, 0.15] },
-        { p: L(1.0), b: 'r_hand', r: [0.1, 0.1, 0.1] },
+        { p: L(0), b: 'r_hand', r: [0.06, 0.06, 0.06] },
+        { p: L(0.18), b: 'r_hand', r: [0.055, 0.055, 0.055] },
+        { p: L(0.45), b: 'r_hand', r: [0.09, 0.09, 0.09] },
+        { p: L(0.7), b: 'r_hand', r: [0.15, 0.14, 0.15] },
+        { p: L(0.88), b: 'r_hand', r: [0.2, 0.19, 0.2] },
+        { p: L(1.0), b: 'r_hand', r: [0.13, 0.13, 0.13] },
       ],
     });
     // leather grip wrap
-    for (let i = 0; i < 5; i++) R.part(new THREE.TorusGeometry(0.052, 0.012, 6, 14), 'r_hand', new THREE.Matrix4().compose(new THREE.Vector3(...L(0.04 + i * 0.045)), new THREE.Quaternion().setFromUnitVectors(Z, tip.clone().sub(tail).normalize()), new THREE.Vector3(1, 1, 1)), { acc: 'hard', color: cLeatherDk });
+    for (let i = 0; i < 5; i++) R.part(new THREE.TorusGeometry(0.062, 0.013, 6, 14), 'r_hand', new THREE.Matrix4().compose(new THREE.Vector3(...L(0.04 + i * 0.045)), new THREE.Quaternion().setFromUnitVectors(Z, tip.clone().sub(tail).normalize()), new THREE.Vector3(1, 1, 1)), { acc: 'hard', color: cLeatherDk });
     // iron band + spikes
-    R.part(new THREE.TorusGeometry(0.115, 0.018, 6, 18), 'r_hand', new THREE.Matrix4().compose(new THREE.Vector3(...L(0.72)), new THREE.Quaternion().setFromUnitVectors(Z, tip.clone().sub(tail).normalize()), new THREE.Vector3(1, 1, 1)), { acc: 'hard', color: cIron });
+    R.part(new THREE.TorusGeometry(0.155, 0.022, 6, 18), 'r_hand', new THREE.Matrix4().compose(new THREE.Vector3(...L(0.72)), new THREE.Quaternion().setFromUnitVectors(Z, tip.clone().sub(tail).normalize()), new THREE.Vector3(1, 1, 1)), { acc: 'hard', color: cIron });
     const ax = tip.clone().sub(tail).normalize();
     for (let i = 0; i < 14; i++) {
       const k = 0.74 + (i % 4) * 0.07; const a = i * 2.4;
       const c = new THREE.Vector3(...L(k));
       const radial = new THREE.Vector3(Math.cos(a), Math.sin(a), 0); radial.sub(ax.clone().multiplyScalar(radial.dot(ax))).normalize();
-      const rr = 0.09 + (k - 0.7) * 0.4;
+      const rr = 0.13 + (k - 0.7) * 0.5;
       const q = new THREE.Quaternion().setFromUnitVectors(Y, radial);
-      R.part(thornGeo(0.1, 0.018, 0.2, 5), 'r_hand', new THREE.Matrix4().compose(c.addScaledVector(radial, rr * 0.8), q, new THREE.Vector3(1, 1, 1)), { acc: 'hard', color: (p) => cThorn.clone().lerp(cThornTip, 0.3), fur: 0.9 });
+      R.part(thornGeo(0.14, 0.025, 0.2, 5), 'r_hand', new THREE.Matrix4().compose(c.addScaledVector(radial, rr * 0.8), q, new THREE.Vector3(1, 1, 1)), { acc: 'hard', color: (p) => cThorn.clone().lerp(cThornTip, 0.3), fur: 0.9 });
     }
   }
 
@@ -248,9 +248,9 @@ function buildBruteModel() {
   const eyeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.5, 2.2, 0.4) });
   const hr = R.rest.head;
   for (const s of [-1, 1]) {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), eyeMat);
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.024, 12, 8), eyeMat);
     e.scale.set(1.2, 0.7, 1);
-    e.position.set(s * 0.072 - hr.x, 2.035 - hr.y, 0.607 - hr.z);
+    e.position.set(s * 0.074 - hr.x, 2.035 - hr.y, 0.612 - hr.z);
     e.rotation.z = -s * 0.3;
     built.bones.head.add(e);
   }
@@ -277,6 +277,7 @@ export class Brute {
     this.w = { windup: 0, smash: 0, stagger: 0, dead: 0, roar: 0, alert: 0 };
     this.flash = 0; this.lastSwing = -1; this.lastDamaged = -99; this.look = new THREE.Vector2(); this.turnRate = 0;
     this.hurt = this.hurt.bind(this); this._tmp = new THREE.Vector3(); this.frozen = false; this.air = 0;
+    this.b.head.scale.setScalar(1.28);
     this.update(0);
   }
   get healthFrac() { return this.health / this.maxHealth; }

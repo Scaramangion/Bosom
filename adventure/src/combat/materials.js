@@ -52,7 +52,7 @@ if (uHard < 0.5) {
     vec2 jit = (vec2(cbHash12(cell + 17.3), cbHash12(cell + 41.7)) - 0.5) * 0.45;
     float len = 0.45 + 0.55 * r1;
     if (hgt > len) discard;
-    float rad = 0.62 * (1.0 - pow(hgt / len, 1.4));
+    float rad = 0.74 * (1.0 - pow(hgt / len, 1.6));
     if (length(f - jit) > rad) discard;
     diffuseColor.rgb *= mix(0.82, 1.18, r1);
     diffuseColor.rgb *= mix(1.0, 1.25, smoothstep(0.6, 1.0, hgt / len)); // sun-bleached tips

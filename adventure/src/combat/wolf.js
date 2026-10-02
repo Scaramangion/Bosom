@@ -38,8 +38,8 @@ function buildWolfModel(variant = 0) {
     // face mask: cream cheeks, dark brow & muzzle bridge
     if (p.z > 0.6) {
       T.lerp(cBelly, ss(0.2, -0.4, n.y) * 0.7 * ss(0.62, 0.75, p.z));
-      if (n.y > 0.5 && p.z > 0.76) T.lerp(cDark, 0.55);
-      if (p.z > 0.96) T.lerp(cNose, 0.8);
+      if (n.y > 0.5 && p.z > 0.74) T.lerp(cDark, 0.55);
+      if (p.z > 0.92) T.lerp(cNose, 0.8);
     }
     // tail: darker tip
     if (p.z < -0.95) T.lerp(cDark, ss(-0.95, -1.12, p.z));
@@ -51,8 +51,8 @@ function buildWolfModel(variant = 0) {
     if (p.z > 0.15 && p.z < 0.58 && p.y > 0.7) f = lerp(0.032, 0.075, ss(0.15, 0.4, p.z) * ss(0.62, 0.5, p.z)); // neck ruff / mane
     if (p.z > 0.25 && p.z < 0.6 && n.y < 0 && p.y > 0.6) f = Math.max(f, 0.06); // chest ruff
     if (p.y < 0.55 && p.z > -0.62) f = lerp(0.012, f, ss(0.25, 0.55, p.y)); // legs short
-    if (p.z > 0.62) f = lerp(f, 0.01, ss(0.62, 0.8, p.z)); // face short
-    if (p.z > 0.9) f = 0.0;
+    if (p.z > 0.6) f = lerp(f, 0.008, ss(0.6, 0.7, p.z)); // face short
+    if (p.z > 0.86) f = 0.0;
     if (p.z < -0.6 && p.y > 0.3) f = 0.085; // tail brush
     return f;
   };
@@ -85,17 +85,18 @@ function buildWolfModel(variant = 0) {
   // body: rump -> loin -> deep ribcage -> withers -> neck -> skull -> muzzle -> nose
   R.tube({
     up: Y, rings: 64, segs: 30, blend: 0.45, color: furColor, fur: furLen, capRound: 0.9, pts: [
-      { p: [0, 0.80, -0.64], b: 'hips', r: [0.07, 0.06, 0.07] },
-      { p: [0, 0.80, -0.52], b: 'hips', r: [0.145, 0.12, 0.15] },
-      { p: [0, 0.80, -0.36], b: 'hips', r: [0.16, 0.13, 0.17] },
-      { p: [0, 0.81, -0.10], b: 'spine', r: [0.145, 0.12, 0.14] },
-      { p: [0, 0.83, 0.17], b: 'chest', r: [0.165, 0.13, 0.26] },
-      { p: [0, 0.86, 0.34], b: 'chest', r: [0.165, 0.14, 0.24] },
-      { p: [0, 0.95, 0.50], b: 'neck', r: [0.125, 0.13, 0.15] },
-      { p: [0, 1.025, 0.64], b: 'head', r: [0.112, 0.10, 0.095] },
-      { p: [0, 1.02, 0.76], b: 'head', r: [0.082, 0.07, 0.05] },
-      { p: [0, 0.995, 0.90], b: 'head', r: [0.05, 0.045, 0.032] },
-      { p: [0, 0.985, 0.99], b: 'head', r: [0.03, 0.03, 0.02] },
+      { p: [0, 0.80, -0.64], b: 'hips', r: [0.08, 0.07, 0.08] },
+      { p: [0, 0.80, -0.52], b: 'hips', r: [0.16, 0.135, 0.165] },
+      { p: [0, 0.80, -0.36], b: 'hips', r: [0.175, 0.145, 0.185] },
+      { p: [0, 0.81, -0.10], b: 'spine', r: [0.16, 0.135, 0.155] },
+      { p: [0, 0.83, 0.17], b: 'chest', r: [0.185, 0.145, 0.28] },
+      { p: [0, 0.87, 0.34], b: 'chest', r: [0.18, 0.155, 0.26] },
+      { p: [0, 0.96, 0.50], b: 'neck', r: [0.14, 0.14, 0.165] },
+      { p: [0, 1.03, 0.63], b: 'head', r: [0.13, 0.115, 0.105] },
+      { p: [0, 1.03, 0.72], b: 'head', r: [0.105, 0.085, 0.075] },
+      { p: [0, 1.0, 0.82], b: 'head', r: [0.068, 0.058, 0.045] },
+      { p: [0, 0.99, 0.905], b: 'head', r: [0.05, 0.045, 0.03] },
+      { p: [0, 0.985, 0.95], b: 'head', r: [0.035, 0.032, 0.02] },
     ],
   });
   // lower jaw
@@ -103,9 +104,9 @@ function buildWolfModel(variant = 0) {
     up: Y, rings: 14, segs: 14, blend: 0.3, fur: (p) => p.z < 0.8 ? 0.012 : 0,
     color: (p, n) => n.y > 0.35 ? cMouth.clone() : furColor(p, n),
     pts: [
-      { p: [0, 0.958, 0.68], b: 'jaw', r: [0.06, 0.02, 0.035] },
-      { p: [0, 0.952, 0.84], b: 'jaw', r: [0.038, 0.016, 0.026] },
-      { p: [0, 0.957, 0.955], b: 'jaw', r: [0.02, 0.01, 0.014] },
+      { p: [0, 0.958, 0.68], b: 'jaw', r: [0.07, 0.02, 0.04] },
+      { p: [0, 0.952, 0.81], b: 'jaw', r: [0.045, 0.017, 0.028] },
+      { p: [0, 0.956, 0.92], b: 'jaw', r: [0.028, 0.012, 0.016] },
     ],
   });
   // legs
@@ -113,8 +114,8 @@ function buildWolfModel(variant = 0) {
     R.tube({
       up: Z, rings: 30, segs: 16, blend: 0.3, color: furColor, fur: furLen, pts: [
         { p: [s * 0.10, 0.90, 0.26], b: 'chest', r: [0.06, 0.07, 0.07] },
-        { p: [s * 0.13, 0.72, 0.27], b: 'f' + k + '_sh', r: [0.07, 0.085, 0.075] },
-        { p: [s * 0.13, 0.46, 0.20], b: 'f' + k + '_el', r: [0.045, 0.05, 0.055] },
+        { p: [s * 0.13, 0.72, 0.27], b: 'f' + k + '_sh', r: [0.08, 0.095, 0.085] },
+        { p: [s * 0.13, 0.46, 0.20], b: 'f' + k + '_el', r: [0.05, 0.056, 0.06] },
         { p: [s * 0.125, 0.16, 0.235], b: 'f' + k + '_wr', r: [0.029, 0.03, 0.028] },
         { p: [s * 0.125, 0.06, 0.27], b: 'f' + k + '_paw', r: [0.032, 0.036, 0.028] },
       ],
@@ -122,7 +123,7 @@ function buildWolfModel(variant = 0) {
     R.tube({
       up: Z, rings: 34, segs: 16, blend: 0.3, color: furColor, fur: furLen, pts: [
         { p: [s * 0.09, 0.90, -0.46], b: 'hips', r: [0.07, 0.08, 0.08] },
-        { p: [s * 0.13, 0.72, -0.42], b: 'h' + k + '_hip', r: [0.09, 0.115, 0.10] },
+        { p: [s * 0.13, 0.72, -0.42], b: 'h' + k + '_hip', r: [0.1, 0.13, 0.11] },
         { p: [s * 0.14, 0.47, -0.31], b: 'h' + k + '_kn', r: [0.055, 0.06, 0.06] },
         { p: [s * 0.135, 0.22, -0.50], b: 'h' + k + '_ho', r: [0.03, 0.028, 0.034] },
         { p: [s * 0.13, 0.06, -0.46], b: 'h' + k + '_paw', r: [0.032, 0.036, 0.028] },
@@ -138,21 +139,21 @@ function buildWolfModel(variant = 0) {
       for (let tI = -1.5; tI <= 1.5; tI += 1) R.part(claw, bn, mtx([x + tI * 0.019, 0.016, z + 0.065 - Math.abs(tI) * 0.012], [1.9, 0, 0]), { acc: 'hard', color: cDark });
     }
     // ears: thick fur-covered cones, inner pinkish dark
-    const ear = new THREE.ConeGeometry(0.045, 0.13, 10, 3); ear.scale(1, 1, 0.45);
-    R.part(ear, 'ear_' + k, mtx([s * 0.068, 1.135, 0.625], [-0.25, 0, -s * 0.28]), { color: (p, n) => (n.z > 0.4 ? cMouth.clone().lerp(cDark, 0.4) : furColor(p, n)), fur: (p, n) => n.z > 0.4 ? 0.0 : 0.014 });
+    const ear = new THREE.ConeGeometry(0.062, 0.17, 12, 3); ear.scale(1, 1, 0.42);
+    R.part(ear, 'ear_' + k, mtx([s * 0.075, 1.16, 0.6], [-0.2, 0, -s * 0.3]), { color: (p, n) => (n.z > 0.4 ? cMouth.clone().lerp(cDark, 0.4) : furColor(p, n)), fur: (p, n) => n.z > 0.4 ? 0.0 : 0.014 });
     // eyelid / brow ridge for a scowl
-    R.part(sph, 'head', mtx([s * 0.056, 1.07, 0.735], [0.35, s * 0.4, s * 0.5], [0.035, 0.014, 0.03]), { color: cDark, fur: 0.008 });
+    R.part(sph, 'head', mtx([s * 0.07, 1.075, 0.715], [0.35, s * 0.4, s * 0.55], [0.04, 0.016, 0.032]), { color: cDark, fur: 0.008 });
     // fangs
     const fang = new THREE.ConeGeometry(0.0085, 0.045, 6); fang.translate(0, -0.0225, 0);
-    R.part(fang, 'head', mtx([s * 0.026, 0.968, 0.935], [0.1, 0, 0]), { acc: 'hard', color: cIvory });
-    R.part(fang, 'jaw', mtx([s * 0.02, 0.962, 0.915], [Math.PI - 0.15, 0, 0], [0.8, 0.75, 0.8]), { acc: 'hard', color: cIvory });
+    R.part(fang, 'head', mtx([s * 0.03, 0.968, 0.89], [0.1, 0, 0], [1.2, 1.2, 1.2]), { acc: 'hard', color: cIvory });
+    R.part(fang, 'jaw', mtx([s * 0.024, 0.962, 0.875], [Math.PI - 0.15, 0, 0], [1.0, 0.9, 1.0]), { acc: 'hard', color: cIvory });
     for (let i = 0; i < 4; i++) {
-      R.part(fang, 'head', mtx([s * (0.03 + i * 0.004), 0.972, 0.90 - i * 0.04], [0, 0, 0], [0.55, 0.4, 0.55]), { acc: 'hard', color: cIvory });
-      R.part(fang, 'jaw', mtx([s * (0.024 + i * 0.004), 0.962, 0.88 - i * 0.04], [Math.PI, 0, 0], [0.55, 0.35, 0.55]), { acc: 'hard', color: cIvory });
+      R.part(fang, 'head', mtx([s * (0.034 + i * 0.006), 0.972, 0.86 - i * 0.035], [0, 0, 0], [0.55, 0.4, 0.55]), { acc: 'hard', color: cIvory });
+      R.part(fang, 'jaw', mtx([s * (0.028 + i * 0.006), 0.962, 0.85 - i * 0.035], [Math.PI, 0, 0], [0.55, 0.35, 0.55]), { acc: 'hard', color: cIvory });
     }
   }
   // nose leather
-  R.part(new THREE.SphereGeometry(0.03, 12, 8), 'head', mtx([0, 0.997, 0.995], [0, 0, 0], [1, 0.75, 0.8]), { acc: 'hard', color: cNose });
+  R.part(new THREE.SphereGeometry(0.03, 12, 8), 'head', mtx([0, 0.995, 0.95], [0, 0, 0], [1.25, 0.85, 0.9]), { acc: 'hard', color: cNose });
   // bramble thorns along the dorsal line + a vine winding over the back
   const thornCol = (p) => { const t = ss(0.0, 1.0, (p.y - 0.85) / 0.12); return cThorn.clone().lerp(cThornTip, t); };
   const thornSpots = [[-0.5, 'hips', 0.93, 0.07], [-0.38, 'hips', 0.945, 0.10], [-0.24, 'spine', 0.94, 0.09], [-0.08, 'spine', 0.935, 0.11], [0.08, 'chest', 0.955, 0.12], [0.22, 'chest', 0.97, 0.15], [0.33, 'chest', 0.985, 0.17], [0.43, 'neck', 1.02, 0.13]];
@@ -180,20 +181,20 @@ function buildWolfModel(variant = 0) {
   }
 
   const mats = creatureMaterials({ density: 150, comb: [0, -0.25, -0.75], sheenColor: 0xb8b0a2, roughness: 0.86 });
-  const built = R.build({ skinMat: mats.skin, hardMat: mats.hard, shells: 14 });
+  const built = R.build({ skinMat: mats.skin, hardMat: mats.hard, shells: 11 });
   // eyes: HDR amber, parented to head bone
   const eyeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 1.3, 0.25) });
   const eyes = [];
   const headRest = R.rest.head;
   for (const s of [-1, 1]) {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.017, 10, 8), eyeMat);
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.021, 12, 8), eyeMat);
     e.scale.set(1, 0.65, 1);
-    e.position.set(s * 0.06 - headRest.x, 1.047 - headRest.y, 0.738 - headRest.z);
+    e.position.set(s * 0.083 - headRest.x, 1.05 - headRest.y, 0.715 - headRest.z);
     e.rotation.z = s * 0.35;
     built.bones.head.add(e); eyes.push(e);
   }
   const halo = makeHalo(new THREE.Color(1.0, 0.45, 0.1));
-  halo.position.set(0, 1.05 - headRest.y, 0.76 - headRest.z); halo.scale.setScalar(0.32);
+  halo.position.set(0, 1.05 - headRest.y, 0.74 - headRest.z); halo.scale.setScalar(0.32);
   built.bones.head.add(halo);
   return { ...built, mats, eyeMat, halo, rest: R.rest };
 }
@@ -232,7 +233,7 @@ export class Wolf {
     this.mgr = mgr; this.id = WOLF_ID++; this.type = 'wolf';
     const m = buildWolfModel(opts.variant ?? this.id);
     this.m = m; this.root = m.group; this.b = m.bones;
-    const sc = opts.scale ?? (0.95 + Math.random() * 0.12);
+    const sc = (opts.scale ?? (0.95 + Math.random() * 0.12)) * 1.08;
     this.scale = sc; this.root.scale.setScalar(sc);
     this.root.rotation.order = 'YXZ';
     mgr.ctx.scene.add(this.root);
@@ -482,7 +483,7 @@ export class Wolf {
     const breath = Math.sin(t * (2.2 + W.snarl * 3) + this.id);
     B.chest.position.set(0, 0.02 + breath * 0.004, 0.32);
     // tail: lagged sway; raised when alert, low and stiff when snarling, tucked when hurt
-    const tailLift = -0.25 + W.alert * 0.15 - W.snarl * 0.2 + gal * 0.35 - W.hurt * 0.4;
+    const tailLift = -0.1 + W.alert * 0.15 - W.snarl * 0.05 + gal * 0.35 - W.hurt * 0.4;
     for (let i = 0; i < 4; i++) {
       const tb = B['tail' + i];
       tb.rotation.y = Math.sin(t * (2.0 + v * 0.8) - i * 0.7 + this.tailWag) * (0.12 + i * 0.05) * (1 - W.snarl * 0.6) + this.turnRate * 0.05 * i;
@@ -507,8 +508,8 @@ export class Wolf {
     const c = W.crouch, sn = W.snarl;
     B.spine.position.y -= c * 0.13;
     B.spine.rotation.x += c * 0.06;
-    B.neck.rotation.x += sn * 0.35 + c * 0.15;
-    B.head.rotation.x += -sn * 0.42 - c * 0.1;
+    B.neck.rotation.x += sn * 0.5 + c * 0.2;
+    B.head.rotation.x += -sn * 0.5 - c * 0.12;
     B.jaw.rotation.x = sn * (0.32 + Math.sin(t * 13 + this.id) * 0.03 * sn) + W.lunge * 0.35 + W.dead * 0.3;
     // keep paws planted while crouched (approximate leg flex)
     for (const k of ['fl', 'fr']) { B[k + '_sh'].rotation.x += c * 0.42; B[k + '_el'].rotation.x += -c * 0.62; B[k + '_wr'].rotation.x += c * 0.28; }

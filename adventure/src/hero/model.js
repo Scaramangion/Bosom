@@ -59,7 +59,7 @@ function eyeGeo(side) {
   const u0 = 0.5 + side * 0.33 / TAU, v0 = 0.568;
   const c = headPoint(u0, v0, new THREE.Vector3(), 0, false);
   const R = 0.0148;
-  c.z -= 0.0108; c.x -= side * 0.002;
+  c.z -= 0.0118; c.x -= side * 0.002;
   const yaw = side * 0.16;
   const g = paramSurface(24, 16, (u, v, o) => {
     const a = (u - 0.5) * TAU, th = v * Math.PI;
@@ -165,7 +165,7 @@ function hairGeo() {
   for (let i = 0; i < 13; i++) {
     const t = i / 12;
     const u = 0.5 + (t - 0.5) * 0.24;
-    addClump(u, 0.12 + R() * 0.08, -0.045 - 0.02 * t, 0.36 - Math.abs(t - 0.45) * 0.12 + R() * 0.04, 0.03 + R() * 0.008, 0.012, (R() - 0.5), 0.004);
+    addClump(u, 0.12 + R() * 0.08, -0.045 - 0.02 * t, 0.29 - Math.abs(t - 0.45) * 0.14 + R() * 0.04, 0.03 + R() * 0.008, 0.012, (R() - 0.5), 0.004);
   }
   // side locks in front of the ears
   for (const sd of [-1, 1]) for (let i = 0; i < 3; i++) {
@@ -283,7 +283,7 @@ function fistGeo(side, info) {
   const parts = [];
   parts.push(paramSurface(20, 14, (u, v, o) => {
     const a = u * TAU, th = v * Math.PI;
-    const sx = sgnPow(Math.sin(th) * Math.cos(a), 0.6), sy = sgnPow(Math.cos(th), 0.6), sz = sgnPow(Math.sin(th) * Math.sin(a), 0.6);
+    const sx = sgnPow(Math.sin(th) * Math.cos(a), 0.8), sy = sgnPow(Math.cos(th), 0.75), sz = sgnPow(Math.sin(th) * Math.sin(a), 0.8);
     o.set(c.x + sx * 0.031, c.y + sy * 0.046 * (sy < 0 ? 1 : 0.85), c.z + sz * 0.041);
   }));
   // finger rolls on the grip side (curled fingers wrap toward -X for L... palm faces inward)

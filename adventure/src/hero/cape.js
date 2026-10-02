@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 
 const NC = 13, NR = 16;
-const TOP_W = 0.36, BOT_W = 0.68, LEN = 0.98;
+const TOP_W = 0.36, BOT_W = 0.66, LEN = 0.86;
 
 export function buildCape(material) {
   const n = NC * NR;
