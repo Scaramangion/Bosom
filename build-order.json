@@ -30,21 +30,22 @@
   "src/js/game/27-rahjai.js",
   "src/js/game/28-townsfolk.js",
   "src/js/game/29-night-patrol.js",
-  "src/js/game/30-wild-horses.js",
-  "src/js/game/31-the-lasso.js",
-  "src/js/game/32-triangle.js",
-  "src/js/game/33-combat-stance.js",
-  "src/js/game/34-standing-cards.js",
-  "src/js/game/35-camera.js",
-  "src/js/game/36-the-long-trail.js",
-  "src/js/game/37-the-mission.js",
-  "src/js/game/38-npc-system.js",
-  "src/js/game/39-render-fx.js",
-  "src/js/game/40-perspective-room-module.js",
-  "src/js/game/41-webgl-post-layer.js",
-  "src/js/game/42-save-load.js",
-  "src/js/game/43-lens.js",
-  "src/js/game/44-locations-hybrid-camera.js"
+  "src/js/game/30-the-tall-one.js",
+  "src/js/game/31-wild-horses.js",
+  "src/js/game/32-the-lasso.js",
+  "src/js/game/33-triangle.js",
+  "src/js/game/34-combat-stance.js",
+  "src/js/game/35-standing-cards.js",
+  "src/js/game/36-camera.js",
+  "src/js/game/37-the-long-trail.js",
+  "src/js/game/38-the-mission.js",
+  "src/js/game/39-npc-system.js",
+  "src/js/game/40-render-fx.js",
+  "src/js/game/41-perspective-room-module.js",
+  "src/js/game/42-webgl-post-layer.js",
+  "src/js/game/43-save-load.js",
+  "src/js/game/44-lens.js",
+  "src/js/game/45-locations-hybrid-camera.js"
  ],
  "assets": [
   {
@@ -124,6 +125,18 @@
    "kind": "atlases",
    "file": "assets/atlases/paper-pieces.webp",
    "mime": "image/webp"
+  },
+  {
+   "id": "opening-video",
+   "kind": "video",
+   "file": "assets/video/opening-video.mp4",
+   "mime": "video/mp4"
+  },
+  {
+   "id": "opening-video-webm",
+   "kind": "video",
+   "file": "assets/video/opening-video-webm.webm",
+   "mime": "video/webm"
   },
   {
    "id": "apple-touch-icon-inline",
