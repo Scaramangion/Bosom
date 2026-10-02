@@ -127,6 +127,12 @@
    "mime": "image/webp"
   },
   {
+   "id": "sud-atlas",
+   "kind": "atlases",
+   "file": "assets/atlases/sud-atlas.webp",
+   "mime": "image/webp"
+  },
+  {
    "id": "opening-video",
    "kind": "video",
    "file": "assets/video/opening-video.mp4",

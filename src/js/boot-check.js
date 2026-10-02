@@ -37,7 +37,7 @@
     setTimeout(function () {
       if (window.__bosomBooted) return;
       var kb = Math.round(document.documentElement.outerHTML.length / 1024);
-      show('The game code never finished starting.\nPage received: ' + kb + ' KB (the full build is about 4470 KB).\n' + (kb < 4470 * 0.97 ? 'The page arrived INCOMPLETE — the upload or download got cut off. Re-upload index.html.' : 'The page arrived complete, so the error above is the cause.'));
+      show('The game code never finished starting.\nPage received: ' + kb + ' KB (the full build is about 4571 KB).\n' + (kb < 4571 * 0.97 ? 'The page arrived INCOMPLETE — the upload or download got cut off. Re-upload index.html.' : 'The page arrived complete, so the error above is the cause.'));
     }, 6000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchdog); else watchdog();
