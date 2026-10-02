@@ -919,9 +919,12 @@
                     if (!keep) lab[i] = y <= neck + 1 ? 1 : 0; } }
             const names = ['torso', 'head', 'armL', 'armR', 'legL', 'legR', 'foreL', 'foreR', 'shinL', 'shinR'], up = [-1, 0, 0, 0, 0, 0, 2, 3, 4, 5], shoulder = neck + Math.max(1, Math.round((hip - neck) * 0.12));
             const pivots = [[cx, hip], [cx, neck], [cx - coreL, shoulder], [cx + coreR, shoulder], [legX - (legX - (cx - coreL)) * 0.5, hip], [legX + ((cx + coreR) - legX) * 0.5, hip], null, null, null, null];
+            if (humanoid) for (const k of [4, 5]) { let sx = 0, n = 0; for (let y = hip + 1; y <= Math.min(bot, hip + Math.max(2, Math.round(H * 0.05))); y++) for (let x = 0; x < w; x++) if (lab[y * w + x] === k) { sx += x; n++; } if (n) pivots[k] = [sx / n, hip]; } // a hip sits over its own leg (a wide cape must not push it outside)
             for (const [k, nm] of [[0, 'torso'], [1, 'head'], [2, 'armL'], [3, 'armR'], [4, 'legL'], [5, 'legR']]) if (J[nm]) pivots[k] = [J[nm][0], J[nm][1]];
             if (humanoid && o.bend !== false) for (let k = 2; k <= 5; k++) { // two bones per limb: the elbow / knee halfway along it, from the joint to its far tip
                 const P = pivots[k]; let tip = null, best = -1; for (let i = 0; i < w * h; i++) if (lab[i] === k) { const d = (i % w - P[0]) ** 2 + (((i / w) | 0) - P[1]) ** 2; if (d > best) { best = d; tip = [i % w, (i / w) | 0]; } }
+                if (tip && k >= 4) { let lo = -1; for (let i = 0; i < w * h; i++) if (lab[i] === k) lo = Math.max(lo, (i / w) | 0); let sx = 0, n = 0; for (let y = Math.max(0, lo - Math.max(1, Math.round(H * 0.05))); y <= lo; y++) for (let x = 0; x < w; x++) if (lab[y * w + x] === k) { sx += x; n++; } // a leg ends at its ankle (the middle of its lowest rows), not at the toe
+                    tip = [sx / n, lo]; best = (tip[0] - P[0]) ** 2 + (tip[1] - P[1]) ** 2; }
                 if (!tip) continue; const L = Math.sqrt(best), ax = (tip[0] - P[0]) / (L || 1), ay = (tip[1] - P[1]) / (L || 1), Jk = J[names[k + 4]], r = Jk ? Math.max(1, (Jk[0] - P[0]) * ax + (Jk[1] - P[1]) * ay) : (k < 4 ? 0.5 : 0.52) * L;
                 if (L < H * 0.08 && !Jk) continue; pivots[k + 4] = Jk ? [Jk[0], Jk[1]] : [P[0] + ax * r, P[1] + ay * r];
                 for (let i = 0; i < w * h; i++) if (lab[i] === k && ((i % w) - P[0]) * ax + (((i / w) | 0) - P[1]) * ay > r) lab[i] = k + 4; }

@@ -17,7 +17,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 .word{font-weight:600;font-size:17px;letter-spacing:-.01em;pointer-events:auto}
 .tr{display:flex;gap:8px}.round{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;pointer-events:auto}
 .bar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:6px;border-radius:22px}
-.joint{position:fixed;width:12px;height:12px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid var(--tint);background:var(--material);pointer-events:none}.joint.edit{width:26px;height:26px;margin:-15px 0 0 -15px;pointer-events:auto;cursor:grab;touch-action:none;background:var(--tint);border-color:var(--material);box-shadow:0 1px 4px rgba(0,0,0,.3)}.joint.edit.torso{border-radius:6px}.tab{min-width:52px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
+.joint{position:fixed;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.4);pointer-events:none}.joint.edit{width:16px;height:16px;margin:-8px 0 0 -8px;background:var(--tint);box-shadow:0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.35)}.joint.edit.torso{border-radius:4px}.joint.drag{transform:scale(1.4)}#skel{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.tab{min-width:52px;height:52px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--label2)}
 .tab[aria-pressed="true"]{color:var(--tint);background:var(--fill)}label.tab{font-size:11px}
 .panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
 .panel.col{flex-direction:column;align-items:stretch}.panel .line{display:flex;align-items:center;gap:10px}.panel.col>.seg{flex:none}.panel .line .seg{flex:1}.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
@@ -52,8 +52,8 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <div id="hello" class="hello glass" hidden><h1>Turn any picture into a paper model</h1><p>Choose a photo or a drawing. Papercraft cuts out the subject and folds it into 3D.</p><label class="primary" for="file">Choose Photo</label></div>
 <div id="pDepth" class="panel glass col" hidden><div class="seg" id="shapeSeg" role="group" aria-label="Shape"><button data-shape="card" aria-pressed="false">Card</button><button data-shape="round" aria-pressed="false">Round</button><button data-shape="facets" aria-pressed="true">Facets</button></div><div class="seg" id="geoSeg" role="group" aria-label="Geometry"><button data-budget="40">PS1 Low</button><button data-budget="100">PS1</button><button data-budget="300" aria-pressed="true">PS2 Low</button><button data-budget="800">PS2</button></div><div class="line" id="thickRow"><span class="small">Flat</span><input id="thick" type="range" min="0" max="4" step="0.25" value="2" aria-label="Depth"><span class="small">Sculpted</span></div><div class="line"><div class="seg" id="dsrcSeg" role="group" aria-label="Depth from"><button data-dsrc="shape" aria-pressed="true">Shape</button><button data-dsrc="planes" aria-pressed="false">Planes</button><button data-dsrc="paint" aria-pressed="false">Paint</button></div><button id="layersBtn" class="pill" aria-pressed="false">Layers</button></div><div class="line" id="brushRow" hidden><div class="seg" role="group" aria-label="Brush"><button data-brush="255" aria-pressed="true">Near</button><button data-brush="128" aria-pressed="false">Middle</button><button data-brush="0" aria-pressed="false">Far</button></div><button id="dclear" class="pill">Clear</button><button id="dmap" class="pill">Map</button></div><span class="hint" id="depthHint" hidden></span><input id="fileDepth" type="file" accept="image/*" hidden></div>
 <div id="pCut" class="panel glass col" hidden><div class="line"><div class="seg" role="group" aria-label="Tap to"><button data-mark="keep" aria-pressed="true">Keep</button><button data-mark="drop" aria-pressed="false">Remove</button></div><button id="undo" class="pill">Undo</button><button id="done" class="pill tinted">Done</button></div><div class="seg" role="group" aria-label="Cut-out"><button data-method="auto" aria-pressed="true">Auto</button><button data-method="key" aria-pressed="false">Backdrop</button><button data-method="photo" aria-pressed="false">Photo</button></div><div class="line" id="tolRow"><span class="small">Tight</span><input id="tol" type="range" min="12" max="120" step="4" value="48" aria-label="Backdrop tolerance"><span class="small">Loose</span><button id="one" class="pill" aria-pressed="true">One piece</button></div><div class="line"><span class="small">Detail</span><div class="seg" role="group" aria-label="Detail"><button data-detail="96" aria-pressed="false">Low</button><button data-detail="160" aria-pressed="false">Medium</button><button data-detail="256" aria-pressed="true">High</button></div></div><span class="hint" id="cutHint">Tap the person or thing you want to keep.</span></div>
-<div id="pPose" class="panel glass col" hidden><div class="seg" role="group" aria-label="Move"><button data-anim="still" aria-pressed="false">Still</button><button data-anim="idle" aria-pressed="true">Idle</button><button data-anim="walk" aria-pressed="false">Walk</button><button data-anim="wave" aria-pressed="false">Wave</button></div><div class="line"><span class="hint" id="poseHint">Drag an arm, a leg or the head to pose it.</span><button id="editJ" class="pill">Edit joints</button><button id="reset" class="pill">Reset</button></div></div>
-<div id="joints" aria-hidden="true"></div>
+<div id="pPose" class="panel glass col" hidden><div class="seg" role="group" aria-label="Move"><button data-anim="still" aria-pressed="false">Still</button><button data-anim="idle" aria-pressed="true">Idle</button><button data-anim="walk" aria-pressed="false">Walk</button><button data-anim="wave" aria-pressed="false">Wave</button><button data-anim="jump" aria-pressed="false">Jump</button><button data-anim="swing" aria-pressed="false">Swing</button></div><div class="line"><span class="hint" id="poseHint">Drag an arm, a leg or the head to pose it.</span><button id="editJ" class="pill">Edit joints</button><button id="reset" class="pill">Reset</button></div></div>
+<svg id="skel" aria-hidden="true"></svg><div id="joints" aria-hidden="true"></div>
 <div id="pViews" class="panel glass col" hidden><div class="line"><span class="small" style="width:34px">Back</span><div class="seg" role="group" aria-label="Back"><button data-back="mirror" aria-pressed="false">Mirror</button><button data-back="guess" aria-pressed="true">Guess</button><button data-back="picture" aria-pressed="false">Picture</button></div></div>
 <div class="line"><span class="small" style="width:34px">Side</span><div class="seg" role="group" aria-label="Side"><button data-side="round" aria-pressed="true">Round</button><button data-side="picture" aria-pressed="false">Picture</button></div></div>
 <span class="hint" id="viewsHint">The back is guessed from the front. Choose Picture to use a back view.</span><div class="line" style="justify-content:flex-end"><button id="flipSide" class="pill" hidden>Flip side</button><button id="otherSide" class="pill" hidden>Other side</button><button id="turn" class="pill">Turn</button></div></div>
@@ -77,7 +77,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <p class="info" id="info"></p></div>
 <div id="saveSheet" class="sheet" role="dialog" aria-label="Save" hidden><div class="grab"></div><header><h2>Save</h2><button id="saveClose" class="link">Cancel</button></header>
 <div class="group">
-<button class="row act" data-save="model"><span><b>3D model</b><br><span class="small">.zip with a .glb (most 3D apps and engines; rigged, with Idle, Walk and Wave) and an .obj with its texture</span></span></button>
+<button class="row act" data-save="model"><span><b>3D model</b><br><span class="small">.zip with a .glb (most 3D apps and engines; rigged, with Idle, Walk, Wave, Jump and Swing) and an .obj with its texture</span></span></button>
 <button class="row act" data-save="png"><span><b>Cut-out picture</b><br><span class="small">.png at the photo's full size, background transparent</span></span></button>
 <button class="row act" data-save="json"><span><b>Papercraft file</b><br><span class="small">.json: the outline and picture, to open here again or load in the game</span></span></button></div>
 <p class="info" id="saveInfo"></p></div>
@@ -1011,9 +1011,12 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
                     if (!keep) lab[i] = y <= neck + 1 ? 1 : 0; } }
             const names = ['torso', 'head', 'armL', 'armR', 'legL', 'legR', 'foreL', 'foreR', 'shinL', 'shinR'], up = [-1, 0, 0, 0, 0, 0, 2, 3, 4, 5], shoulder = neck + Math.max(1, Math.round((hip - neck) * 0.12));
             const pivots = [[cx, hip], [cx, neck], [cx - coreL, shoulder], [cx + coreR, shoulder], [legX - (legX - (cx - coreL)) * 0.5, hip], [legX + ((cx + coreR) - legX) * 0.5, hip], null, null, null, null];
+            if (humanoid) for (const k of [4, 5]) { let sx = 0, n = 0; for (let y = hip + 1; y <= Math.min(bot, hip + Math.max(2, Math.round(H * 0.05))); y++) for (let x = 0; x < w; x++) if (lab[y * w + x] === k) { sx += x; n++; } if (n) pivots[k] = [sx / n, hip]; } // a hip sits over its own leg (a wide cape must not push it outside)
             for (const [k, nm] of [[0, 'torso'], [1, 'head'], [2, 'armL'], [3, 'armR'], [4, 'legL'], [5, 'legR']]) if (J[nm]) pivots[k] = [J[nm][0], J[nm][1]];
             if (humanoid && o.bend !== false) for (let k = 2; k <= 5; k++) { // two bones per limb: the elbow / knee halfway along it, from the joint to its far tip
                 const P = pivots[k]; let tip = null, best = -1; for (let i = 0; i < w * h; i++) if (lab[i] === k) { const d = (i % w - P[0]) ** 2 + (((i / w) | 0) - P[1]) ** 2; if (d > best) { best = d; tip = [i % w, (i / w) | 0]; } }
+                if (tip && k >= 4) { let lo = -1; for (let i = 0; i < w * h; i++) if (lab[i] === k) lo = Math.max(lo, (i / w) | 0); let sx = 0, n = 0; for (let y = Math.max(0, lo - Math.max(1, Math.round(H * 0.05))); y <= lo; y++) for (let x = 0; x < w; x++) if (lab[y * w + x] === k) { sx += x; n++; } // a leg ends at its ankle (the middle of its lowest rows), not at the toe
+                    tip = [sx / n, lo]; best = (tip[0] - P[0]) ** 2 + (tip[1] - P[1]) ** 2; }
                 if (!tip) continue; const L = Math.sqrt(best), ax = (tip[0] - P[0]) / (L || 1), ay = (tip[1] - P[1]) / (L || 1), Jk = J[names[k + 4]], r = Jk ? Math.max(1, (Jk[0] - P[0]) * ax + (Jk[1] - P[1]) * ay) : (k < 4 ? 0.5 : 0.52) * L;
                 if (L < H * 0.08 && !Jk) continue; pivots[k + 4] = Jk ? [Jk[0], Jk[1]] : [P[0] + ax * r, P[1] + ay * r];
                 for (let i = 0; i < w * h; i++) if (lab[i] === k && ((i % w) - P[0]) * ax + (((i / w) | 0) - P[1]) * ay > r) lab[i] = k + 4; }
@@ -1128,7 +1131,9 @@ function build() { // fold every piece on stage; one buffer per texture
       if (ST.shape === 'facets') { let ak = 0; for (let i = 0; i < MINE.w * MINE.h; i++) if (pt.mask[i] && MINE.px[i * 4 + 3] >= 128) ak++; paperFacet(V, MINE.rigPx, MINE.rigW, MINE.h * P, [0, k * MINE.h, MINE.w, MINE.h], { ...po, budget: Math.max(8, Math.round(ST.budget * ak / MINE.area)), grow: Math.max(2, Math.round(0.02 * Math.max(MINE.w, MINE.h))), cover: ST.abs === 'painting' ? 0.985 : 0 }); } // the budget shared out by area
       else if (round) paperPuff(V, MINE.rigPx, MINE.rigW, MINE.h * P, [0, k * MINE.h, MINE.w, MINE.h], po); else if (MINE.rigS[k]) paperSprite(V, MINE.rigS[k], [MINE.rigW, MINE.h * P], { s, thick: MINE.fold.th, ...bk });
       const Ly = layerOf(pt.name, RG) * (0.025 * hh + 0.12 * D); if (Ly) for (let i = 1; i < V.length; i += 7) V[i] += Ly; // a depth layer: the whole part moved toward you (or away)
-      return { V, name: pt.name, parent: pt.parent, dir: pt.dir, pv: [(pt.pivot[0] - S.anchor[0]) * s, Ly, (S.anchor[1] - pt.pivot[1]) * s], n: V.length / 7 }; });
+      let far = 0; const ux = Math.sin(pt.dir), uy = Math.cos(pt.dir); for (let i = 0; i < MINE.w * MINE.h; i++) if (pt.mask[i]) far = Math.max(far, (i % MINE.w + 0.5 - pt.pivot[0]) * ux + (((i / MINE.w) | 0) + 0.5 - pt.pivot[1]) * uy); // the bone's far end: as far along the part as it reaches
+      const tx = pt.pivot[0] + ux * far, ty = pt.pivot[1] + uy * far;
+      return { V, name: pt.name, parent: pt.parent, dir: pt.dir, pv: [(pt.pivot[0] - S.anchor[0]) * s, Ly, (S.anchor[1] - pt.pivot[1]) * s], tip: [(tx - S.anchor[0]) * s, Ly, (S.anchor[1] - ty) * s], n: V.length / 7 }; });
     per.rig = [].concat(...MINE.geo.map(g => g.V)); MINE.rest = Float32Array.from(per.rig); MINE.dyn = Float32Array.from(per.rig); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
   else if (ST.mode === 'cast') { const n0 = 14, look = [150, 260]; // two arcs on the plaza, each piece turned toward the lens and nudged by the prime
     CAST.forEach(([key, h], i) => { const row = i < n0 ? 0 : 1, k = row ? i - n0 : i, n = row ? CAST.length - n0 : n0, x = (k - (n - 1) / 2) * (row ? 30 : 17) + (paperPrime(i) - 0.5) * 5, y = row ? -40 + Math.abs(k - (n - 1) / 2) * 5 : 10 + Math.abs(k - (n - 1) / 2) * 3;
@@ -1155,8 +1160,10 @@ function matrix(w, h) { // perspective * lookAt(focus), z up
   const M = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += P[k * 4 + j] * V[i * 4 + k]; M[i * 4 + j] = s; }
   for (let i = 0; i < 4; i++) { M[i * 4] *= view.k; M[i * 4 + 1] = view.k * M[i * 4 + 1] + view.s * M[i * 4 + 3]; } return M; } // lifted (and shrunk) into the space an open panel leaves free
 const view = { s: 0, k: 1 }; // the picture's centre, lifted into the free space above an open panel (s, in clip units) and shrunk to fit it (k)
-function viewTarget() { const rc = cv.getBoundingClientRect(), bar = $('tabs').getBoundingClientRect(), pn = ST.tool && $(PANELS[ST.tool]), top = rc.top + 84, b0 = bar.top - 8, sh = [$('sheet'), $('saveSheet')].find(x => x && !x.hidden), b1 = sh ? sh.getBoundingClientRect().top - 8 : pn && !pn.hidden ? pn.getBoundingClientRect().top - 8 : b0;
-  if (b1 >= b0 - 1 || b1 - top < 120) return [0, 1]; return [((top + b0) / 2 - (top + b1) / 2) * 2 / rc.height, Math.min(1, (b1 - top) / (b0 - top))]; }
+function freeSpace() { const rc = cv.getBoundingClientRect(), bar = $('tabs').getBoundingClientRect(), pn = ST.tool && $(PANELS[ST.tool]), top = rc.top + 84, b0 = bar.top - 8, sh = [$('sheet'), $('saveSheet')].find(x => x && !x.hidden);
+  const b1 = sh ? sh.getBoundingClientRect().top - 8 : pn && !pn.hidden ? pn.getBoundingClientRect().top - 8 : b0; return { rc, top, b0, b1: Math.max(top + 120, Math.min(b0, b1)) }; } // between the title bar and whatever covers the bottom
+function viewTarget() { const { rc, top, b0, b1 } = freeSpace(); return [1 - ((top + b1) / 2 - rc.top) * 2 / rc.height, Math.min(1, (b1 - top) / (b0 - top))]; } // the figure's centre at the free space's centre, shrunk with it
+function fitFigure() { if (!MINE.fold) return; const { rc, top, b1 } = freeSpace(), [, k] = viewTarget(); cam.zoom = MINE.fold.hh * 1.12 * k * rc.height / (2 * Math.tan(0.4) * (b1 - top)); } // the whole figure filling the free space (Pose, Edit joints)
 const unview = (nx, ny) => [nx / view.k, (ny - view.s) / view.k]; // a screen point back through the lift, for rays
 let last = 0;
 function frame(now) {
@@ -1181,7 +1188,7 @@ function frame(now) {
   if ($('wire').checked && wire) { gl.useProgram(wprog); gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.uniformMatrix4fv(gl.getUniformLocation(wprog, 'uM'), false, M); gl.uniform3fv(gl.getUniformLocation(wprog, 'uC'), rgb(css('--wire'))); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0); gl.drawArrays(gl.LINES, 0, wireN); }
   requestAnimationFrame(frame); }
 // ---------- the rig in motion: each part turns about its pivot, in the picture's plane (Paper Mario) or swinging forward and back (Minecraft) ----------
-const LOOP = { idle: 4, walk: 0.9, wave: 1.4 }; // seconds per loop (what the saved animations use)
+const LOOP = { idle: 4, walk: 0.9, wave: 1.4, jump: 1.1, swing: 1.2 }; // seconds per loop (what the saved animations use)
 function poseNow(t, an0) { // per part: th (turn in the picture's plane, counter-clockwise as seen from the front), ph (swing forward / back); plus the body's bob
   const G = MINE.geo, A = {}; let bob = 0; for (const g of G) A[g.name] = { th: ST.pose[g.name] || 0, ph: 0 }; const hh = MINE.fold.hh, an = an0 || ST.anim, has = n => A[n];
   const hang = k => has(k) ? -G.find(g => g.name === k).dir * 0.9 : 0; // arms out (a T-pose) come down to hang by the sides when walking
@@ -1193,6 +1200,16 @@ function poseNow(t, an0) { // per part: th (turn in the picture's plane, counter
     if (has('head')) A.head.th += 0.04 * Math.sin(p * 2); }
   if (an === 'wave') { const q = Math.sin(t * 2 * Math.PI / 0.7); if (has('armR')) A.armR.th += hang('armR') + (has('foreR') ? 1.9 : 2.55 + 0.38 * q); if (has('foreR')) A.foreR.th += 0.55 + 0.55 * q; // the forearm waves from the elbow
     if (has('armL')) A.armL.th += hang('armL') * 0.5; if (has('head')) A.head.th += 0.08 * Math.sin(t * 2 * Math.PI / 1.4); bob = 0.006 * hh * q; }
+  if (an === 'jump') { const u = (t % 1.1) / 1.1, sm = x => x * x * (3 - 2 * x), dip = u < 0.25 ? sm(u / 0.25) : u < 0.4 ? 1 - sm((u - 0.25) / 0.15) : u < 0.7 ? 0 : u < 0.82 ? sm((u - 0.7) / 0.12) : 1 - sm((u - 0.82) / 0.18); // crouch, spring, fly, land, stand
+    const air = u >= 0.4 && u < 0.7 ? Math.sin(Math.PI * (u - 0.4) / 0.3) : 0, tuck = air * 0.6 + dip; bob = air * 0.32 * hh - dip * 0.07 * hh;
+    if (has('legL')) { A.legL.ph += 0.55 * tuck; A.legR.ph += 0.55 * tuck; } if (has('shinL')) { A.shinL.ph -= 1.0 * tuck; A.shinR.ph -= 1.0 * tuck; } // knees bend: thigh forward, shin back
+    if (has('armL')) { const up = air * 1.9, back = dip * 0.5; A.armL.th += hang('armL') * (1 - air) - up; A.armR.th += hang('armR') * (1 - air) + up; A.armL.ph -= back; A.armR.ph -= back; } // arms swing back in the crouch, up in the air
+    if (has('head')) A.head.ph = -0.12 * dip; A.torso.ph = 0.12 * dip; }
+  if (an === 'swing') { const u = (t % 1.2) / 1.2, sm = x => x * x * (3 - 2 * x); let r, f; // wind up slowly, strike fast, follow through, return
+    if (u < 0.4) { r = sm(u / 0.4) * 2.5; f = 0; } else if (u < 0.52) { const k = sm((u - 0.4) / 0.12); r = 2.5 - 2.9 * k; f = k; } else if (u < 0.75) { r = -0.4; f = 1; } else { const k = sm((u - 0.75) / 0.25); r = -0.4 * (1 - k); f = 1 - k; }
+    if (has('armR')) { A.armR.th += hang('armR') + r; A.armR.ph += 0.7 * f; } if (has('foreR')) A.foreR.th += 0.5 * Math.max(0, r) / 2.5 - 0.2 * f; // the forearm trails, then snaps straight
+    if (has('armL')) { A.armL.th += hang('armL') * 0.6 - 0.25 * f; A.armL.ph -= 0.3 * f; } A.torso.th += 0.1 * (r / 2.5) - 0.12 * f; A.torso.ph = 0.1 * f; if (has('head')) A.head.th -= 0.05 * f;
+    if (has('legL')) { A.legL.ph -= 0.25 * f; A.legR.ph += 0.3 * f; } if (has('shinR')) A.shinR.ph -= 0.3 * f; bob = -0.03 * hh * f; } // a step into the blow
   return { A, bob }; }
 function frames(t) { // every part's place in the world: x' = M x + v; a part turns about its own pivot, then moves with its parent (the torso also bobs)
   const G = MINE.geo, { A, bob } = poseNow(t), F = [];
@@ -1210,35 +1227,46 @@ const pivotNow = (name, t) => { const G = MINE.geo, k = G.findIndex(q => q.name 
   return [0, 1, 2].map(i => P.M[i * 3] * p[0] + P.M[i * 3 + 1] * p[1] + P.M[i * 3 + 2] * p[2] + P.v[i]); };
 function toScreen(P) { const rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), q = [0, 1, 2, 3].map(j => P[0] * M[j] + P[1] * M[4 + j] + P[2] * M[8 + j] + M[12 + j]); return [rc.left + (q[0] / q[3] + 1) / 2 * rc.width, rc.top + (1 - q[1] / q[3]) / 2 * rc.height]; }
 const rigLive = () => ST.mode === 'mine' && MINE.geo && ST.tool !== 'cut' && groups.some(g => g.at === 'rig');
-function joints(t) { const box = $('joints'); if (!(rigLive() && ST.tool === 'pose' && (MINE.rig.humanoid || ST.editJ))) { box.innerHTML = ''; return; }
-  const G = MINE.geo; while (box.children.length < G.length) { const d = document.createElement('div'); d.className = 'joint'; box.appendChild(d); } while (box.children.length > G.length) box.lastChild.remove();
-  G.forEach((g, k) => { const d = box.children[k]; d.className = 'joint' + (ST.editJ ? ' edit ' + g.name : ''); d.dataset.name = g.name; d.title = g.name;
-    const [x, y] = jdrag && jdrag.name === g.name ? jdrag.at : toScreen(pivotNow(g.name, t)); d.style.left = x + 'px'; d.style.top = y + 'px'; }); }
+function joints(t) { // the rig drawn over the figure: a see-through ragdoll skeleton (bones from joint to joint, out to the hands, feet and crown) and a dot per joint
+  const box = $('joints'), sk = $('skel'); if (!(rigLive() && ST.tool === 'pose' && (MINE.rig.humanoid || ST.editJ))) { box.innerHTML = ''; sk.innerHTML = ''; return; }
+  const G = MINE.geo, F = frames(t), at = (k, p) => toScreen([0, 1, 2].map(i => F[k].M[i * 3] * p[0] + F[k].M[i * 3 + 1] * p[1] + F[k].M[i * 3 + 2] * p[2] + F[k].v[i]));
+  const piv = G.map((g, k) => jdrag && jdrag.name === g.name ? jdrag.at : at(g.parent < 0 ? k : g.parent, g.pv)), idx = n => G.findIndex(g => g.name === n), bones = [];
+  G.forEach((g, k) => { const kids = G.map((c, j) => c.parent === k ? j : -1).filter(j => j >= 0);
+    if (g.parent < 0) { const hd = idx('head'), top = hd >= 0 ? piv[hd] : at(k, g.tip); bones.push([piv[k], top, k]); for (const j of kids) if (j !== hd) bones.push([/^arm/.test(G[j].name) ? top : piv[k], piv[j], -1]); if (!kids.length) bones.push([piv[k], at(k, g.tip), k]); } // spine, collarbones, pelvis
+    else { for (const j of kids) bones.push([piv[k], piv[j], k]); if (!kids.length) bones.push([piv[k], at(k, g.tip), k]); } }); // upper limb to elbow / knee; forearm, shin, head out to their tips
+  BONES = bones; const held = grab ? idx(grab.nm) : -2, ln = (w, c, only) => bones.filter(q => only == null || q[2] === only).map(([a, b]) => `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`).join('');
+  sk.innerHTML = ln(ST.editJ ? 8 : 7, 'rgba(0,0,0,.22)') + ln(ST.editJ ? 4.5 : 3.5, 'rgba(255,255,255,.78)') + (held >= 0 ? ln(5.5, css('--tint'), held) : ''); // the bone in your hand, tinted
+  while (box.children.length < G.length) { const d = document.createElement('div'); d.className = 'joint'; box.appendChild(d); } while (box.children.length > G.length) box.lastChild.remove();
+  G.forEach((g, k) => { const d = box.children[k]; d.className = 'joint' + (ST.editJ ? ' edit ' + g.name : '') + (jdrag && jdrag.name === g.name ? ' drag' : ''); d.dataset.name = g.name; d.title = g.name; d.style.left = piv[k][0] + 'px'; d.style.top = piv[k][1] + 'px'; });
+  JOINT_AT = G.map((g, k) => [g.name, piv[k]]); }
+let JOINT_AT = [], BONES = []; // BONES: [screen a, screen b, the part that turns it (-1: none)] // where each joint was drawn last (Edit joints picks the nearest to the finger)
 let jdrag = null; // a joint being moved by hand
 function screenToPicture(x, y) { // the point of the picture (px) under the finger: a ray from the lens to the card's plane
   if (!MINE.S || !MINE.fold) return null; const rc = cv.getBoundingClientRect(), [nx, ny] = unview((x - rc.left) / rc.width * 2 - 1, 1 - (y - rc.top) / rc.height * 2), a = rc.width / rc.height, { e, f, r, u } = eye();
   const d = [0, 1, 2].map(i => f[i] + r[i] * nx * a / FOV + u[i] * ny / FOV); if (Math.abs(d[1]) < 1e-6) return null; const l = -e[1] / d[1], X = e[0] + l * d[0], Z = e[2] + l * d[2], s = MINE.fold.s, A = MINE.S.anchor;
   return l > 0 ? [X / s + A[0], A[1] - Z / s] : null; }
-$('joints').addEventListener('pointerdown', e => { const d = e.target.closest('.joint.edit'); if (!d) return; e.preventDefault(); d.setPointerCapture(e.pointerId); jdrag = { name: d.dataset.name, at: [e.clientX, e.clientY] }; });
-$('joints').addEventListener('pointermove', e => { if (jdrag) jdrag.at = [e.clientX, e.clientY]; });
-$('joints').addEventListener('pointerup', e => { if (!jdrag) return; const p = screenToPicture(e.clientX, e.clientY), nm = jdrag.name; jdrag = null; if (!p) return; // place the joint, and rebuild the rig round it
+function placeJoint(x, y) { const p = screenToPicture(x, y), nm = jdrag.name; jdrag = null; if (!p) return; // place the joint, and rebuild the rig round it
   const J = MINE.joints = MINE.joints || {}; for (const g of MINE.geo) if (!J[g.name]) { const q = MINE.rig.parts.find(r => r.name === g.name); if (q) J[g.name] = q.pivot.slice(); } J[nm] = p;
-  rigMine(true, true); build(); window.JOINT_MOVED = (window.JOINT_MOVED || 0) + 1; });
+  rigMine(true, true); build(); window.JOINT_MOVED = (window.JOINT_MOVED || 0) + 1; }
+const nearestJoint = (x, y) => { let best = null, bd = 34 * 34; for (const [nm, q] of JOINT_AT) { const d = (q[0] - x) ** 2 + (q[1] - y) ** 2; if (d < bd) { bd = d; best = nm; } } return best; }; // the finger needs no exact hit: the nearest joint within 34 px
 let grab = null; // a part being posed by a drag
-function pickPart(x, y) { const rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), G = MINE.geo, out = MINE.dyn; let best = null, bd = 44 * 44, o = 0;
+function pickPart(x, y) { if (BONES.length) { let best = null, bd = 30 * 30; for (const [a, b, k] of BONES) { if (k < 0) continue; const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, u = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)); // the nearest bone under the finger
+    const d = (a[0] + u * dx - x) ** 2 + (a[1] + u * dy - y) ** 2 + (MINE.geo[k].parent < 0 ? 150 : 0); if (d < bd) { bd = d; best = MINE.geo[k].name; } } if (best) return best; } return pickMesh(x, y); }
+function pickMesh(x, y) { const rc = cv.getBoundingClientRect(), M = matrix(rc.width, rc.height), G = MINE.geo, out = MINE.dyn; let best = null, bd = 44 * 44, o = 0;
   G.forEach(g => { for (let i = 0; i < g.n; i++, o += 7) { if (i % 3) continue; const q = [0, 1, 2, 3].map(j => out[o] * M[j] + out[o + 1] * M[4 + j] + out[o + 2] * M[8 + j] + M[12 + j]), sx = rc.left + (q[0] / q[3] + 1) / 2 * rc.width, sy = rc.top + (1 - q[1] / q[3]) / 2 * rc.height, d = (sx - x) ** 2 + (sy - y) ** 2 + (g.name === 'torso' ? 400 : 0); /* limbs win over the torso when both are near the finger */
     if (d < bd) { bd = d; best = g.name; } } }); return best; }
 // ---------- touch: drag to turn, pinch or wheel to zoom, tap to keep / remove (in Cut), double-tap to reset ----------
 const pts = new Map(); let held = false, pd = 0, down = null, lastTap = 0;
-cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); held = true; cam.to = null; grab = null;
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); if (ST.editJ && rigLive() && !pts.size) { const nm = nearestJoint(e.clientX, e.clientY); if (nm) { jdrag = { name: nm, at: [e.clientX, e.clientY], id: e.pointerId }; return; } }
+  pts.set(e.pointerId, [e.clientX, e.clientY]); held = true; cam.to = null; grab = null;
   if (paintLive() && pts.size === 1) { stroke = { at: [e.clientX, e.clientY] }; dab(e.clientX, e.clientY); depthUI(); } else stroke = null;
   if (ST.tool === 'pose' && rigLive() && MINE.rig.humanoid && pts.size === 1) { const nm = pickPart(e.clientX, e.clientY); if (nm) { const [px, py] = toScreen(pivotNow(nm, performance.now() / 1000)); grab = { nm, a: Math.atan2(-(e.clientY - py), e.clientX - px) }; } } if (pts.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() }; else down = null; closeSheet(); });
-cv.addEventListener('pointermove', e => { const p = pts.get(e.pointerId); if (!p) return; const dx = e.clientX - p[0], dy = e.clientY - p[1]; pts.set(e.pointerId, [e.clientX, e.clientY]);
+cv.addEventListener('pointermove', e => { if (jdrag && jdrag.id === e.pointerId) { jdrag.at = [e.clientX, e.clientY]; return; } const p = pts.get(e.pointerId); if (!p) return; const dx = e.clientX - p[0], dy = e.clientY - p[1]; pts.set(e.pointerId, [e.clientX, e.clientY]);
   if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pd) cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * pd / d)); pd = d; return; }
   if (stroke && pts.size === 1) { strokeTo(e.clientX, e.clientY); return; }
   if (grab && pts.size === 1) { const [px, py] = toScreen(pivotNow(grab.nm, performance.now() / 1000)), a = Math.atan2(-(e.clientY - py), e.clientX - px); let d = a - grab.a; d = Math.atan2(Math.sin(d), Math.cos(d)); ST.pose[grab.nm] = (ST.pose[grab.nm] || 0) + (Math.cos(cam.yaw) >= 0 ? d : -d); grab.a = a; return; }
   if (ST.tool === 'cut') return; cam.yaw -= dx * 0.006; cam.pitch = Math.max(0.02, Math.min(1.45, cam.pitch + dy * 0.005)); });
-const up = e => { pts.delete(e.pointerId); pd = 0; if (!pts.size) { held = false; if (grab) { grab = null; down = null; return; } if (stroke) { stroke = null; down = null; build(); depthUI(); window.PAINTED = (window.PAINTED || 0) + 1; return; } }
+const up = e => { if (jdrag && jdrag.id === e.pointerId) { if (e.type === 'pointerup') placeJoint(e.clientX, e.clientY); else jdrag = null; return; } pts.delete(e.pointerId); pd = 0; if (!pts.size) { held = false; if (grab) { grab = null; down = null; return; } if (stroke) { stroke = null; down = null; build(); depthUI(); window.PAINTED = (window.PAINTED || 0) + 1; return; } }
   if (down && e.type === 'pointerup' && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && performance.now() - down.t < 400) {
     if (ST.tool === 'cut') markAt(e.clientX, e.clientY); else if (ST.tool === 'depth' && ST.layersOn && rigLive() && MINE.rig.humanoid) layerTap(e.clientX, e.clientY); else { const t = performance.now(); if (t - lastTap < 320) { cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; } lastTap = t; } }
   down = null; };
@@ -1258,7 +1286,7 @@ window.screenOf = (U, V) => { // where a point of your picture's front face is o
 const PANELS = { cut: 'pCut', depth: 'pDepth', views: 'pViews', pose: 'pPose', look: 'pLook' }, TABS = { cut: 'tCut', depth: 'tDepth', views: 'tViews', pose: 'tPose', look: 'tLook' };
 function setTool(t) { if (ST.tool === t) t = null; const was = ST.tool; ST.tool = t; if (was === 'pose' && t !== 'pose' && ST.editJ) $('editJ').click(); for (const k in PANELS) { $(PANELS[k]).hidden = k !== t; $(TABS[k]).setAttribute('aria-pressed', k === t); }
   if (t === 'views' && MINE.img && ST.mode !== 'mine') { ST.mode = 'mine'; build(); }
-  if (t === 'pose' && MINE.img) { if (ST.mode !== 'mine') { ST.mode = 'mine'; build(); } cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.12 }; }
+  if (t === 'pose' && MINE.img) { if (ST.mode !== 'mine') { ST.mode = 'mine'; build(); } cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.12 }; setTimeout(fitFigure, 40); }
   if (t === 'cut' && MINE.img) { ST.mode = 'mine'; cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; $('undo').disabled = !MINE.marks.length; }
   if (t === 'depth' && ST.dsrc === 'paint' && MINE.img) { if (ST.mode !== 'mine') { ST.mode = 'mine'; build(); } cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; }
   if ((t === 'depth') !== (was === 'depth')) depthUI();
@@ -1270,7 +1298,7 @@ for (const b of document.querySelectorAll('[data-anim]')) b.onclick = () => { ST
 $('reset').onclick = () => { ST.pose = {}; if (ST.editJ && (MINE.joints || MINE.forceRig)) { MINE.joints = null; rigMine(true, true); build(); } };
 $('editJ').onclick = () => { ST.editJ = !ST.editJ; $('editJ').classList.toggle('tinted', ST.editJ); $('editJ').textContent = ST.editJ ? 'Done' : 'Edit joints';
   if (ST.editJ && MINE.rig && !MINE.rig.humanoid) { MINE.forceRig = true; rigMine(true, true); build(); } // no rig found: start from the usual proportions, to be placed by hand
-  if (ST.editJ) { ST.animBefore = ST.anim; ST.anim = 'still'; ST.pose = {}; cam.zoom = radius * 1.2; cam.to = { yaw: 0, pitch: 0.05 }; $('poseHint').textContent = 'Drag a joint to where it really is: neck, shoulders, elbows, hips, knees. Reset puts back the guesses.'; }
+  if (ST.editJ) { ST.animBefore = ST.anim; ST.anim = 'still'; ST.pose = {}; cam.to = { yaw: 0, pitch: 0.05 }; $('poseHint').textContent = 'Drag a joint to where it really is.'; setTimeout(fitFigure, 40); }
   else { ST.anim = ST.animBefore || 'idle'; $('poseHint').textContent = MINE.rig && MINE.rig.humanoid ? 'Drag an arm, a leg or the head to pose it.' : 'No arms or legs found: Edit joints to place them.'; }
   document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim)); };
 $('tViews').onclick = () => setTool('views'); $('turn').onclick = () => { cam.zoom = 0; cam.to = { yaw: Math.cos(cam.yaw) > 0 ? Math.PI : 0, pitch: 0.12 }; };
@@ -1403,7 +1431,7 @@ function meshNow() { // the model on stage, as parts (each its rest mesh in the 
   return null; }
 const qmul = (a, b) => [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
 const G3 = (p, k) => [p[0] * k, p[2] * k, p[1] * k]; // world (x east, y south, z up) -> glTF (x, y up, z toward the viewer), metres; also turns left- into right-handed
-async function modelZip(m) { // glTF 2.0 binary: a node per part at its pivot (a rig), its mesh around that pivot, Idle / Walk / Wave as animations; plus an .obj of the rest pose
+async function modelZip(m) { // glTF 2.0 binary: a node per part at its pivot (a rig), its mesh around that pivot, Idle / Walk / Wave / Jump / Swing as animations; plus an .obj of the rest pose
   const k = 1 / m.hh, png = await pngOf(m.px, m.w, m.h), pad4 = x => (x + 3) & ~3, chunks = [], views = [], acc = []; let off = 0;
   const view = (u8, target) => { views.push({ buffer: 0, byteOffset: off, byteLength: u8.length, ...(target ? { target } : {}) }); chunks.push([off, u8]); off = pad4(off + u8.length); return views.length - 1; };
   const accessor = (f32, type, extra) => { acc.push({ bufferView: view(new Uint8Array(f32.buffer), extra && extra.anim ? 0 : 34962), componentType: 5126, count: f32.length / { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[type], type, ...(extra && extra.mm || {}) }); if (extra && extra.anim) delete views[views.length - 1].target; return acc.length - 1; };
@@ -1417,7 +1445,7 @@ async function modelZip(m) { // glTF 2.0 binary: a node per part at its pivot (a
     nodes.push({ name: pt.name, mesh: i, translation: [P0[0] - base[0], P0[1] - base[1], P0[2] - base[2]], children: [] }); });
   m.parts.forEach((pt, i) => (pt.parent >= 0 ? nodes[1 + pt.parent].children : nodes[0].children).push(1 + i)); nodes.forEach(n => { if (!n.children.length) delete n.children; });
   const animations = [];
-  if (m.rig) for (const an of ['idle', 'walk', 'wave']) { const L = LOOP[an], F = Math.round(L * 24), times = new Float32Array(F + 1); for (let f = 0; f <= F; f++) times[f] = f / 24 * L / (F / 24);
+  if (m.rig) for (const an of ['idle', 'walk', 'wave', 'jump', 'swing']) { const L = LOOP[an], F = Math.round(L * 24), times = new Float32Array(F + 1); for (let f = 0; f <= F; f++) times[f] = f / 24 * L / (F / 24);
     const tIn = accessor(times, 'SCALAR', { anim: true, mm: { min: [0], max: [times[F]] } }), channels = [], samplers = [];
     m.parts.forEach((pt, i) => { const rot = new Float32Array((F + 1) * 4), tr = pt.parent < 0 ? new Float32Array((F + 1) * 3) : null, n0 = nodes[1 + i].translation;
       for (let f = 0; f <= F; f++) { const { A, bob } = poseNow(times[f], an), a = A[pt.name] || { th: 0, ph: 0 }, qz = [0, 0, Math.sin(a.th / 2), Math.cos(a.th / 2)], qx = [Math.sin(-a.ph / 2), 0, 0, Math.cos(-a.ph / 2)], q = qmul(qx, qz);
