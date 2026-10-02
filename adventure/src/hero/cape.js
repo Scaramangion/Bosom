@@ -121,9 +121,13 @@ export function buildCape(material) {
       if (!inited || dt > 0.25) { reset(chest, back); }
       acc = Math.min(acc + dt, STEP * 6);
       while (acc >= STEP) { step(chest, cols, wind, STEP); acc -= STEP; }
+      let ok = true;
+      for (let k = 0; k < P.length; k += 7) if (!Number.isFinite(P[k])) { ok = false; break; }
+      if (!ok) reset(chest, back);
       posAttr.array.set(P); posAttr.needsUpdate = true;
       geo.computeVertexNormals();
-      geo.computeBoundingSphere();
+      if (!geo.boundingSphere) geo.boundingSphere = new THREE.Sphere();
+      geo.boundingSphere.center.set(P[0], P[1], P[2]); geo.boundingSphere.radius = 2;
     },
     teleport(dx, dy, dz) { for (let k = 0; k < P.length; k += 3) { P[k] += dx; O[k] += dx; P[k + 1] += dy; O[k + 1] += dy; P[k + 2] += dz; O[k + 2] += dz; } },
   };

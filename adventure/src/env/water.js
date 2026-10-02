@@ -66,7 +66,7 @@ ${ATMOSPHERE_GLSL}
 uniform sampler2D uRefl, uData, uNormal, uNoise;
 uniform vec4 uBox;
 uniform float uTime, uReflOn, uLevel, uNight;
-uniform vec3 uSunDir, uSunT, uMoonDir, uMoonT, uZenith, uSunLight;
+uniform vec3 uSunDir, uSunT, uMoonDir, uMoonT, uZenith, uSunLight, uSunSky, uMoonSky;
 varying vec3 vWorld;
 varying vec4 vReflCoord;
 #include <fog_pars_fragment>
@@ -105,7 +105,7 @@ void main() {
   // ---- reflection ----
   vec3 R = reflect(-V, N);
   vec3 Rs = normalize(vec3(R.x, max(R.y, 0.0) + 0.002, R.z));
-  vec3 skyR = atmSky(Rs, uSunDir, uSunT) + atmSky(Rs, uMoonDir, uMoonT) + vec3(0.006, 0.01, 0.02) * uNight;
+  vec3 skyR = atmSky(Rs, uSunDir, uSunSky) + atmSky(Rs, uMoonDir, uMoonSky) + vec3(0.006, 0.01, 0.02) * uNight;
   vec3 refl = skyR;
   if (uReflOn > 0.5) {
     vec4 rc = vReflCoord;
@@ -232,7 +232,7 @@ export function init(ctx) {
     uBox: { value: box }, uTime: { value: 0 }, uReflOn: { value: reflOn ? 1 : 0 }, uLevel: { value: LEVEL }, uNight: { value: 0 },
     uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uSunT: { value: new THREE.Color() },
     uMoonDir: { value: new THREE.Vector3(0, -1, 0) }, uMoonT: { value: new THREE.Color() },
-    uZenith: { value: new THREE.Color() }, uSunLight: { value: new THREE.Color() },
+    uZenith: { value: new THREE.Color() }, uSunSky: { value: new THREE.Color() }, uMoonSky: { value: new THREE.Color() }, uSunLight: { value: new THREE.Color() },
     uTexMat: { value: texMat },
   }]);
   uniforms.uRefl.value = reflRT.texture;
@@ -319,6 +319,8 @@ export function init(ctx) {
         uniforms.uMoonDir.value.copy(a.moonDir);
         uniforms.uMoonT.value.copy(a.moonT);
         uniforms.uZenith.value.copy(a.zenith);
+        uniforms.uSunSky.value.copy(a.sunSky);
+        uniforms.uMoonSky.value.copy(a.moonSky);
         uniforms.uNight.value = a.night;
         uniforms.uSunLight.value.copy(ctx.sun.color).multiplyScalar(ctx.sun.intensity);
       }

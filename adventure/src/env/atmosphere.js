@@ -6,11 +6,12 @@ import * as THREE from 'three';
 
 // Rayleigh wavelength ratios (~ lambda^-4 for 680/550/440 nm, normalised to blue)
 export const ATM = {
-  BR: [0.175, 0.41, 1.0],
-  TAUR: 0.24,   // zenith rayleigh optical depth (blue)
-  TAUM: 0.05,   // zenith aerosol (mie) optical depth (grey)
+  BR: [0.07, 0.22, 1.0],
+  TAUR: 0.30,   // zenith rayleigh optical depth (blue)
+  TAUM: 0.015,  // zenith aerosol (mie) optical depth (grey)
   G: 0.78,      // mie anisotropy
-  E: 22.0,      // sky radiance scale (scene-linear HDR)
+  E: 12.0,      // sky radiance scale (scene-linear HDR)
+  VCAP: 7.0,    // view-path airmass cap (keeps the horizon from bleaching out)
 };
 
 export const ATMOSPHERE_GLSL = /* glsl */`
@@ -19,6 +20,7 @@ const float ATM_TAUR = ${ATM.TAUR.toFixed(4)};
 const float ATM_TAUM = ${ATM.TAUM.toFixed(4)};
 const float ATM_G = ${ATM.G.toFixed(4)};
 const float ATM_E = ${ATM.E.toFixed(4)};
+const float ATM_VCAP = ${ATM.VCAP.toFixed(4)};
 float atmAirmass(float c) { c = max(c, 0.0); return 1.0 / (c + 0.025 * exp(-11.0 * c)); }
 float atmPhaseR(float mu) { return 0.0596831 * (1.0 + mu * mu); }
 float atmPhaseM(float mu, float g) { float g2 = g * g; return 0.0795775 * (1.0 - g2) / pow(max(1.0 + g2 - 2.0 * g * mu, 1e-4), 1.5); }
@@ -27,7 +29,7 @@ vec3 atmSky(vec3 v, vec3 s, vec3 srcT) {
   float mu = dot(v, s);
   vec3 sR = ATM_BR * ATM_TAUR;
   vec3 ext = sR + ATM_TAUM;
-  vec3 od = ext * atmAirmass(max(v.y, 0.0));
+  vec3 od = ext * min(atmAirmass(max(v.y, 0.0)), ATM_VCAP);
   vec3 scat = (sR * atmPhaseR(mu) + ATM_TAUM * atmPhaseM(mu, ATM_G)) / ext * (1.0 - exp(-od));
   // cheap multiple-scattering fill so the sky never goes black-blue at the zenith
   vec3 ms = sR * 0.035 * (1.0 - exp(-od * 2.0)) / ext;
@@ -52,7 +54,7 @@ export function sunTransmittance(c, out = new THREE.Color()) {
 /** sky radiance (same as GLSL atmSky) */
 export function skyRadiance(v, s, srcT, out = new THREE.Color()) {
   const mu = v.x * s.x + v.y * s.y + v.z * s.z;
-  const am = airmass(Math.max(v.y, 0));
+  const am = Math.min(airmass(Math.max(v.y, 0)), ATM.VCAP);
   const pr = phaseR(mu), pm = phaseM(mu, ATM.G);
   const ch = ['r', 'g', 'b'];
   for (let i = 0; i < 3; i++) {

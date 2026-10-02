@@ -32,15 +32,22 @@ float hash1(float n){ return fract(sin(n) * 43758.5453); }
 const PLACE = /* glsl */`
   vec2 lp = aOff.xy;
   vec2 wp = lp + modelMatrix[3].xz; // tile shift (set on the CPU, keeps frustum culling per tile)
+  // clumping: pull blades towards a jittered clump centre, clumps share height
+  vec2 cid = floor(wp / CLUMP);
+  vec2 ch = vec2(hash1(dot(cid, vec2(12.9898, 78.233))), hash1(dot(cid, vec2(39.346, 11.135))));
+  vec2 cc = (cid + 0.2 + 0.6 * ch) * CLUMP;
+  wp = mix(wp, cc, 0.38);
   vec4 TD = tData(wp);
   float dist = length(wp - uCam.xz);
   float keep = step(aOff.z, TD.g * DENS_MUL);
   float fade = (1.0 - smoothstep(uFade0, uFade1, dist)) * smoothstep(uInner0, uInner1, dist);
   vec4 nz = texture2D(uNoise, wp * 0.0043);
   vec4 nz2 = texture2D(uNoise, wp * 0.031 + 0.17);
-  float tall = mix(0.55, 1.25, nz2.r) * mix(0.6, 1.0, smoothstep(0.1, 0.6, TD.g));
-  float hgt = uHeight * (0.55 + 0.6 * aOff.w) * tall * keep * smoothstep(0.0, 0.35, fade);
-  float wid = uWidth * (0.7 + 0.6 * hash1(aOff.z * 91.7)) * mix(1.0, 1.6, 1.0 - fade);
+  float tall = mix(0.6, 1.25, nz2.r) * mix(0.55, 1.0, smoothstep(0.1, 0.6, TD.g)) * mix(0.6, 1.15, ch.x);
+  // mostly short sward with taller tufts poking out
+  float hv = aOff.w < 0.55 ? 0.28 + 0.25 * aOff.w : 0.55 + 0.75 * (aOff.w - 0.55);
+  float hgt = uHeight * hv * tall * keep * smoothstep(0.0, 0.35, fade);
+  float wid = uWidth * (0.7 + 0.6 * hash1(aOff.z * 91.7)) * mix(1.0, 1.5, 1.0 - fade);
   float yaw = aOff.w * 37.0 + aOff.z * 11.0;
   vec2 fw = vec2(cos(yaw), sin(yaw));
   vec2 side = vec2(-fw.y, fw.x);
@@ -57,7 +64,7 @@ const PLACE = /* glsl */`
   float bl = length(bend); bend /= max(1.0, bl * 0.8);
   float k = t * t;
   vec3 gPos;
-  gPos.xz = wp + side * position.x * wid * (1.0 - t * 0.85) + bend * k * hgt * 0.75;
+  gPos.xz = wp + side * position.x * wid * (1.0 - t * 0.9) + bend * k * hgt * 0.75;
   gPos.y = TD.r + t * hgt * (1.0 - 0.28 * min(1.0, dot(bend, bend)) * k) - 0.03;
   // soft "field" normal: mostly up, a little blade facing
   objectNormal = normalize(vec3(0.0, 1.0, 0.0) + vec3(fw.x, 0.0, fw.y) * position.x * 0.6 + vec3(bend.x, 0.0, bend.y) * 0.25);
@@ -83,7 +90,7 @@ function makeLayerMaterial(opts) {
   mat.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', `#include <common>\n#define DENS_MUL ${opts.densMul.toFixed(2)}\nuniform vec3 uGLush, uGDry, uGDeep;\n${COMMON_VERT}`)
+      .replace('#include <common>', `#include <common>\n#define DENS_MUL ${opts.densMul.toFixed(2)}\n#define CLUMP ${opts.clump.toFixed(2)}\nuniform vec3 uGLush, uGDry, uGDeep;\n${COMMON_VERT}`)
       .replace('#include <beginnormal_vertex>', `vec3 objectNormal;\n${PLACE}`)
       .replace('#include <begin_vertex>', 'vec3 transformed = gPos - modelMatrix[3].xyz;');
     sh.fragmentShader = sh.fragmentShader
@@ -91,8 +98,8 @@ function makeLayerMaterial(opts) {
         varying float vT; varying vec3 vTint; varying vec3 vWPos2;
         uniform vec3 uRoot, uSunDirW, uSunCol;`)
       .replace('#include <color_fragment>', `
-        vec3 gc = mix(uRoot, vTint, smoothstep(0.0, 0.55, vT));
-        gc = mix(gc, vTint * vec3(1.25, 1.2, 0.85), smoothstep(0.6, 1.0, vT)); // sun-bleached tips
+        vec3 gc = mix(vTint * 0.42, vTint, smoothstep(0.0, 0.6, vT));   // base matches the shaded ground
+        gc = mix(gc, vTint * vec3(1.35, 1.3, 0.8), smoothstep(0.55, 1.0, vT)); // sun-bleached lighter tips
         diffuseColor.rgb = gc;`)
       .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n#ifdef DOUBLE_SIDED\n normal *= faceDirection;\n#endif')
       .replace('#include <opaque_fragment>', `
@@ -167,7 +174,7 @@ export function qualityScale(ctx) {
   try {
     const gl = ctx.renderer.getContext(); const ext = gl.getExtension('WEBGL_debug_renderer_info');
     const r = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '';
-    if (/swiftshader|llvmpipe|software/i.test(r)) return 0.45;
+    if (/swiftshader|llvmpipe|software/i.test(r)) return 0.6;
   } catch (e) { /* ignore */ }
   return 1;
 }
@@ -175,10 +182,10 @@ export function qualityScale(ctx) {
 export function buildGrass(ctx, dataTex, colors) {
   const uTData = { value: dataTex };
   const col = { lush: { value: new THREE.Color(colors.lush) }, dry: { value: new THREE.Color(colors.dry) }, deep: { value: new THREE.Color(colors.deep) } };
-  const mul = qualityScale(ctx), wmul = 1 / Math.sqrt(Math.max(mul, 0.2));
+  const mul = qualityScale(ctx);
   const layers = [
-    { key: 'near', S: 44, n: 6, count: Math.round(100000 * mul), segs: 4, height: 0.62, width: 0.075 * wmul, fade0: 15, fade1: 21, inner0: -1, inner1: 0, densMul: 1.0 },
-    { key: 'mid', S: 120, n: 8, count: Math.round(80000 * mul), segs: 3, height: 0.7, width: 0.16 * wmul, fade0: 42, fade1: 58, inner0: 14, inner1: 18, densMul: 1.0 },
+    { key: 'near', S: 44, n: 6, count: Math.round(170000 * mul), segs: 3, height: 0.7, width: 0.05, fade0: 15, fade1: 21, inner0: -1, inner1: 0, densMul: 1.0, clump: 0.7 },
+    { key: 'mid', S: 120, n: 8, count: Math.round(100000 * mul), segs: 3, height: 0.75, width: 0.11, fade0: 42, fade1: 58, inner0: 14, inner1: 18, densMul: 1.0, clump: 1.4 },
   ];
   const fields = [];
   for (const L of layers) {

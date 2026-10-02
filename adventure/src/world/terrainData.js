@@ -33,11 +33,12 @@ export function getTerrainData() {
     const f = forestDensity(x, z);
     let g = smoothstep(0.3, 0.75, h);                 // no grass under water / on wet shore
     g *= 1 - smoothstep(0.16, 0.32, slope);          // none on rock slopes
-    g *= 1 - 0.95 * (1 - smoothstep(0.7, 2.0, pd));   // thin on paths
+    const tuft = fbm(x * 0.7 + 3, z * 0.7, 2);           // tufts creeping onto the dirt
+    g *= 1 - 0.97 * (1 - smoothstep(0.9 + tuft * 1.4, 2.2 + tuft * 0.8, pd));
     g *= 1 - 0.7 * f;                                 // sparse under canopy
     g *= 1 - smoothstep(70, 120, h);                  // none on the high rim
     const rd = riverDist(x, z); g *= smoothstep(10, 13, rd);
-    const dv = Math.hypot(x - V.x, z - V.z); g *= 0.45 + 0.55 * smoothstep(8, 30, dv);
+    const dv = Math.sqrt((x - V.x) ** 2 + (z - V.z) ** 2); g *= 0.45 + 0.55 * smoothstep(8, 30, dv);
     g *= 0.72 + 0.28 * smoothstep(-0.3, 0.3, fbm(x * 0.06, z * 0.06, 3));
     pathMask[k] = pm; grass[k] = g; forest[k] = f;
     tex[k * 4] = toH(h); tex[k * 4 + 1] = toH(g); tex[k * 4 + 2] = toH(Math.max(0, pd)); tex[k * 4 + 3] = toH(f);

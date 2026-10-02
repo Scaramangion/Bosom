@@ -14,14 +14,24 @@ const page = await browser.newPage({ viewport: { width: W, height: H } });
 const logs = [];
 page.on('console', m => { if (['error', 'warning'].includes(m.type())) logs.push(`[${m.type()}] ${m.text()}`); });
 page.on('pageerror', e => logs.push(`[pageerror] ${e.message}`));
+let loaded = false;
 for (const s of specs) {
   const i = s.indexOf('='); const name = s.slice(0, i), q = s.slice(i + 1);
-  const full = q.startsWith('game:') ? `${url}?${q.slice(5)}` : `${url}src/hero/debug/index.html?${q}`;
   const t0 = Date.now();
-  await page.goto(full, { waitUntil: 'commit', timeout: 120000 });
-  try { await page.waitForFunction(() => window.__ready || window.__error, null, { timeout: 120000 }); } catch { logs.push('timeout ' + name); }
-  await page.waitForTimeout(+(process.env.WAIT || 1500));
-  await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 });
+  if (q.startsWith('game:')) {
+    await page.goto(`${url}?${q.slice(5)}`, { waitUntil: 'commit', timeout: 180000 }); loaded = false;
+    await page.waitForFunction(() => window.__ready || window.__error, null, { timeout: 300000 });
+    await page.waitForTimeout(+(process.env.WAIT || 8000));
+  } else if (!loaded) {
+    await page.goto(`${url}src/hero/debug/index.html?${q}`, { waitUntil: 'commit', timeout: 180000 });
+    await page.waitForFunction(() => window.__ready || window.__error, null, { timeout: 300000 });
+    loaded = true;
+    await page.waitForTimeout(1500);
+  } else {
+    await page.evaluate(q => window.__apply(q), q);
+    await page.waitForTimeout(1500);
+  }
+  await page.screenshot({ path: `${out}/${name}.png`, timeout: 180000 });
   console.log(name, 'ok', Date.now() - t0, 'ms');
 }
 fs.writeFileSync(`${out}/console.log`, logs.join('\n'));

@@ -96,9 +96,9 @@ function toGeo(o) {
 const newOut = () => ({ pos: [], nrm: [], uv: [], col: [], idx: [] });
 
 // ---------------------------------------------------------------- variants
-function fir(seed) {
+function fir(seed, big = false) {
   const R = rng(seed);
-  const H = 11 + R() * 5;
+  const H = big ? 17 + R() * 5 : 9 + R() * 4;
   const near = newOut(), far = newOut(), trunkO = newOut(), farTrunk = newOut();
   const pts = curve(new V3(0, -0.4, 0), new V3(0, 1, 0), H + 0.4, 6, 0.04, R);
   tube(trunkO, pts, pts.map((_, i) => 0.42 * (1 - 0.85 * i / 6)), 9, 0.6, R());
@@ -124,32 +124,32 @@ function fir(seed) {
 function broad(seed, kind) {
   // build trunk & leaves separately so each gets its own material
   const R = rng(seed);
-  const tall = kind === 'tall';
-  const H = tall ? 8.5 + R() * 3 : 3.6 + R() * 1.4;
-  const r0 = tall ? 0.48 : 0.58 + R() * 0.15;
+  const tall = kind === 'tall', gn = kind === 'gnarled';
+  const H = tall ? 8.5 + R() * 3 : gn ? 2.6 + R() * 0.8 : 3.6 + R() * 1.4;
+  const r0 = tall ? 0.48 : gn ? 0.95 + R() * 0.2 : 0.58 + R() * 0.15;
   const trunkO = newOut(), near = newOut(), far = newOut(), farTrunk = newOut();
-  const lean = new V3((R() - 0.5) * 0.3, 1, (R() - 0.5) * 0.3);
-  const trunkPts = curve(new V3(0, -0.5, 0), lean, H + 0.5, 8, 0.14, R, 0.02);
+  const lean = gn ? new V3((R() - 0.5) * 0.9, 1, (R() - 0.5) * 0.9) : new V3((R() - 0.5) * 0.3, 1, (R() - 0.5) * 0.3);
+  const trunkPts = curve(new V3(0, -0.5, 0), lean, H + 0.5, 8, gn ? 0.4 : 0.14, R, 0.02);
   const radii = trunkPts.map((_, i) => r0 * (1 - 0.5 * i / (trunkPts.length - 1)));
-  tube(trunkO, trunkPts, radii, 12, 1.0, R());
+  tube(trunkO, trunkPts, radii, 12, gn ? 1.4 : 1.0, R());
   tube(farTrunk, [trunkPts[0], trunkPts[4], trunkPts[8]], [radii[0] * 1.25, radii[4], radii[8] * 0.8], 6, 0, 0);
   const top = trunkPts[trunkPts.length - 1];
-  const crownR = tall ? 2.9 : 2.5 + R() * 0.4;
+  const crownR = tall ? 2.9 : gn ? 2.7 + R() * 0.4 : 2.5 + R() * 0.4;
   const hues = [[1, 1, 1], [1.1, 1.06, 0.82], [0.88, 1.0, 0.98]];
   const clumps = [{ p: top.clone().add(new V3(0, crownR * 0.7, 0)), r: crownR * 1.05, hue: hues[0] }];
-  const nb = 5 + Math.floor(R() * 3);
+  const nb = gn ? 6 + Math.floor(R() * 2) : 5 + Math.floor(R() * 3);
   for (let i = 0; i < nb; i++) {
-    const t = (tall ? 0.55 : 0.4) + R() * 0.5;
+    const t = (tall ? 0.55 : gn ? 0.5 : 0.4) + R() * 0.5;
     const k = Math.min(trunkPts.length - 2, Math.floor(t * (trunkPts.length - 1)));
     const a = i / nb * Math.PI * 2 + R() * 0.8;
-    const dir = new V3(Math.cos(a), tall ? 0.8 + R() * 0.4 : 0.35 + R() * 0.45, Math.sin(a));
-    const len = (tall ? 2.8 : 3.6) + R() * 1.6;
-    const bp = curve(trunkPts[k], dir, len, 4, 0.3, R, 0.1);
-    tube(trunkO, bp, bp.map((_, j) => radii[k] * (0.5 - 0.38 * j / 4)), 6, 0, 0);
+    const dir = new V3(Math.cos(a), tall ? 0.8 + R() * 0.4 : gn ? 0.12 + R() * 0.3 : 0.35 + R() * 0.45, Math.sin(a));
+    const len = (tall ? 2.8 : gn ? 4.8 : 3.6) + R() * 1.6;
+    const bp = curve(trunkPts[k], dir, len, gn ? 6 : 4, gn ? 0.55 : 0.3, R, gn ? 0.06 : 0.1);
+    tube(trunkO, bp, bp.map((_, j) => radii[k] * ((gn ? 0.6 : 0.5) - (gn ? 0.45 : 0.38) * j / (bp.length - 1))), 7, 0, 0);
     const tip = bp[bp.length - 1];
     clumps.push({ p: tip.clone().add(new V3(0, 0.5, 0)), r: crownR * (0.72 + R() * 0.35), hue: hues[i % 3] });
     // secondary twig clump halfway
-    if (R() < 0.6) clumps.push({ p: bp[2].clone().add(new V3(0, 0.8, 0)), r: crownR * 0.6, hue: hues[(i + 1) % 3] });
+    if (R() < (gn ? 0.9 : 0.6)) clumps.push({ p: bp[2].clone().add(new V3(0, 0.8, 0)), r: crownR * 0.6, hue: hues[(i + 1) % 3] });
   }
   const crownC = new V3(); for (const c of clumps) crownC.add(c.p); crownC.multiplyScalar(1 / clumps.length);
   const crownH = 2 * crownR + 3;
@@ -225,11 +225,12 @@ export function buildTrees(ctx, placements) {
   const variants = {
     oak: [broad(11, 'oak'), broad(23, 'oak'), broad(37, 'oak')],
     tall: [broad(41, 'tall'), broad(53, 'tall')],
-    fir: [fir(61), fir(73)],
+    gnarled: [broad(131, 'gnarled'), broad(149, 'gnarled')],
+    fir: [fir(61), fir(73, true), fir(89, true)],
     bush: [bushGeo(81), bushGeo(97)],
   };
-  const tints = { oak: 0xffffff, tall: 0xe6f0d8, fir: 0xc8d8c4, bush: 0xf2f8e0 };
-  const texKind = { oak: 'broad', tall: 'broad', fir: 'needle', bush: 'broad' };
+  const tints = { oak: 0xffffff, tall: 0xe6f0d8, gnarled: 0xf4ecc8, fir: 0xc8d8c4, bush: 0xf2f8e0 };
+  const texKind = { oak: 'broad', tall: 'broad', gnarled: 'broad', fir: 'needle', bush: 'broad' };
   const barkMat = barkMaterial();
   const groups = [];
   for (const kind of Object.keys(variants)) {

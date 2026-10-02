@@ -17,7 +17,7 @@ void main() {
 
 const frag = /* glsl */`
 ${ATMOSPHERE_GLSL}
-uniform vec3 uSunDir, uMoonDir, uSunT, uMoonT, uFogColor, uFogSunColor, uZenith;
+uniform vec3 uSunDir, uMoonDir, uSunT, uMoonT, uSunSky, uMoonSky, uFogColor, uFogSunColor, uZenith;
 uniform float uTime, uNight, uDay, uCover;
 uniform vec2 uWind;
 uniform sampler2D uNoise;
@@ -41,7 +41,7 @@ void main() {
   vec3 vs = normalize(vec3(v.x, max(v.y, 0.0) + 0.002, v.z));
 
   // ---- clear sky ----
-  vec3 sky = atmSky(vs, uSunDir, uSunT) + atmSky(vs, uMoonDir, uMoonT);
+  vec3 sky = atmSky(vs, uSunDir, uSunSky) + atmSky(vs, uMoonDir, uMoonSky);
   // night base: deep blue gradient with a faint galactic band
   vec3 nightCol = mix(vec3(0.010, 0.016, 0.034), vec3(0.003, 0.006, 0.016), sqrt(max(v.y, 0.0)));
   float band = texture2D(uNoise, vec2(atan(v.z, v.x) * 0.25, v.y * 0.6 + 0.3)).a;
@@ -142,6 +142,8 @@ export function init(ctx) {
     uMoonDir: { value: new THREE.Vector3(0, -1, 0) },
     uSunT: { value: new THREE.Color(1, 1, 1) },
     uMoonT: { value: new THREE.Color(0, 0, 0) },
+    uSunSky: { value: new THREE.Color(1, 1, 1) },
+    uMoonSky: { value: new THREE.Color(0, 0, 0) },
     uFogColor: { value: new THREE.Color(0.7, 0.8, 0.9) },
     uFogSunColor: { value: new THREE.Color(0, 0, 0) },
     uZenith: { value: new THREE.Color(0.3, 0.5, 0.9) },
@@ -187,6 +189,8 @@ export function init(ctx) {
     uniforms.uMoonDir.value.copy(atmo.moonDir);
     uniforms.uSunT.value.copy(atmo.sunT);
     uniforms.uMoonT.value.copy(atmo.moonT);
+    uniforms.uSunSky.value.copy(atmo.sunSky);
+    uniforms.uMoonSky.value.copy(atmo.moonSky);
     uniforms.uFogColor.value.copy(atmo.fogColor);
     uniforms.uFogSunColor.value.copy(atmo.fogSunColor);
     uniforms.uZenith.value.copy(atmo.zenith);

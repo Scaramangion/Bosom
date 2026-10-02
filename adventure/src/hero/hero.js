@@ -138,6 +138,7 @@ export async function init(ctx) {
     ctx.emit(drawn ? 'sword-draw' : 'sword-sheathe', { position: pos.clone() });
   }
 
+  H.__setSword = setSword;
   function placeAt(x, z, y0) {
     pos.set(x, groundAt(x, z, (y0 ?? 1e4)), z);
     vel.set(0, 0, 0);

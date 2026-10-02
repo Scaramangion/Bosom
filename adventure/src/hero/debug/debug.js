@@ -5,7 +5,7 @@ import * as hero from '../hero.js';
 import * as layout from '../../world/layout.js';
 
 const ctx = createContext();
-const P = ctx.params;
+let P = ctx.params;
 ctx.scene.background = new THREE.Color(0x8fb4d8);
 ctx.scene.fog = new THREE.Fog(0x9fbfdc, 30, 160);
 const sun = new THREE.DirectionalLight(0xfff0d8, 3.2);
@@ -26,14 +26,18 @@ ctx.scene.add(g);
 async function main() {
   const r = await hero.init(ctx);
   const H = ctx.hero;
-  const pose = P.get('pose');
-  if (P.get('drawn')) H.__setSword?.(true);
-  if (pose) H._force = { name: pose, t: P.get('t') !== null ? +P.get('t') : undefined, upper: P.get('upper') || undefined, speed: P.get('speed') !== null ? +P.get('speed') : undefined };
-  const yaw = +(P.get('yaw') || 0);
-  H.root.rotation.y = yaw;
-  const camMode = P.get('cam') || 'front';
-  const dist = +(P.get('dist') || 3.2), ch = +(P.get('h') || 1.0), look = +(P.get('look') || ch);
-  const camAng = { front: 0, back: Math.PI, left: Math.PI / 2, right: -Math.PI / 2, q: 0.6, q2: -0.7, bq: Math.PI - 0.6 }[camMode] ?? +camMode;
+  let camAng, dist, ch, look;
+  function apply(q) {
+    if (q !== undefined) P = new URLSearchParams(q);
+    const pose = P.get('pose');
+    H.__setSword?.(!!P.get('drawn'));
+    H._force = pose ? { name: pose, t: P.get('t') !== null ? +P.get('t') : undefined, upper: P.get('upper') || undefined, speed: P.get('speed') !== null ? +P.get('speed') : undefined } : null;
+    const camMode = P.get('cam') || 'front';
+    dist = +(P.get('dist') || 3.2); ch = +(P.get('h') || 1.0); look = +(P.get('look') || ch);
+    camAng = { front: 0, back: Math.PI, left: Math.PI / 2, right: -Math.PI / 2, q: 0.6, q2: -0.7, bq: Math.PI - 0.6 }[camMode] ?? +camMode;
+  }
+  apply();
+  window.__apply = (q) => { apply(q); for (let i = 0; i < 20; i++) { t += 1 / 60; ctx.time = t; r.update(1 / 60, t); } };
   let t = 0;
   function frame() {
     const dt = 1 / 60; t += dt; ctx.time = t;

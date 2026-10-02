@@ -131,6 +131,11 @@ export function init(ctx) {
     gtao.updateGtaoMaterial({ radius: 1.4, distanceExponent: 1.6, thickness: 1.2, scale: 1.0, samples: 12, screenSpaceRadius: false });
     gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
     gtao.blendIntensity = 0.55;
+    // NaN-safe AO blend: a bad AO texel falls back to "unoccluded" instead of black/NaN
+    gtao.blendMaterial.fragmentShader = gtao.blendMaterial.fragmentShader.replace(
+      'vec4 texel = texture2D( tDiffuse, vUv );',
+      'vec4 texel = texture2D( tDiffuse, vUv ); float aoV = texel.r; if (isnan(aoV) || isinf(aoV) || !(aoV >= 0.0 || aoV <= 0.0)) texel = vec4(1.0); texel.rgb = clamp(texel.rgb, 0.0, 1.0);');
+    gtao.blendMaterial.needsUpdate = true;
     composer.addPass(gtao);
   }
 

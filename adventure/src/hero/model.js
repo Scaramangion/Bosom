@@ -56,10 +56,10 @@ function headGeo() { return paramSurface(72, 56, (u, v, o) => headPoint(u, v, o)
 
 function eyeGeo(side) {
   // eyeball with u=0.5 front; returns geometry already placed
-  const u0 = 0.5 + side * 0.33 / TAU, v0 = 0.562;
+  const u0 = 0.5 + side * 0.33 / TAU, v0 = 0.568;
   const c = headPoint(u0, v0, new THREE.Vector3(), 0, false);
-  const R = 0.0165;
-  c.z -= 0.0105; c.x -= side * 0.002;
+  const R = 0.0148;
+  c.z -= 0.0108; c.x -= side * 0.002;
   const yaw = side * 0.16;
   const g = paramSurface(24, 16, (u, v, o) => {
     const a = (u - 0.5) * TAU, th = v * Math.PI;
@@ -303,19 +303,24 @@ function fistGeo(side, info) {
 }
 
 function pauldronGeo(info) {
-  const C = info.upperArm_L.head.clone().add(new THREE.Vector3(-0.005, 0.02, 0));
+  // layered leather shoulder guard: three overlapping shell plates over the left shoulder
+  const C = info.upperArm_L.head.clone().add(new THREE.Vector3(0.0, 0.005, 0));
   const parts = [];
   for (let k = 0; k < 3; k++) {
-    const r = 0.088 - k * 0.006, dy = -k * 0.038, dx = k * 0.012;
-    parts.push(paramSurface(20, 8, (u, v, o) => {
-      const a = (u - 0.5) * Math.PI * 1.45; // around front/back
-      const th = 0.15 + v * (0.85 - k * 0.12); // from top outward-down
-      o.set(C.x + dx + r * Math.sin(th) * 1.0 + 0.004, C.y + dy + r * Math.cos(th) * 0.8, C.z + r * 0.95 * Math.sin(th) * Math.sin(a) * 0.95);
-      // curve the plate over the shoulder: x from cos(a)
-      o.x = C.x + dx + r * Math.sin(th) * Math.cos(a) * 0.75 + 0.02;
-      o.z = C.z + r * Math.sin(th) * Math.sin(a);
-      o.y = C.y + dy + r * Math.cos(th) * 0.55 - 0.012 * Math.sin(th);
-    }, { uS: 1, vS: 0.5 }));
+    const r = 0.078 + k * 0.004, dy = -k * 0.03, dx = 0.006 + k * 0.012;
+    parts.push(paramSurface(18, 7, (u, v, o) => {
+      const ph = (u - 0.5) * Math.PI * 1.25;          // around the shoulder, front..back
+      const th = 0.15 + v * (k === 0 ? 1.05 : 0.75);  // from the top down the outer arm
+      const sx = Math.sin(th) * Math.cos(ph), sz = Math.sin(th) * Math.sin(ph), sy = Math.cos(th);
+      o.set(C.x + dx + r * sx * 0.95, C.y + dy + r * sy * 0.75, C.z + r * sz * 1.05);
+    }, { uS: 1, vS: 0.4, orient: false }));
+    // second sheet slightly inside for thickness (reverse facing)
+    parts.push(paramSurface(18, 7, (u, v, o) => {
+      const ph = (u - 0.5) * Math.PI * 1.25, th = 0.15 + v * (k === 0 ? 1.05 : 0.75);
+      const sx = Math.sin(th) * Math.cos(ph), sz = Math.sin(th) * Math.sin(ph), sy = Math.cos(th);
+      const rr = r - 0.006;
+      o.set(C.x + dx + rr * sx * 0.95, C.y + dy + rr * sy * 0.75, C.z + rr * sz * 1.05);
+    }, { uS: 1, vS: 0.4, orient: false, flip: true }));
   }
   return mergeGeometries(parts);
 }

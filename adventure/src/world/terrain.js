@@ -178,7 +178,7 @@ const TERRAIN_SPLAT = /* glsl */`
   vec4 dP = texture2D(uDirt, du);
   vec4 dP2 = texture2D(uDirt, mat2(0.6,0.8,-0.8,0.6) * P.xz * 0.09 + 0.13);
   float pdist = TD.b + (nzC.g - 0.5) * 0.7 + (nzB.a - 0.5) * 0.5;
-  float pm = 1.0 - smoothstep(1.0, 2.4, pdist);
+  float pm = 1.0 - smoothstep(0.8, 2.6, pdist);
   // grass encroaching: tufts creep in at the edges and down the crown between ruts
   float strip = (1.0 - smoothstep(0.05, 0.45, TD.b)) * smoothstep(0.4, 0.7, nzC.b);
   pm *= 1.0 - 0.75 * strip;
@@ -209,8 +209,10 @@ const TERRAIN_SPLAT = /* glsl */`
   float rs = 0.075;
   vec4 rx = texture2D(uRock, P.zy * rs), ry = texture2D(uRock, P.xz * rs * 1.3), rz = texture2D(uRock, P.xy * rs);
   vec4 rk = rx * bw.x + ry * bw.y + rz * bw.z;
-  vec4 rk2 = texture2D(uRock, P.xz * 0.013 + P.y * 0.004);
-  vec3 rock = rk.rgb * mix(0.75, 1.25, rk2.r) * vec3(1.04, 1.0, 0.94);
+  vec4 rk2 = texture2D(uRock, P.zy * 0.016) * bw.x + texture2D(uRock, P.xz * 0.016) * bw.y + texture2D(uRock, P.xy * 0.016) * bw.z;
+  float strata = 0.5 + 0.5 * sin(P.y * 0.35 + nzB.r * 6.0 + rk2.a * 3.0);
+  vec3 rock = rk.rgb * mix(0.7, 1.3, rk2.a) * mix(0.82, 1.12, strata) * vec3(1.04, 1.0, 0.94);
+  rock = mix(rock, rock * vec3(0.78, 0.86, 0.62), smoothstep(0.55, 0.8, nzB.g) * (1.0 - smoothstep(60.0, 120.0, P.y)) * 0.6); // lichen / moss stains
   rock = mix(rock, rock * vec3(0.85, 0.82, 0.95), smoothstep(40.0, 160.0, P.y)); // cooler high up
   float rw = smoothstep(0.24, 0.38, slope + (nzB.r - 0.5) * 0.16 + (rk.a - baseH) * 0.2);
   rw = max(rw, smoothstep(0.55, 0.8, smoothstep(70.0, 140.0, P.y) + (nzA.b - 0.5) * 0.6) );

@@ -25,10 +25,11 @@ export const LANDMARKS = {
 
 // --- deterministic value noise ---
 function hash(x, z) {
-  let h = (x * 374761393 + z * 668265263) | 0;
-  h = (h ^ (h >>> 13)) * 1274126177 | 0;
+  let h = (Math.imul(x, 374761393) + Math.imul(z, 668265263)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
 }
+function hyp(a, b) { return Math.sqrt(a * a + b * b); }
 function smooth(t) { return t * t * (3 - 2 * t); }
 export function smoothstep(a, b, x) { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
 export function noise2(x, z) {
@@ -53,7 +54,7 @@ export function ridged(x, z, oct = 5) {
   return s;
 }
 function bump(x, z, cx, cz, r) {
-  const d = Math.hypot(x - cx, z - cz) / r;
+  const d = hyp(x - cx, z - cz) / r;
   return d >= 1 ? 0 : smooth(1 - d);
 }
 const RIVER_PTS = [[-20, 330], [-35, 220], [-10, 140], [-45, 60], [-35, 10], [-55, -30]];
@@ -65,14 +66,14 @@ function riverDist(x, z) {
     const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
     const dx = bx - ax, dz = bz - az;
     const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
-    best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
+    best = Math.min(best, hyp(x - ax - dx * t, z - az - dz * t));
   }
   return best;
 }
 
 // --- dirt path network (spawn -> village -> shrine, spawn -> lake, spawn -> forest edge)
 const PATH_CTRL = [ // [halfWidth, control points]
-  [2.6, [[0, 0], [3, -14], [7, -28], [8, -40], [10, -56], [14, -74], [16, -95], [19, -114], [21, -130], [20, -140]]], // spawn -> shrine trail
+  [2.2, [[0, 0], [3, -14], [7, -28], [8, -40], [10, -56], [14, -74], [16, -95], [19, -114], [21, -130], [20, -140]]], // spawn -> shrine trail
   [2.0, [[0, 0], [10, 6], [22, 8], [34, 15], [46, 17], [55, 20]]],                         // spawn -> village
   [1.8, [[55, 20], [56, 0], [48, -22], [35, -44], [22, -62], [14, -74]]],                  // village -> shrine trail
   [1.8, [[0, 0], [-7, -9], [-13, -16], [-22, -21], [-29, -29]]],                           // spawn -> lake
@@ -102,7 +103,8 @@ export const PATHS = PATH_CTRL.map(([w, c]) => {
 });
 // distance (m) from the nearest path, normalised so the dirt edge sits at ~1.8 m
 // for every path (wider trails subtract their extra half-width). Capped at 12.
-export function pathDist(x, z) {
+// Exact distances are rasterised once into a 0.5 m grid; lookups are bilinear.
+function pathDistExact(x, z) {
   let best = 12;
   for (const p of PATHS) {
     if (x < p.minx || x > p.maxx || z < p.minz || z > p.maxz) continue;
@@ -110,31 +112,59 @@ export function pathDist(x, z) {
     for (let i = 0; i < pts.length - 1; i++) {
       const ax = pts[i][0], az = pts[i][1], dx = pts[i + 1][0] - ax, dz = pts[i + 1][1] - az;
       const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz + 1e-9)));
-      const d = Math.max(0, Math.hypot(x - ax - dx * t, z - az - dz * t) - (p.w - 1.8));
+      const d = Math.max(0, hyp(x - ax - dx * t, z - az - dz * t) - (p.w - 1.8));
       if (d < best) best = d;
     }
   }
   return best;
 }
+const PG = { res: 0.5, n: 0, grid: null };
+function buildPathGrid() {
+  const res = PG.res, n = PG.n = Math.round(WORLD_SIZE / res) + 1, half = WORLD_SIZE / 2;
+  const g = PG.grid = new Float32Array(n * n).fill(12);
+  for (const p of PATHS) {
+    const pts = p.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const ax = pts[i][0], az = pts[i][1], bx = pts[i + 1][0], bz = pts[i + 1][1];
+      const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz + 1e-9, pad = 12 + p.w;
+      const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - pad + half) / res)), i1 = Math.min(n - 1, Math.ceil((Math.max(ax, bx) + pad + half) / res));
+      const j0 = Math.max(0, Math.floor((Math.min(az, bz) - pad + half) / res)), j1 = Math.min(n - 1, Math.ceil((Math.max(az, bz) + pad + half) / res));
+      for (let j = j0; j <= j1; j++) for (let ii = i0; ii <= i1; ii++) {
+        const x = ii * res - half, z = j * res - half;
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2));
+        const d = Math.max(0, hyp(x - ax - dx * t, z - az - dz * t) - (p.w - 1.8));
+        const k = j * n + ii; if (d < g[k]) g[k] = d;
+      }
+    }
+  }
+}
+export function pathDist(x, z) {
+  if (!PG.grid) buildPathGrid();
+  const half = WORLD_SIZE / 2, n = PG.n;
+  const fx = (x + half) / PG.res, fz = (z + half) / PG.res;
+  if (fx < 0 || fz < 0 || fx >= n - 1 || fz >= n - 1) return pathDistExact(x, z);
+  const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, k = j * n + i, g = PG.grid;
+  return (g[k] * (1 - u) + g[k + 1] * u) * (1 - v) + (g[k + n] * (1 - u) + g[k + n + 1] * u) * v;
+}
 
 // 0..1 tree density: the old forest + woods on the mountain foothills
 export function forestDensity(x, z) {
-  const d = Math.hypot(x - LANDMARKS.forest.x, z - LANDMARKS.forest.z) + noise2(x * 0.05, z * 0.05) * 10;
+  const d = hyp(x - LANDMARKS.forest.x, z - LANDMARKS.forest.z) + noise2(x * 0.05, z * 0.05) * 10;
   let f = smoothstep(58, 34, d);
-  const r = Math.hypot(x, z);
+  const r = hyp(x, z);
   const band = smoothstep(170, 215, r) * (1 - smoothstep(330, 370, r));
   const patch = smoothstep(-0.05, 0.25, fbm(x * 0.012 + 40, z * 0.012 - 13, 3));
   f = Math.max(f, band * patch);
   // keep landmarks clear
-  f *= smoothstep(48, 70, Math.hypot(x - LANDMARKS.village.x, z - LANDMARKS.village.z));
-  f *= smoothstep(30, 55, Math.hypot(x - LANDMARKS.shrine.x, z - LANDMARKS.shrine.z));
-  f *= smoothstep(45, 60, Math.hypot(x - LANDMARKS.lake.x, z - LANDMARKS.lake.z));
-  f *= smoothstep(28, 45, Math.hypot(x, z));
+  f *= smoothstep(48, 70, hyp(x - LANDMARKS.village.x, z - LANDMARKS.village.z));
+  f *= smoothstep(30, 55, hyp(x - LANDMARKS.shrine.x, z - LANDMARKS.shrine.z));
+  f *= smoothstep(45, 60, hyp(x - LANDMARKS.lake.x, z - LANDMARKS.lake.z));
+  f *= smoothstep(28, 45, hyp(x, z));
   return f;
 }
 
 export function heightAt(x, z) {
-  const r = Math.hypot(x, z);
+  const r = hyp(x, z);
   // central lowland plain (~1.2-2.6 m above water, like a river valley floor),
   // rolling into bigger hills towards the rim
   const outer = 7.5 + fbm(x * 0.008, z * 0.008) * 9 + fbm(x * 0.04, z * 0.04, 3) * 1.2;

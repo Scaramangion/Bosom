@@ -35,7 +35,7 @@ export function init(ctx) {
     trees.push({ kind, x, y: y - 0.05, z, s, rot: R() * Math.PI * 2, v: Math.floor(R() * 6), sy: 0.9 + R() * 0.2 });
   };
   // composed hero trees framing the trail / meadow (Twilight-Princess style lone oaks)
-  for (const [x, z, s, k] of [[-11, -62, 1.25, 'oak'], [27, -57, 1.15, 'oak'], [-16, 18, 1.1, 'oak'], [24, -24, 0.95, 'oak'], [-24, -4, 1.0, 'tall'], [38, -88, 1.05, 'oak'], [-6, -104, 1.0, 'tall']]) add(k, x, z, s);
+  for (const [x, z, s, k] of [[-11, -62, 1.25, 'gnarled'], [27, -57, 1.15, 'oak'], [-16, 18, 1.1, 'oak'], [24, -24, 0.95, 'oak'], [-24, -4, 1.0, 'fir'], [38, -88, 1.05, 'gnarled'], [-6, -104, 1.1, 'fir'], [-30, -12, 1.2, 'fir'], [33, -36, 0.9, 'tall']]) add(k, x, z, s);
   const CELL = 4.2;
   for (let gz = -398; gz < 398; gz += CELL) for (let gx = -398; gx < 398; gx += CELL) {
     const x = gx + R() * CELL, z = gz + R() * CELL;
@@ -53,10 +53,10 @@ export function init(ctx) {
     let kind;
     const hi = smoothstep(25, 70, h);
     if (r > 150) kind = R() < 0.55 + hi * 0.4 ? 'fir' : (R() < 0.5 ? 'tall' : 'oak');
-    else if (f > 0.05) { const u = R(); kind = u < 0.45 ? 'tall' : u < 0.8 ? 'oak' : 'fir'; }
-    else kind = R() < 0.8 ? 'oak' : 'fir';
+    else if (f > 0.05) { const u = R(); kind = u < 0.32 ? 'tall' : u < 0.52 ? 'oak' : u < 0.68 ? 'gnarled' : 'fir'; }
+    else { const u = R(); kind = u < 0.5 ? 'oak' : u < 0.7 ? 'gnarled' : u < 0.85 ? 'fir' : 'tall'; }
     if (sl > 0.22 && kind !== 'fir') kind = 'fir';
-    add(kind, x, z, 0.8 + R() * 0.5);
+    add(kind, x, z, kind === 'fir' ? 0.7 + R() * 0.8 : 0.7 + R() * 0.6);
   }
   // bushes: forest understory + edges, hedges along field noise bands
   const bushes = [];
@@ -75,8 +75,11 @@ export function init(ctx) {
   // ------------------------------------------------------------ rocks
   const rocks = [];
   const addRock = (x, z, s, moss, opts = {}) => {
-    const y = H(x, z);
-    rocks.push({ x, y: y - s * (0.18 + R() * 0.15), z, s, sy: 0.7 + R() * 0.5, sz: 0.8 + R() * 0.4, rot: R() * 6.28, tilt: (R() - 0.5) * 0.3, tilt2: (R() - 0.5) * 0.3, v: Math.floor(R() * 4), moss, ...opts });
+    // sample the lowest ground under the footprint so nothing floats on slopes
+    const rr = s * 0.9;
+    const y = Math.min(H(x, z), H(x + rr, z), H(x - rr, z), H(x, z + rr), H(x, z - rr));
+    const sl = slopeAt(x, z);
+    rocks.push({ x, y: y - s * (0.2 + R() * 0.15 + sl * 0.6), z, s, sy: 0.7 + R() * 0.5, sz: 0.8 + R() * 0.4, rot: R() * 6.28, tilt: (R() - 0.5) * 0.3, tilt2: (R() - 0.5) * 0.3, v: Math.floor(R() * 4), moss, ...opts });
   };
   // hero boulders near the meadow/trail
   for (const [x, z, s] of [[-14, -40, 1.6], [17, -46, 1.1], [-20, 10, 1.3], [12, 18, 0.9], [30, -70, 1.8], [-4, -78, 0.8]]) addRock(x, z, s, true);
@@ -86,8 +89,8 @@ export function init(ctx) {
     if (!clearOf(x, z) || h < -1.5) continue;
     let s = 0, moss = false;
     if (f > 0.3 && R() < 0.25) { s = 0.5 + R() * 1.4; moss = true; }               // mossy forest rocks
-    else if (r > 200 && R() < 0.35) { s = 1.5 + R() * 4.5; moss = R() < 0.4; }       // foothill boulders
-    else if (sl > 0.18 && R() < 0.5) { s = 0.8 + R() * 2.5; }                        // outcrops on slopes
+    else if (r > 200 && sl < 0.3 && R() < 0.35) { s = 1.5 + R() * 3.5; moss = R() < 0.4; } // foothill boulders
+    else if (sl > 0.18 && sl < 0.5 && R() < 0.4) { s = 0.8 + R() * 2.0; }           // outcrops on slopes
     else if (Math.abs(h) < 0.8 && R() < 0.6) { s = 0.4 + R() * 1.2; }               // shore stones
     else if (R() < 0.04) { s = 0.6 + R() * 1.6; moss = R() < 0.5; }                  // field boulders
     if (!s) continue;

@@ -67,6 +67,8 @@ export function init(ctx) {
     sunDir, moonDir,
     sunT: new THREE.Color(),       // sunlight colour reaching the ground (0..1, fades at night)
     moonT: new THREE.Color(),
+    sunSky: new THREE.Color(),     // sun colour lighting the upper atmosphere (less reddened)
+    moonSky: new THREE.Color(),
     day: 1, night: 0,              // factors
     fogColor: scene.fog.color,
     fogSunColor: fogUniforms.fogSunColor.value,
@@ -94,6 +96,10 @@ export function init(ctx) {
     // moonlight: cool, dim
     sunTransmittance(Math.max(moonDir.y, 0), atmo.moonT).multiplyScalar(0.03 * night * smooth(-0.05, 0.15, moonDir.y));
     atmo.moonT.lerp(tmpC.setRGB(0.6, 0.75, 1.0).multiplyScalar(atmo.moonT.r + atmo.moonT.g + atmo.moonT.b), 0.6);
+    // sky scattering happens high up where sunlight has crossed less air: keep the sky blue at golden hour
+    sunTransmittance(sunDir.y, tmpC);
+    atmo.sunSky.setRGB(tmpC.r ** 0.35, tmpC.g ** 0.35, tmpC.b ** 0.35).multiplyScalar(day);
+    atmo.moonSky.copy(atmo.moonT).multiplyScalar(0.6);
 
     // fog = average horizon radiance, plus a sun-ward lobe
     const fc = atmo.fogColor.setRGB(0, 0, 0);
@@ -101,30 +107,31 @@ export function init(ctx) {
     for (let i = 0; i < 8; i++) {
       const a = i / 8 * Math.PI * 2;
       tmpV.set(Math.cos(a), elev, Math.sin(a)).normalize();
-      skyRadiance(tmpV, sunDir, atmo.sunT, tmpC); fc.add(tmpC);
-      skyRadiance(tmpV, moonDir, atmo.moonT, tmpC); fc.add(tmpC);
+      skyRadiance(tmpV, sunDir, atmo.sunSky, tmpC); fc.add(tmpC);
+      skyRadiance(tmpV, moonDir, atmo.moonSky, tmpC); fc.add(tmpC);
     }
     fc.multiplyScalar(1 / 8);
     // night floor so silhouettes never go pitch black
     fc.r += 0.006 * night; fc.g += 0.009 * night; fc.b += 0.018 * night;
     // a touch of haze desaturation
     const lum = fc.r * 0.3 + fc.g * 0.55 + fc.b * 0.15;
-    fc.lerp(tmpC.setRGB(lum, lum, lum), 0.18);
+    fc.lerp(tmpC.setRGB(lum, lum, lum), 0.25);
     atmo.horizon.copy(fc);
     tmpV.set(sunDir.x, Math.max(sunDir.y, 0.06), sunDir.z).normalize();
+    // sun-ward glow uses the reddened light (sunsets glow orange through the haze)
     skyRadiance(tmpV, sunDir, atmo.sunT, tmpC);
     atmo.fogSunColor.copy(tmpC).sub(fc);
-    atmo.fogSunColor.r = Math.max(0, atmo.fogSunColor.r) * 0.8;
-    atmo.fogSunColor.g = Math.max(0, atmo.fogSunColor.g) * 0.8;
-    atmo.fogSunColor.b = Math.max(0, atmo.fogSunColor.b) * 0.8;
+    atmo.fogSunColor.r = Math.max(0, atmo.fogSunColor.r) * 0.5;
+    atmo.fogSunColor.g = Math.max(0, atmo.fogSunColor.g) * 0.5;
+    atmo.fogSunColor.b = Math.max(0, atmo.fogSunColor.b) * 0.5;
     fogUniforms.fogSunDir.value.copy(sunDir);
-    skyRadiance(UP, sunDir, atmo.sunT, atmo.zenith);
-    skyRadiance(UP, moonDir, atmo.moonT, tmpC); atmo.zenith.add(tmpC);
+    skyRadiance(UP, sunDir, atmo.sunSky, atmo.zenith);
+    skyRadiance(UP, moonDir, atmo.moonSky, tmpC); atmo.zenith.add(tmpC);
     atmo.zenith.r += 0.002 * night; atmo.zenith.g += 0.004 * night; atmo.zenith.b += 0.01 * night;
 
     // denser, warmer haze near dawn/dusk; crisp at noon
     const golden = 1 - smooth(0.12, 0.5, Math.abs(sunDir.y));
-    scene.fog.density = 0.0017 + 0.0011 * golden + 0.0008 * night;
+    scene.fog.density = 0.0007 + 0.0004 * golden + 0.0005 * night;
 
     // key light: sun by day, moon by night
     const useMoon = sunDir.y < -0.04;

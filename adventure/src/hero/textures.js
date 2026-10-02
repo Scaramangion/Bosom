@@ -181,7 +181,7 @@ export function leatherTex(base, { size = 1024, seed = 11, stitch = false } = {}
 
 // ---------- skin (head has painted face; u=0.5 is facing +Z) ----------
 export function skinTex({ size = 1024, seed = 13, face = false } = {}) {
-  const base = hex(0x7a5442), warm = hex(0x94574a), deep = hex(0x5e3a26), lip = hex(0x7a3d32), brow = hex(0x1a1420);
+  const base = hex(0x8c6450), warm = hex(0xa0605a), deep = hex(0x5e3a26), lip = hex(0x7a3d32), brow = hex(0x1a1420);
   return genMaps(size, (u, v, o) => {
     const n = pfbm(u, v, 24, 4, seed), f = pnoise(u * 500, v * 500, 500, seed + 1);
     set3(o, base, 0.93 + 0.12 * (n - 0.5) + 0.04 * (f - 0.5));
@@ -300,7 +300,7 @@ export function eyeTex({ size = 512 } = {}) {
     const r = Math.hypot(ax, ay * 1.0);
     set3(o, sclera, 0.95); o.ro = 0.08;
     mix3(o, [0.85, 0.6, 0.55], clamp01((r - 0.9) * 1.2) * 0.4);
-    const R = 0.62;
+    const R = 0.56;
     if (r < R) {
       const t = r / R, ang = Math.atan2(ay, ax);
       const fib = pnoise(ang * 30 / Math.PI, t * 4, 60, 3);
