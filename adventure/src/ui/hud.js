@@ -124,7 +124,7 @@ export async function init(ctx) {
   const mapImg = buildMinimapImage({ heightAt: (x, z) => (ctx.terrain?.heightAt ? ctx.terrain.heightAt(x, z) : layoutHeightAt(x, z)), sync: shotMode });
 
   // area card
-  const card = el('div', { id: 'k-area-card', class: 'k-layer', style: 'inset:auto' }, hud);
+  const card = el('div', { id: 'k-area-card' }, hud);
   card.innerHTML = `<div class="k-sub"></div><div class="k-name"></div>${RULE_SVG(520)}`;
 
   // ================= title screen =================
@@ -137,10 +137,12 @@ export async function init(ctx) {
       <div id="k-title-press">Press any key<svg class="k-orn" viewBox="-90 -6 180 12"><path d="M-86 0 H-10 M10 0 H86" stroke="#e9d7a6" stroke-width=".8" opacity=".7"/><path d="M0 -4 L4 0 L0 4 L-4 0Z" fill="#e9d7a6"/></svg></div>
       <div id="k-title-foot">An original tale of Koto &middot; Brennan's Hollow</div>`;
     hud.classList.add('k-hidden');
+    if (ctx.input) ctx.input.enabled = false;
   }
   function dismissTitle() {
     if (!titleActive) return;
     titleActive = false; ui.titleActive = false;
+    if (ctx.input) ctx.input.enabled = true;
     title.classList.add('k-fade');
     setTimeout(() => title.remove(), 1700);
     hud.classList.remove('k-hidden');
@@ -153,7 +155,7 @@ export async function init(ctx) {
   pause.innerHTML = `<div id="k-pause-panel">
     <h1>Paused</h1>${RULE_SVG(360)}
     <div id="k-pause-cols">
-      <div><div id="k-memory"><video src="/ui/opening-video.mp4" muted loop playsinline preload="none"></video></div>
+      <div><div id="k-memory"><video muted loop playsinline preload="none"><source src="/ui/opening-video.webm" type="video/webm"><source src="/ui/opening-video.mp4" type="video/mp4"></video></div>
         <div id="k-memory-cap">A memory of home</div></div>
       <div id="k-pause-info">
         <div id="k-who"><img src="/ui/hero-avatar-badge.webp" alt=""><div><div class="k-who-n">Koto</div><div class="k-who-s">of Brennan's Hollow</div></div></div>
@@ -165,8 +167,10 @@ export async function init(ctx) {
         <div class="k-row"><span class="k-k">Music</span><span class="k-slider"><input type="range" min="0" max="100" data-vol="music"><span class="k-pct"></span></span></div>
         <div id="k-controls">
           <div><b>Move</b> W A S D</div><div><b>Camera</b> Mouse</div>
-          <div><b>Attack</b> Click / J</div><div><b>Roll</b> Space</div>
-          <div><b>Focus</b> Right click / Q</div><div><b>Pause</b> Esc</div>
+          <div><b>Attack</b> Click / F</div><div><b>Roll</b> C / Ctrl</div>
+          <div><b>Jump</b> Space</div><div><b>Guard</b> R / Right click</div>
+          <div><b>Focus</b> Q / Tab</div><div><b>Talk</b> E</div>
+          <div><b>Sprint</b> Shift</div><div><b>Pause</b> Esc</div>
         </div>
         <div id="k-pause-btns"><button class="k-menu-btn" data-act="resume">Resume</button></div>
       </div>
@@ -189,14 +193,13 @@ export async function init(ctx) {
   pause.querySelector('[data-act=resume]').addEventListener('click', () => setPaused(false));
   pause.addEventListener('pointerdown', e => { if (e.target === pause) setPaused(false); });
 
-  let paused = false, lastToggle = -1;
+  let paused = false, keyToggled = false, inputWasEnabled = true;
   function setPaused(p) {
     if (p === paused || titleActive) return;
-    const now = performance.now();
-    if (now - lastToggle < 180) return;
-    lastToggle = now;
     paused = p; ui.paused = p; ctx.paused = p;
+    if (ctx.input) { if (p) { inputWasEnabled = ctx.input.enabled !== false; ctx.input.enabled = false; } else ctx.input.enabled = inputWasEnabled; }
     pause.classList.toggle('k-open', p);
+    hud.classList.toggle('k-under-menu', p);
     if (p) {
       try { document.exitPointerLock?.(); } catch { }
       refreshPauseInfo();
@@ -221,9 +224,7 @@ export async function init(ctx) {
       if (e.key === 'F5' || e.key === 'F12' || e.metaKey || e.ctrlKey) return;
       e.preventDefault(); dismissTitle(); return;
     }
-    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
-      if (e.key === 'Escape' || !e.repeat) setPaused(!paused);
-    }
+    if ((e.key === 'Escape' || e.key === 'p' || e.key === 'P') && !e.repeat) { keyToggled = true; setPaused(!paused); }
   }, true);
   window.addEventListener('pointerdown', () => { if (titleActive) dismissTitle(); }, true);
 
@@ -328,7 +329,11 @@ export async function init(ctx) {
   }
   function keyFor(name) {
     const b = ctx.input?.bindings?.[name];
-    if (!b) return '';
+    if (!b) {
+      if (ctx.input?.isTouch) return '';
+      const pad = ctx.input?.source === 'pad';
+      return (pad ? { attack: 'X', roll: 'B', lock: 'LT', interact: 'Y', jump: 'A' } : { attack: 'F', roll: 'C', lock: 'Q', interact: 'E', jump: '␣' })[name] || '';
+    }
     const k = Array.isArray(b) ? b[0] : b;
     return String(k).replace(/^Key/, '').replace(/^Digit/, '').replace('Space', '␣').replace('Mouse0', 'LMB').replace('Mouse2', 'RMB').slice(0, 4);
   }
@@ -451,7 +456,9 @@ export async function init(ctx) {
   return {
     update(dt, t) {
       if (titleActive) { titleCamera(t); return; }
-      if (ctx.input?.pressed?.('pause')) setPaused(!paused);
+      const padPause = ctx.input?.pressed?.('pause');
+      if (padPause && !keyToggled) setPaused(!paused);
+      keyToggled = false;
 
       // hearts
       const { health, max } = healthUnits();
