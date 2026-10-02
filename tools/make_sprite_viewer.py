@@ -12,12 +12,21 @@ db = json.loads(rd('assets/papercraft/sprite-polys.json'))
 uri = lambda p: 'data:image/webp;base64,' + base64.b64encode(open(os.path.join(ROOT, p), 'rb').read()).decode()
 atlases = ''.join('<script type="text/plain" id="atlas-%s">%s</script>\n' % (k, uri(v['file'])) for k, v in db['atlases'].items())
 
-html = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Paper Sprites</title><style>html,body{margin:0;height:100%;background:#14161c;color:#e8e6df;font:12px system-ui,sans-serif;overflow:hidden;touch-action:none}
-canvas{display:block;width:100%;height:100%}#ui{position:fixed;left:8px;right:8px;top:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:rgba(12,14,22,.82);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:8px 10px}
-#ui label{display:flex;gap:6px;align-items:center}select,button{background:#222733;color:#fff;border:1px solid #555;border-radius:5px;padding:4px 6px;max-width:46vw}
-#msg{position:fixed;left:8px;bottom:8px;right:120px;opacity:.7}.pick{background:#c9a24a;color:#14161c;font-weight:700;border-radius:5px;padding:5px 9px;cursor:pointer}#yours{display:none;gap:10px;flex-wrap:wrap;align-items:center;width:100%}#cut{position:fixed;right:8px;bottom:8px;width:104px;height:104px;cursor:crosshair;transition:width .15s,height .15s;}#cut.big{width:min(86vw,420px);height:min(60vh,420px)}#cutx{position:fixed;right:8px;bottom:calc(min(60vh,420px) + 16px);display:none}#cut{object-fit:contain;image-rendering:pixelated;border:1px solid rgba(255,255,255,.2);border-radius:6px;display:none;background:repeating-conic-gradient(#3a3f4c 0 25%,#2a2e38 0 50%) 0 0/12px 12px}@media (max-width:600px){#ui{gap:6px;padding:6px 8px;font-size:11px}#ui b{display:none}#msg{display:none}}</style></head><body><canvas id="c"></canvas>
-<div id="ui"><b>PAPER SPRITES</b><label class="pick">+ picture<input id="file" type="file" accept="image/*" hidden></label><select id="mode"><option value="cast">the cast</option><option value="one">one sprite</option><option value="mine" disabled>your picture</option></select><select id="spr"></select>
+html = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Papercraft Viewer</title><style>
+/* one dark workbench round a full-bleed 3D stage; a floating control bar on top, the cut-out preview bottom right */
+:root{--bg:#14161c;--panel:rgba(12,14,22,.86);--line:rgba(255,255,255,.14);--fg:#e8e6df;--muted:#a9a69c;--gold:#c9a24a;--ink:#14161c;--control:#222733;--edge:#555b68;--check1:#3a3f4c;--check2:#2a2e38;color-scheme:dark}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:12px system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;touch-action:none}
+canvas{display:block;width:100%;height:100%}#ui{position:fixed;left:12px;right:12px;top:calc(8px + env(safe-area-inset-top, 0px));display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+#ui label{display:flex;gap:6px;align-items:center}select,button{background:var(--control);color:var(--fg);border:1px solid var(--edge);border-radius:5px;padding:4px 6px;max-width:46vw;font:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}#stats{color:var(--muted);font-variant-numeric:tabular-nums}
+#msg{position:fixed;left:12px;bottom:calc(8px + env(safe-area-inset-bottom, 0px));right:124px;color:var(--muted)}.pick{background:var(--gold);color:var(--ink);font-weight:700;border-radius:5px;padding:5px 9px;cursor:pointer}.pick:focus-within{outline:2px solid var(--fg)}
+#yours{display:none;gap:10px;flex-wrap:wrap;align-items:center;width:100%}
+#cut{position:fixed;right:12px;bottom:calc(8px + env(safe-area-inset-bottom, 0px));width:104px;height:104px;cursor:crosshair;transition:width .15s,height .15s;object-fit:contain;image-rendering:pixelated;border:1px solid var(--line);border-radius:6px;display:none;background:repeating-conic-gradient(var(--check1) 0 25%,var(--check2) 0 50%) 0 0/12px 12px}
+#cut.big{width:min(86vw,420px);height:min(60vh,420px)}#cutx{position:fixed;right:12px;bottom:calc(min(60vh,420px) + 16px + env(safe-area-inset-bottom, 0px));display:none}
+@media (prefers-reduced-motion:reduce){#cut{transition:none}}
+@media (max-width:600px){#ui{gap:6px;padding:6px 8px;font-size:11px}#ui b{display:none}#msg{display:none}}</style></head><body><canvas id="c"></canvas>
+<div id="ui"><b>PAPERCRAFT</b><label class="pick">+ picture<input id="file" type="file" accept="image/*" hidden></label><select id="mode"><option value="cast">the cast</option><option value="one">one sprite</option><option value="mine" disabled>your picture</option></select><select id="spr"></select>
 <label>thick <input id="thick" type="range" min="0" max="4" step="0.25" value="1.25"></label><label><input id="wire" type="checkbox"> wire</label>
 <label><input id="spin" type="checkbox" checked> spin</label><label><input id="grade" type="checkbox" checked> PS1 look</label><span id="stats"></span><div id="yours"><label>detail <select id="detail"><option>96</option><option selected>160</option><option>256</option></select></label><label id="tolL">background <input id="tol" type="range" min="0" max="160" step="4" value="48"></label><label><input id="one" type="checkbox" checked> one piece</label></div></div><canvas id="cut" title="tap the background to erase it"></canvas><button id="cutx">undo erase</button>
 <div id="msg">drag: orbit &middot; wheel / pinch: zoom &middot; + picture: any image becomes a paper polygon &middot; each sprite is traced to an outline, folded into a card, painted front, darker back</div>
@@ -124,6 +133,10 @@ let redo = 0; for (const id of ['detail', 'tol', 'one']) $(id).addEventListener(
   cv.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size !== 2) return; drag = null;
     const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pd) cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * pd / d)); pd = d; }); }
 TEX.ground = texOf(ground, true);
-for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); if (++loaded === names.length) { build(); requestAnimationFrame(frame); document.title = 'Paper Sprites'; window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }
+for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); if (++loaded === names.length) { build(); requestAnimationFrame(frame);  window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }
 </script></body></html>'''
+import re, sys
+if '--artifact' in sys.argv: # the same page without its own document wrapper (the artifact host adds one)
+    body = re.sub(r'^<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport"[^>]*>', '', html).replace('</style></head><body>', '</style>', 1).replace('</body></html>', '')
+    dst = sys.argv[sys.argv.index('--artifact') + 1]; open(dst, 'w', encoding='utf-8').write(body); print('wrote', dst)
 out = os.path.join(ROOT, 'papercraft/sprite-viewer.html'); open(out, 'w', encoding='utf-8', newline='').write(html); print('wrote', out, round(len(html) / 1024), 'KB')
