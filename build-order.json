@@ -120,6 +120,12 @@
    "mime": "image/webp"
   },
   {
+   "id": "paper-pieces",
+   "kind": "atlases",
+   "file": "assets/atlases/paper-pieces.webp",
+   "mime": "image/webp"
+  },
+  {
    "id": "apple-touch-icon-inline",
    "kind": "ui",
    "file": "assets/ui/apple-touch-icon-inline.png",
