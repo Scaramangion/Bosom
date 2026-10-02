@@ -6,7 +6,7 @@ const fs = require('fs'), gen = fs.readFileSync('tools/make_sprite_viewer.py', '
 const MOTIF = [
   ['type: the system font stack (San Francisco on Apple devices)', `--font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif`],
   ['type: body 15 px', 'font:15px/1.35 var(--font)'],
-  ['wordmark: "Papercraft", 17 px semibold, top left', '<span class="word">Papercraft</span>'], ['wordmark style', '.word{font-weight:600;font-size:17px;letter-spacing:-.01em'],
+  ['wordmark: "Papercraft", 17 px semibold, top left; tapping it goes home', '<button id="home" class="word" aria-label="Papercraft: back to the start">Papercraft</button>'], ['wordmark style', '.word{font-weight:600;font-size:17px;letter-spacing:-.01em'],
   ['headline: 22 px bold, tight', '.hello h1{margin:0 0 6px;font-size:22px;line-height:1.2;font-weight:700;letter-spacing:-.02em'],
   ['opening words', '<h1>Turn any picture into a paper model</h1><p>Choose a photo or a drawing. Papercraft cuts out the subject and folds it into 3D.</p><label class="primary" for="file">Choose Photo</label>'],
   ['colour: light stage and labels', '--scene:#ececf1;--floor:#dcdce4;'], ['colour: light labels', '--label:#1d1d1f;--label2:#6e6e73;'],

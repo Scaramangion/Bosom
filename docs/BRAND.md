@@ -14,7 +14,7 @@ change this file and that list together.
 
 ## Type
 - The system font stack: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif` (San Francisco on Apple devices).
-- Body 15 px / 1.35. Wordmark **Papercraft**, 17 px semibold, letter-spacing −0.01 em, top left. Headline 22 px bold, letter-spacing −0.02 em, balanced lines.
+- Body 15 px / 1.35. Wordmark **Papercraft**, 17 px semibold, letter-spacing −0.01 em, top left; it is also the Home button (back to the start page from anywhere, over any sheet). Headline 22 px bold, letter-spacing −0.02 em, balanced lines.
 - Opening words: **Turn any picture into a paper model** / *Choose a photo or a drawing. Papercraft cuts out the subject and folds it into 3D.* / **Choose Photo**.
 
 ## Colour

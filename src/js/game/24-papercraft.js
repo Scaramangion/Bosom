@@ -903,7 +903,10 @@
             const inner = []; for (const y of band) { const r = runs(y); if (r.length >= 3) { const c = r.findIndex(q => q[0] <= cx && q[1] >= cx); if (c > 0 && c < r.length - 1) inner.push([cx - r[c][0], r[c][1] - cx]); } } // rows where arm, body, arm show gaps
             let chest = 0; for (let y = neck + 1; y < neck + 1 + Math.max(1, (hip - neck) * 0.4); y++) { const r = runs(y); if (r.length) chest = Math.max(chest, r[r.length - 1][1] - r[0][0] + 1); }
             const med = v => { const s = v.slice().sort((p, q) => p - q); return s[s.length >> 1]; };
-            const coreL = J.armL ? Math.max(1, cx - J.armL[0]) : inner.length >= 3 ? med(inner.map(q => q[0])) + 1 : chest * 0.31, coreR = J.armR ? Math.max(1, J.armR[0] - cx) : inner.length >= 3 ? med(inner.map(q => q[1])) + 1 : chest * 0.31;
+            const half = [[], []]; for (const y of band) { const r = central(y); if (r) { half[0].push(cx - r[0]); half[1].push(r[1] - cx); } } // the body's own half-widths, row by row (arms held out widen only their few rows)
+            const low = (v, f) => { if (!v.length) return 0; const q = v.slice().sort((a, b) => a - b); return q[Math.min(q.length - 1, Math.floor(q.length * f))]; };
+            const guess = side => inner.length >= 3 ? med(inner.map(q => q[side])) + 1 : Math.min(chest * 0.31, low(half[side], 0.35) + 1); // arms by the body with gaps: the gaps say; else the narrow rows (a T-pose's arms are a band of wide rows)
+            const coreL = J.armL ? Math.max(1, cx - J.armL[0]) : guess(0), coreR = J.armR ? Math.max(1, J.armR[0] - cx) : guess(1);
             const humanoid = (forced || (hasNeck && crotch >= 0)) && hip > neck + H * 0.1 && bot - hip > H * 0.05, lab = new Int8Array(w * h).fill(-1); // 0 torso, 1 head, 2 arm L, 3 arm R, 4 leg L, 5 leg R (L = the picture's left)
             let legX = cx; if (J.legL && J.legR) legX = (J.legL[0] + J.legR[0]) / 2; else if (crotch >= 0) { const r = runs(crotch); const c = Math.round(cx); let l = 0, rr = w - 1; for (const q of r) { if (q[1] < c) l = Math.max(l, q[1]); if (q[0] > c) rr = Math.min(rr, q[0]); } legX = (l + rr) / 2; }
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!a[y * w + x]) continue; const i = y * w + x;
