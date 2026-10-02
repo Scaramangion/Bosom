@@ -22,7 +22,7 @@ function findChromium() {
     }
   }
 }
-const server = await createServer({ configFile: path.resolve('vite.config.js'), server: { port: 5199 + Math.floor(Math.random()*300), host: '127.0.0.1' }, logLevel: 'error' });
+const server = await createServer({ configFile: path.resolve('vite.config.js'), server: { port: 5199 + Math.floor(Math.random()*300), host: '127.0.0.1', hmr: false, watch: null }, logLevel: 'error' });
 await server.listen();
 const url = server.resolvedUrls.local[0];
 const browser = await chromium.launch({ executablePath: findChromium(), args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl'] });

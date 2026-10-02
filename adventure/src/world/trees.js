@@ -195,7 +195,11 @@ export function leafMaterial(tex, tint, key) {
         transformed.xz += uWind * gust * hk * 0.6;
         transformed += vec3(sin(uTime * 4.3 + position.x * 2.1 + ph), sin(uTime * 3.7 + position.z * 2.3), cos(uTime * 4.1 + position.y * 1.9)) * 0.035 * min(hk * 6.0, 1.0);`)
       .replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
-        vLW = (modelMatrix * ${'#ifdef USE_INSTANCING\n instanceMatrix * \n#endif\n'} vec4(transformed, 1.0)).xyz;`);
+        #ifdef USE_INSTANCING
+          vLW = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+        #else
+          vLW = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        #endif`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uSunDirW, uSunCol; varying vec3 vLW;')
       // sharpen alpha so distant mips don't erode canopy coverage
       .replace('#include <alphatest_fragment>', `diffuseColor.a = clamp((diffuseColor.a - 0.42) / max(fwidth(diffuseColor.a), 1e-4) + 0.5, 0.0, 1.0);

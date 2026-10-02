@@ -18,11 +18,32 @@ export function pnoise(x, y, P, seed = 0) {
   const u = sm(xf), v = sm(yf);
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
-// u,v in 0..1, base period P cells, tileable
+// u,v in 0..1, base period P cells, tileable. Backed by cached lookup tables so
+// per-pixel cost is one bilinear fetch instead of 4+ hashed noise evaluations.
+const _tabs = new Map();
+function fbmTable(P, oct, seed) {
+  const key = P + ':' + oct + ':' + seed;
+  let t = _tabs.get(key);
+  if (t) return t;
+  const N = Math.max(64, Math.min(512, 1 << Math.ceil(Math.log2(P * 6))));
+  const d = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const u = x / N, v = y / N;
+    let s = 0, a = 0.5, f = 1, n = 0;
+    for (let i = 0; i < oct; i++) { s += a * pnoise(u * P * f, v * P * f, P * f, seed + i * 17); n += a; a *= 0.5; f *= 2; }
+    d[y * N + x] = s / n;
+  }
+  t = { N, d }; _tabs.set(key, t);
+  return t;
+}
 export function pfbm(u, v, P, oct = 4, seed = 0) {
-  let s = 0, a = 0.5, f = 1, n = 0;
-  for (let i = 0; i < oct; i++) { s += a * pnoise(u * P * f, v * P * f, P * f, seed + i * 17); n += a; a *= 0.5; f *= 2; }
-  return s / n;
+  const { N, d } = fbmTable(P, oct, seed);
+  let x = u * N, y = v * N;
+  x -= Math.floor(x / N) * N; y -= Math.floor(y / N) * N;
+  const xi = x | 0, yi = y | 0, xf = x - xi, yf = y - yi;
+  const x1 = (xi + 1) % N, y1 = (yi + 1) % N;
+  const a = d[yi * N + xi], b = d[yi * N + x1], c = d[y1 * N + xi], e = d[y1 * N + x1];
+  return a + (b - a) * xf + (c - a) * yf + (a - b - c + e) * xf * yf;
 }
 
 // Generic generator: fn(u, v, out) fills out.r,g,b (0..1 linear-ish sRGB values), out.h (height 0..1), out.ro (roughness 0..1)
