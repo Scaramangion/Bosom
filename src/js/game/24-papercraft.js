@@ -649,8 +649,8 @@
         function paperPuff(V, px, W, H, rect, o = {}) {
             const [X0, Y0, w, h] = rect, s = o.s || 0.25, D = o.depth == null ? 2 : o.depth, g = o.step || Math.max(2, Math.round(Math.max(w, h) / 56)), fl = o.flip ? -1 : 1, a = o.ang || 0;
             const Rx = Math.cos(a), Ry = Math.sin(a), Nx = -Ry, Ny = Rx, ax = (o.anchor || [w / 2, h])[0], ay = (o.anchor || [w / 2, h])[1], em = o.glow || 0, back = o.back == null ? 0.62 : o.back;
-            const d = new Float32Array(w * h), BIG = 1e9; // chamfer distance (3-4) from every painted pixel to the nearest air, in px
-            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d[y * w + x] = px[((Y0 + y) * W + X0 + x) * 4 + 3] >= 128 ? BIG : 0;
+            const d = new Float32Array(w * h), BIG = 1e9, F = o.field || { px, W, rect }, own = new Uint8Array(w * h); // chamfer distance (3-4) from every painted pixel to the nearest air, in px
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { d[y * w + x] = F.px[((F.rect[1] + y) * F.W + F.rect[0] + x) * 4 + 3] >= 128 ? BIG : 0; own[y * w + x] = px[((Y0 + y) * W + X0 + x) * 4 + 3] >= 128 ? 1 : 0; } // o.field: shape a part from the whole figure (no seam at its joints)
             const at = (x, y) => x < 0 || y < 0 || x >= w || y >= h ? 0 : d[y * w + x];
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (d[i]) d[i] = Math.min(d[i], at(x - 1, y) + 3, at(x, y - 1) + 3, at(x - 1, y - 1) + 4, at(x + 1, y - 1) + 4); }
             for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; if (d[i]) d[i] = Math.min(d[i], at(x + 1, y) + 3, at(x, y + 1) + 3, at(x + 1, y + 1) + 4, at(x - 1, y + 1) + 4); }
@@ -658,18 +658,20 @@
             for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const x = cx(i), y = cy(j), m = Math.min(at(x - 1, y - 1), at(x, y - 1), at(x - 1, y), at(x, y)) / 3; // the corner's distance to air, minus the seam
                 const e = Math.max(0, m - g); E[j * (nx + 1) + i] = e; if (e > R) R = e; }
             if (o.R) R = o.R; V.R = R; /* o.R: share one fullest point across several parts, so an arm puffs thinner than the torso */
-            const Hh = new Float32Array(E.length); for (let k = 0; k < E.length; k++) { const t = Math.min(1, E[k] / R); Hh[k] = D * Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); } // quarter circle: full at the fullest point, steep at the seam
-            const hv = (i, j) => Hh[Math.max(0, Math.min(ny, j)) * (nx + 1) + Math.max(0, Math.min(nx, i))], L = [-0.35, 0.55, 0.76], Lb = [0.35, 0.55, -0.76];
-            const shadeAt = (i, j, side) => { const gx = (hv(i + 1, j) - hv(i - 1, j)) / (2 * g * s) * fl, gz = -(hv(i, j + 1) - hv(i, j - 1)) / (2 * g * s), n = [-gx * side, -gz * side, side], k = Math.hypot(n[0], n[1], n[2]), l = side > 0 ? L : Lb;
+            const Hh = new Float32Array(E.length); for (let k = 0; k < E.length; k++) { const t = Math.min(1, E[k] / R); Hh[k] = Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); }
+            const DR = []; for (let j = 0; j <= ny; j++) DR.push(o.depthRow ? o.depthRow(cy(j)) : [D, D]); // o.depthRow(y) -> [front, back] depth at that row (from a side view), else D both ways // quarter circle: full at the fullest point, steep at the seam
+            const hv = (i, j, side = 1) => { const jj = Math.max(0, Math.min(ny, j)); return Hh[jj * (nx + 1) + Math.max(0, Math.min(nx, i))] * DR[jj][side > 0 ? 0 : 1]; }, L = [-0.35, 0.55, 0.76], Lb = [0.35, 0.55, -0.76];
+            const shadeAt = (i, j, side) => { const gx = (hv(i + 1, j, side) - hv(i - 1, j, side)) / (2 * g * s) * fl, gz = -(hv(i, j + 1, side) - hv(i, j - 1, side)) / (2 * g * s), n = [-gx * side, -gz * side, side], k = Math.hypot(n[0], n[1], n[2]), l = side > 0 ? L : Lb;
                 const lam = Math.max(0, (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]) / k); return (0.55 + 0.55 * lam) * (side > 0 ? 1 : back); };
-            const P = (i, j, side) => { const u = (cx(i) - ax) * s * fl, dd = side * hv(i, j); return [(o.x || 0) + Rx * u + Nx * dd, (o.y || 0) + Ry * u + Ny * dd, (ay - cy(j)) * s]; };
+            const P = (i, j, side) => { const u = (cx(i) - ax) * s * fl, dd = side * hv(i, j, side); return [(o.x || 0) + Rx * u + Nx * dd, (o.y || 0) + Ry * u + Ny * dd, (ay - cy(j)) * s]; };
             const UV = (i, j, side) => [(X0 + cx(i)) / W + (side < 0 && o.backDU ? o.backDU : 0), (Y0 + cy(j)) / H]; // o.backDU: the back side samples a back view laid out beside the front
             const tri = (q, side) => { const p = q.map(([i, j]) => P(i, j, side)), out = [Nx * side, Ny * side, 0]; // a face is front when (B-A)x(C-A) points INTO it (left-handed world)
                 const ux = p[1][0] - p[0][0], uy = p[1][1] - p[0][1], uz = p[1][2] - p[0][2], vx = p[2][0] - p[0][0], vy = p[2][1] - p[0][1], vz = p[2][2] - p[0][2];
                 const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2];
-                for (const n of ord) { const [i, j] = q[n], t = UV(i, j, side); V.push(p[n][0], p[n][1], p[n][2], t[0], t[1], shadeAt(i, j, side), em); } };
+                const cn = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx), cr = ((uy * vz - uz * vy) * Rx + (uz * vx - ux * vz) * Ry) / (cn || 1), sideways = o.sideUV && Math.abs(cr) > 0.55; // a steep face: paint it from the side view
+                for (const n of ord) { const [i, j] = q[n], t = sideways ? o.sideUV(cx(i), cy(j), side * hv(i, j, side)) : UV(i, j, side); V.push(p[n][0], p[n][1], p[n][2], t[0], t[1], shadeAt(i, j, side), em); } };
             for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { // every grid cell that holds any paint
-                let any = false; for (let y = cy(j); y < cy(j + 1) && !any; y++) for (let x = cx(i); x < cx(i + 1); x++) if (d[y * w + x]) { any = true; break; }
+                let any = false; for (let y = cy(j); y < cy(j + 1) && !any; y++) for (let x = cx(i); x < cx(i + 1); x++) if (own[y * w + x]) { any = true; break; }
                 if (!any) continue; const A = [i, j], B = [i + 1, j], C = [i + 1, j + 1], Dd = [i, j + 1], flip = (i + j) & 1; // alternate the diagonal, so the shading has no grain
                 for (const side of [1, -1]) { if (flip) { tri([A, B, C], side); tri([A, C, Dd], side); } else { tri([A, B, Dd], side); tri([B, C, Dd], side); } } }
             return V;
@@ -687,6 +689,22 @@
                 const sx = Math.floor(vc + (mir ? -1 : 1) * (x + 0.5 - fc) * k), sy = Math.floor(vy1 + 1 - (fy1 + 1 - (y + 0.5)) * k); if (sx < 0 || sy < 0 || sx >= vw || sy >= vh) continue;
                 const j = (sy * vw + sx) * 4; if (view[j + 3] < 128) continue; out[i * 4] = view[j]; out[i * 4 + 1] = view[j + 1]; out[i * 4 + 2] = view[j + 2]; out[i * 4 + 3] = 255; }
             return out;
+        }
+        // ---- a side view of the same figure, laid onto the front's rows: matched in height, feet together, turned (if need be) so the figure faces right.
+        // The picture plane of the front is the side view's middle (the mean column of the torso band). Returns { px (RGBA ws x h), ws, c (the plane's
+        // column), facing ('right' as given / 'left' flipped), depth(y) -> [front, back] in front px }. A side view faces where its toes point and away
+        // from what trails behind (a cape, a ponytail); o.facing forces it.
+        function paperFitSide(front, w, h, view, vw, vh, o = {}) {
+            const box = (px, W, H) => { let x0 = W, x1 = -1, y0 = H, y1 = -1; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (px[(y * W + x) * 4 + 3] >= 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } return [x0, x1, y0, y1]; };
+            const [, , fy0, fy1] = box(front, w, h), [vx0, vx1, vy0, vy1] = box(view, vw, vh); if (vx1 < 0 || fy1 < 0) return null;
+            const k = (vy1 - vy0 + 1) / (fy1 - fy0 + 1), ws = Math.max(1, Math.ceil((vx1 - vx0 + 1) / k) + 2), meanX = (ya, yb) => { let s = 0, n = 0; for (let y = Math.round(ya); y < yb; y++) for (let x = vx0; x <= vx1; x++) if (view[(y * vw + x) * 4 + 3] >= 128) { s += x; n++; } return n ? s / n : (vx0 + vx1) / 2; };
+            const Hv = vy1 - vy0 + 1, feet = meanX(vy1 - Hv * 0.06, vy1 + 1), body = meanX(vy0 + Hv * 0.25, vy0 + Hv * 0.6), facing = o.facing || (feet >= body ? 'right' : 'left'), flip = facing === 'left';
+            const px = new Uint8ClampedArray(ws * h * 4);
+            for (let y = 0; y < h; y++) for (let x = 0; x < ws; x++) { const xs = (x + 0.5 - 1) * k, sx = Math.floor(flip ? vx1 - xs : vx0 + xs), sy = Math.floor(vy1 + 1 - (fy1 + 1 - (y + 0.5)) * k);
+                if (sx < 0 || sy < 0 || sx >= vw || sy >= vh) continue; const j = (sy * vw + sx) * 4; if (view[j + 3] < 128) continue; const o4 = (y * ws + x) * 4; px[o4] = view[j]; px[o4 + 1] = view[j + 1]; px[o4 + 2] = view[j + 2]; px[o4 + 3] = 255; }
+            let c = 0, n = 0; for (let y = Math.round(fy0 + (fy1 - fy0) * 0.25); y < fy0 + (fy1 - fy0) * 0.6; y++) for (let x = 0; x < ws; x++) if (px[(y * ws + x) * 4 + 3]) { c += x + 0.5; n++; } c = n ? c / n : ws / 2;
+            const ext = new Float32Array(h * 2); for (let y = 0; y < h; y++) { let a = -1, b = -1; for (let x = 0; x < ws; x++) if (px[(y * ws + x) * 4 + 3]) { if (a < 0) a = x; b = x + 1; } ext[y * 2] = b < 0 ? 0 : Math.max(0, b - c); ext[y * 2 + 1] = a < 0 ? 0 : Math.max(0, c - a); }
+            return { px, ws, c, facing, depth: y => { const r = Math.max(0, Math.min(h - 1, Math.round(y))); return [ext[r * 2], ext[r * 2 + 1]]; } };
         }
         // ---- a guess at the back of a figure, from its front (when no back view is given): the head turns to hair (each face pixel takes the colour of
         // the nearest hair above it, so strands carry down), and the body keeps its colours with the small details (eyes, buttons, buckles) smoothed
@@ -748,6 +766,8 @@
                 if (!any) continue;
                 if (k) for (let i = 0; i < w * h; i++) if (lab[i] === k) { const x = i % w, y = (i / w) | 0; // reach a few px into the parent (the torso), so the joint stays closed when it turns
                     for (let yy = Math.max(0, y - lap); yy <= Math.min(h - 1, y + lap); yy++) for (let xx = Math.max(0, x - lap); xx <= Math.min(w - 1, x + lap); xx++) if (lab[yy * w + xx] === 0) m[yy * w + xx] = 1; }
+                if (!k && humanoid) for (let i = 0; i < w * h; i++) if (lab[i] > 0) { const x = i % w, y = (i / w) | 0; // the torso reaches into each limb as well: both sides of a joint overlap
+                    for (let yy = Math.max(0, y - lap); yy <= Math.min(h - 1, y + lap) && !m[i]; yy++) for (let xx = Math.max(0, x - lap); xx <= Math.min(w - 1, x + lap); xx++) if (lab[yy * w + xx] === 0) { m[i] = 1; break; } }
                 mx /= any; my /= any; const pv = pivots[k];
                 parts.push({ name: names[k], parent: k ? 0 : -1, pivot: pv, mask: m, dir: Math.atan2(mx - pv[0], my - pv[1]) }); }
             if (!humanoid) parts[0].mask = whole;

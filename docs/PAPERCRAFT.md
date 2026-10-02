@@ -24,6 +24,7 @@ The idea in one line: **the tile map is the blueprint, one painted sheet is the 
 - `paperCutout(img, o)` any picture -> a clean cut-out (shrunk, background keyed out, tap-to-erase seeds); `paperTrace(px, W, rect, o)` the tracer in the browser; `paperFlood` the flood fill they share.
 - `paperPuff(V, px, W, H, rect, o)` puffs a picture into a rounded, closed shape (the Round option); see step 7.
 - `paperFitView(front, w, h, view, vw, vh, o)` lays another view of the figure (a back view) onto the front's pixels; `paperGuessBack(px, w, h, head)` guesses a back when there is none. `paperPuff` / `paperSprite` take `o.backDU` so the back side samples a back laid out beside the front.
+- `paperFitSide(front, w, h, view, vw, vh, o)` lays a side view onto the front's rows (height, feet, facing) and reads its depth per row; `paperPuff` takes `o.depthRow` (forward / back depth per row), `o.sideUV` (paint steep faces from the side view) and `o.field` (shape a part from the whole figure).
 - `paperRig(px, W, rect, o)` finds a standing figure's rig (head, torso, arms, legs, pivots) in its cut-out; see step 10.
 - `paperSprite(V, S, A, o)` folds one traced sprite into a standing card and appends it to `V` (see below).
 - `PAPER_GLSL.vert / .frag` the shaders; the fragment shader is the paper look.
@@ -133,6 +134,13 @@ Extruding the outline (the card) gives every part the same thickness: arms as de
 - **Mirror**: the old look.
 - Texture: every rig part is one row, front on the left half, back on the right; the back side of a puff or card samples the right half (`o.backDU = 0.5`). The rig, the animations and Save carry it (the saved .glb's texture holds both).
 - Viewer: **Views** tool: Back = Mirror / Guess / Picture, and Turn (to look at the back). Check: `node tools/shoot_views.js` (phone size: mirrored, guessed and fitted backs, then saves; `check_export.py papercraft/shots/export-views`). GREEN.
+
+**Step 11b, the side.** Choose a side view (an orthographic sheet's LEFT or RIGHT panel):
+- `paperFitSide` cuts it out, matches it to the front's rows (height, feet together), and turns it to face right if it faces left. Which way it faces is read from the picture: the toes point forward and a cape trails behind (Koto's LEFT VIEW: facing right, found). Flip overrides it.
+- **Depth**: the front's picture plane is the side view's middle (the mean column of its torso band); at every height the outline says how far the figure reaches forward and back, and `paperPuff` (`o.depthRow`) puffs the front and the back sides that far. The Depth slider scales it (the middle of the slider is the side view's own depth). A big head of hair, a belly, a cape or a backpack get their real depth.
+- **Paint**: a steep face of the puff (one that faces sideways) samples the side view (`o.sideUV`): its depth picks the column, its height the row. The side panel is filled out sideways so a side face never samples air. The texture is now front | back | side per row of parts.
+- Rig parts are shaped from the whole figure (`o.field`), so the body is continuous through the neck, shoulders and hips (no seam that pinches to nothing), and torso and limbs overlap both ways at every joint, so turning a limb never opens a hole.
+- Viewer: **Views** tool: Side = Round / Picture (+ Flip). Check: `node tools/shoot_views.js` now also fits Koto's side view and shoots him from both sides and both three-quarters, then saves him (front, back and side in one texture, rigged). GREEN.
 
 **Next:** rig the game's own sprites and the cast the same way; give arms an elbow and legs a knee (two-bone limbs); let you nudge a joint if the guess is off; walk in the town demo. (the polygon + its cut-out as one file, and a .glb so it opens in other 3D apps); make the viewer an installable phone app (it is already one self-contained page); then the cast in the town demo, layer stacks, hinges and the Heads system.
 

@@ -16,6 +16,9 @@ const { chromium } = require(process.env.PW || 'playwright'); const path = requi
   await p.setInputFiles('#fileBack', R('tools/fixtures/koto-back.png')); await p.waitForFunction(() => (window.BACK_DONE || 0) >= 1, null, { timeout: 120000 }); await p.waitForTimeout(400);
   const fit = await p.evaluate(() => MINE.backFit); console.log('back view fitted:', (fit * 100).toFixed(1) + '% of the front matched'); if (!(fit > 0.8)) errs.push('back view fits only ' + fit);
   await shot('picture', Math.PI - 0.35); await shot('picture-side', Math.PI / 2 + 0.25);
+  await p.setInputFiles('#fileSide', R('tools/fixtures/koto-left.png')); await p.waitForFunction(() => (window.SIDE_DONE || 0) >= 1, null, { timeout: 120000 }); await p.waitForTimeout(400); // his side view
+  const facing = await p.evaluate(() => MINE.sideFit && MINE.sideFit.facing); console.log('side view faces', facing); if (facing !== 'right') errs.push('side view facing ' + facing);
+  await shot('side-west', -Math.PI / 2); await shot('side-east', Math.PI / 2); await shot('side-34', -0.8); await shot('side-34back', Math.PI + 0.8);
   const dir = R('papercraft/shots/export-views'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
   for (const kind of ['model', 'png', 'json']) { await p.click('#save'); await p.waitForTimeout(200); const [d] = await Promise.all([p.waitForEvent('download', { timeout: 60000 }), p.click(`[data-save=${kind}]`)]); await d.saveAs(path.join(dir, d.suggestedFilename())); }
   await b.close(); console.log(errs.length ? 'RED ' + errs.join(' | ') : 'GREEN mirrored, guessed and fitted backs'); process.exit(errs.length ? 1 : 0);
