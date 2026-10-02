@@ -2,7 +2,7 @@
 // module's way: (B-A)x(C-A) pointing inward (negative signed volume). Run from the repo root: node tools/check_paper_puff.js
 const fs = require('fs'), { execFileSync } = require('child_process'), os = require('os'), path = require('path');
 const src = fs.readFileSync('src/js/game/24-papercraft.js', 'utf8');
-const paperPuff = new Function(src.slice(src.indexOf('function paperPuff('), src.indexOf('// ---- the GPU half')) + '; return paperPuff;')();
+const paperPuff = new Function(src.slice(src.indexOf('        // ---- depth: what raises'), src.indexOf('        // ---- any picture -> a cut-out')) + src.slice(src.indexOf('function paperPuff('), src.indexOf('// ---- the GPU half')) + '; return paperPuff;')(); // with the depth sources it reads
 const db = JSON.parse(fs.readFileSync('assets/papercraft/sprite-polys.json', 'utf8')), tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'puff-'));
 let bad = 0, n = 0, tris = 0; const t0 = Date.now();
 for (const [at, A] of Object.entries(db.atlases)) {

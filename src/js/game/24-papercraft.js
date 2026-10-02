@@ -397,8 +397,8 @@
         // same picture traced here or there gives the same polygon). px: RGBA bytes of a whole image W px wide; rect [x, y, w, h] the part to trace.
         // Returns one sprite record { rect, anchor, pts, rings, tris, ein } (the format paperSprite folds), or null if the rect holds no paint.
         const PAPER_TRACE = { ALPHA: 128, GROW: 1, EPS: 1, MIN_AREA: 12, NEAR: 4 }; // (o.HOLD: false skips putting corners back, for a looser outline)
-        function paperTrace(px, W, rect, o = {}) {
-            const C = Object.assign({}, PAPER_TRACE, o), [X0, Y0, w, h] = rect, a = new Uint8Array(w * h), cxs = [], cys = [];
+        function paperTracePrep(px, W, rect, C) { // the half of the trace that does not depend on EPS: the paint, its grown and unpinched pixel rings, and the paint each ring holds
+            const [X0, Y0, w, h] = rect, a = new Uint8Array(w * h), cxs = [], cys = [];
             for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[((Y0 + y) * W + X0 + x) * 4 + 3] >= C.ALPHA) { a[y * w + x] = 1; cxs.push(x + 0.5); cys.push(y + 0.5); } // painted pixel centres, row by row
             if (!cxs.length) return null;
             let g = a; for (let r = 0; r < C.GROW; r++) { const m = new Uint8Array(w * h); // grow the paper 1 px (a 3 x 3 brush, clipped to the rect)
@@ -420,6 +420,24 @@
                     outs.splice(ei, 1); if (!outs.length) nxt.delete(ck); ring.push(cur); pd = [e[0] - cur[0], e[1] - cur[1]]; cur = e;
                     if (cur[0] === start[0] && cur[1] === start[1]) break; }
                 raw.push(ring); }
+            const area2 = r => { let s = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; s += p[0] * q[1] - q[0] * p[1]; } return s; };
+            const cr = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+            const outside = (r, X, Y) => { const ins = new Uint8Array(X.length); for (let i = 0; i < r.length; i++) { const [x0, y0] = r[i], [x1, y1] = r[(i + 1) % r.length]; if (y0 === y1) continue; const lo = Math.min(y0, y1), hi = Math.max(y0, y1);
+                for (let k = 0; k < X.length; k++) if (Y[k] >= lo && Y[k] < hi && X[k] < x0 + (Y[k] - y0) * (x1 - x0) / (y1 - y0)) ins[k] ^= 1; } return ins; }; // even-odd: 0 = outside
+            const held = []; for (let ring of raw) {
+                const A2 = area2(ring); if (A2 >= 0 || -A2 / 2 < C.MIN_AREA) continue;                     // holes and specks are left to the alpha cut
+                ring = ring.filter((b, i) => cr(ring[(i - 1 + ring.length) % ring.length], b, ring[(i + 1) % ring.length]) !== 0); // drop straight-through corners
+                const ins = outside(ring, cxs, cys), X = [], Y = []; for (let k = 0; k < cxs.length; k++) if (ins[k]) { X.push(cxs[k]); Y.push(cys[k]); }
+                held.push({ ring, X, Y }); }
+            return { a, held };
+        }
+        // o.TRIS === false skips the ear clipping (for a caller that triangulates the outline itself). The half of the work that does not depend
+        // on EPS (paperTracePrep) is kept per picture array and rect, so tracing one picture again at another EPS (paperFacet's search for its
+        // budget) is cheap. A picture's px array is treated as unchanging: a new picture is a new array.
+        const PAPER_TRACE_PREP = new WeakMap();
+        function paperTrace(px, W, rect, o = {}) {
+            const C = Object.assign({}, PAPER_TRACE, o), [X0, Y0, w, h] = rect, pk = [W, rect.join(','), C.ALPHA, C.GROW, C.MIN_AREA].join('|'); let cache = PAPER_TRACE_PREP.get(px); if (!cache) PAPER_TRACE_PREP.set(px, cache = new Map());
+            let prep = cache.get(pk); if (prep === undefined) { prep = paperTracePrep(px, W, rect, C); if (cache.size > 64) cache.clear(); cache.set(pk, prep); } if (!prep) return null; const { a, held } = prep;
             const area2 = r => { let s = 0; for (let i = 0; i < r.length; i++) { const p = r[i], q = r[(i + 1) % r.length]; s += p[0] * q[1] - q[0] * p[1]; } return s; };
             const cr = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
             const outside = (r, X, Y) => { const ins = new Uint8Array(X.length); for (let i = 0; i < r.length; i++) { const [x0, y0] = r[i], [x1, y1] = r[(i + 1) % r.length]; if (y0 === y1) continue; const lo = Math.min(y0, y1), hi = Math.max(y0, y1);
@@ -453,16 +471,62 @@
                 const d = (qx + 0.5 - x) ** 2 + (py + 0.5 - y) ** 2; if (!best || d < best[0] || (d === best[0] && (py < best[1] || (py === best[1] && qx < best[2])))) best = [d, py, qx]; }
                 return best ? [best[2], best[1]] : [Math.min(w - 1, Math.max(0, x)), Math.min(h - 1, Math.max(0, y))]; };
             const pts = [], rings = [], tris = [], ein = [];
-            for (let ring of raw) {
-                const A2 = area2(ring); if (A2 >= 0 || -A2 / 2 < C.MIN_AREA) continue;                     // holes and specks are left to the alpha cut
-                ring = ring.filter((b, i) => cr(ring[(i - 1 + ring.length) % ring.length], b, ring[(i + 1) % ring.length]) !== 0); // drop straight-through corners
-                const ins = outside(ring, cxs, cys), X = [], Y = []; for (let k = 0; k < cxs.length; k++) if (ins[k]) { X.push(cxs[k]); Y.push(cys[k]); }
+            for (const { ring, X, Y } of held) {
                 let s = null, t = null;
-                for (const eps of [C.EPS, C.EPS * 0.75, C.EPS * 0.5, 0]) { s = (C.HOLD === false ? simplify(ring, eps) : hold(ring, simplify(ring, eps), X, Y)).map(i => ring[i]); /* o.HOLD false: a looser outline that may cut corners */ t = s.length >= 3 && area2(s) < 0 && simple(s) ? earclip(s) : null; if (t) break; }
+                for (const eps of [C.EPS, C.EPS * 0.75, C.EPS * 0.5, 0]) { s = (C.HOLD === false ? simplify(ring, eps) : hold(ring, simplify(ring, eps), X, Y)).map(i => ring[i]); /* o.HOLD false: a looser outline that may cut corners */ t = s.length >= 3 && area2(s) < 0 && simple(s) ? (C.TRIS === false ? [] : earclip(s)) : null; if (t) break; }
                 if (!t) return null;
                 const b = pts.length / 2; for (const p of s) { pts.push(p[0], p[1]); const e = near(p[0], p[1]); ein.push(e[0], e[1]); } rings.push(s.length); for (const q of t) tris.push(b + q[0], b + q[1], b + q[2]);
             }
             return { rect: [X0, Y0, w, h], anchor: o.anchor || [w / 2, h], pts, rings, tris, ein };
+        }
+
+        // ---- depth: what raises the FRONT of a Round or Facets shape beyond the silhouette's own dome. Papercraft needs no neural network.
+        // The silhouette is the first source of truth (a pillow sewn round the outline); side views give the depth per row (o.depthRow); and
+        // these, all deterministic and on the device, shape the front further (both paperPuff and paperFacet read them):
+        //   o.planes (0..1): the painting's colour regions become planes, each region's front pulled that far toward its own mean height
+        //     (Colville's flat planes; regions by paperRegions over the field, so a rig's parts share them; o.planeK colours, 16);
+        //   o.relief { px: Uint8Array w*h over the field's pixels }: a depth map painted by hand or uploaded: 255 (white) toward the camera,
+        //     128 (grey) as the silhouette says, 0 (black) farthest. It is softened a little, so a brush stroke makes a slope, not a cliff.
+        // A depth layer per rig part (0 background, 1 body, 2 arms, 3 head, 4 foreground) is a whole-part offset, applied by the caller.
+        // An optional provider (a neural estimate such as MiDaS or Depth Anything, never bundled) only ever makes an o.relief map:
+        // PAPER_DEPTH.register(name, fn), fn({ px, w, h }) -> Uint8Array w*h (or a promise of one), white toward the camera.
+        const PAPER_DEPTH = { providers: [], register(name, fn) { this.providers = this.providers.filter(p => p.name !== name); this.providers.push({ name, fn }); return this; } };
+        const PAPER_REGIONS = new WeakMap(); // px -> Map(rect|tol -> regions): the parts of one figure share one segmentation
+        // the painting's colour regions: its colours reduced to o.k (16) by a median cut over the painted pixels, each pixel given the nearest,
+        // then the 4-connected pieces of one colour. Thin pieces (pixel art's dark outlines, a stroke of shading: little left after a 1 px
+        // erosion) and pieces under o.min of the paint (0.4%) dissolve into the regions round them (each pixel to the nearest kept region).
+        // Returns { id: Int32Array w*h (-1 = air), n }. Deterministic (stable sorts, scan order); cached per picture and rect.
+        function paperRegions(px, W, rect, o = {}) {
+            const [X0, Y0, w, h] = rect, K = o.k || 16, key = rect.join(',') + '|' + K + '|' + (o.min || 0.004);
+            let C = PAPER_REGIONS.get(px); if (C && C.has(key)) return C.get(key); if (!C) PAPER_REGIONS.set(px, C = new Map());
+            const at = i => ((Y0 + ((i / w) | 0)) * W + X0 + i % w) * 4, paint = []; for (let i = 0; i < w * h; i++) if (px[at(i) + 3] >= 128) paint.push(i);
+            const id = new Int32Array(w * h).fill(-1); if (!paint.length) { const R = { id, n: 0 }; C.set(key, R); return R; }
+            let boxes = [paint]; while (boxes.length < K) { let bi = -1, bs = 0, bc = 0; // split the box with the widest channel (times its size) at its median
+                boxes.forEach((b, j) => { if (b.length < 2) return; for (let c = 0; c < 3; c++) { let lo = 255, hi = 0; for (const i of b) { const v = px[at(i) + c]; if (v < lo) lo = v; if (v > hi) hi = v; } const sc = (hi - lo) * Math.sqrt(b.length); if (sc > bs) { bs = sc; bi = j; bc = c; } } });
+                if (bi < 0 || bs <= 0) break; const b = boxes[bi].slice().sort((p, q) => px[at(p) + bc] - px[at(q) + bc] || p - q), m = b.length >> 1; boxes.splice(bi, 1, b.slice(0, m), b.slice(m)); }
+            const pal = boxes.map(b => { const m = [0, 0, 0]; for (const i of b) for (let c = 0; c < 3; c++) m[c] += px[at(i) + c]; return m.map(v => v / b.length); }), q = new Int16Array(w * h).fill(-1);
+            for (const i of paint) { let best = 0, bd = 1e9; pal.forEach((m, j) => { const d = Math.abs(px[at(i)] - m[0]) + Math.abs(px[at(i) + 1] - m[1]) + Math.abs(px[at(i) + 2] - m[2]); if (d < bd) { bd = d; best = j; } }); q[i] = best; }
+            const nb = i => { const x = i % w, y = (i / w) | 0; return [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]; };
+            const comp = new Int32Array(w * h).fill(-1), comps = []; for (const s0 of paint) { if (comp[s0] >= 0) continue; const r = comps.length, Q = [s0]; comp[s0] = r;
+                for (let hd = 0; hd < Q.length; hd++) for (const j of nb(Q[hd])) if (j >= 0 && comp[j] < 0 && q[j] === q[s0]) { comp[j] = r; Q.push(j); } comps.push(Q); }
+            const minA = Math.max(6, Math.round(paint.length * (o.min || 0.004))), keep = comps.map((Q, r) => { if (Q.length < minA) return false; let core = 0; for (const i of Q) if (nb(i).every(j => j >= 0 && comp[j] === r)) core++; return core >= Q.length * 0.25; });
+            const Q = []; if (!keep.some(k => k)) { for (const i of paint) id[i] = 0; } else { comps.forEach((P, r) => { if (keep[r]) for (const i of P) { id[i] = r; Q.push(i); } }); Q.sort((a, b) => a - b);
+                for (let hd = 0; hd < Q.length; hd++) for (const j of nb(Q[hd])) if (j >= 0 && id[j] < 0 && q[j] >= 0) { id[j] = id[Q[hd]]; Q.push(j); } } // dissolve: each leftover pixel joins the nearest kept region
+            for (const i of paint) if (id[i] < 0) id[i] = 0; // (a painted island with no kept region in reach)
+            const re = new Map(); for (let i = 0; i < w * h; i++) if (id[i] >= 0) { if (!re.has(id[i])) re.set(id[i], re.size); id[i] = re.get(id[i]); }
+            const R = { id, n: re.size }; C.set(key, R); return R;
+        }
+        // the front's height with the depth sources above: (x, y, b) -> height, where b is the silhouette's own height there (0..1); null when
+        // the silhouette alone shapes it. F: the field ({ px, W, rect }, w x h); base(x, y): the silhouette height at a pixel's centre.
+        function paperFront(F, w, h, o, base) {
+            const k = Math.max(0, Math.min(1, +o.planes || 0)), M = o.relief && o.relief.px && o.relief.px.length === w * h ? o.relief.px : null; if (!k && !M) return null;
+            let id = null, mean = null; if (k) { const R = paperRegions(F.px, F.W, F.rect, { k: o.planeK }), s = new Float64Array(R.n), c = new Float64Array(R.n); id = R.id;
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const r = id[y * w + x]; if (r >= 0) { s[r] += base(x + 0.5, y + 0.5); c[r]++; } } mean = Array.from(s, (v, i) => v / (c[i] || 1)); }
+            let rel = null; if (M) { const r = Math.max(1, Math.round(Math.max(w, h) / 64)), a = new Float32Array(w * h), b = new Float32Array(w * h); // a box blur, across then down
+                for (let y = 0; y < h; y++) { let acc = 0, n = 0; for (let x = -r; x < w + r; x++) { if (x + r < w) { acc += M[y * w + x + r]; n++; } if (x - r - 1 >= 0) { acc -= M[y * w + x - r - 1]; n--; } if (x >= 0 && x < w) a[y * w + x] = acc / n; } }
+                for (let x = 0; x < w; x++) { let acc = 0, n = 0; for (let y = -r; y < h + r; y++) { if (y + r < h) { acc += a[(y + r) * w + x]; n++; } if (y - r - 1 >= 0) { acc -= a[(y - r - 1) * w + x]; n--; } if (y >= 0 && y < h) b[y * w + x] = acc / n; } } rel = b; }
+            return (x, y, v) => { if (!(v > 0)) return 0; const i = Math.max(0, Math.min(h - 1, Math.floor(y))) * w + Math.max(0, Math.min(w - 1, Math.floor(x)));
+                if (id && id[i] >= 0) v += (mean[id[i]] - v) * k; if (rel) { const g = rel[i]; v *= g < 128 ? 0.25 + 0.75 * g / 128 : 1 + 0.7 * (g - 128) / 127; /* black: a quarter of the dome; white: 1.7 times it */ } return v; };
         }
 
         // ---- any picture -> a cut-out ready for paperTrace. Shrunk so its long side is at most o.max px (an area average done here, not by the
@@ -660,7 +724,9 @@
             if (o.R) R = o.R; V.R = R; /* o.R: share one fullest point across several parts, so an arm puffs thinner than the torso */
             const Hh = new Float32Array(E.length); for (let k = 0; k < E.length; k++) { const t = Math.min(1, E[k] / R); Hh[k] = Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); }
             const DR = []; for (let j = 0; j <= ny; j++) DR.push(o.depthRow ? o.depthRow(cy(j)) : [D, D]); // o.depthRow(y) -> [front, back] depth at that row (from a side view), else D both ways // quarter circle: full at the fullest point, steep at the seam
-            const hv = (i, j, side = 1) => { const jj = Math.max(0, Math.min(ny, j)); return Hh[jj * (nx + 1) + Math.max(0, Math.min(nx, i))] * DR[jj][side > 0 ? 0 : 1]; }, L = [-0.35, 0.55, 0.76], Lb = [0.35, 0.55, -0.76];
+            const FR = paperFront(F, w, h, o, (x, y) => { const t = Math.min(1, Math.max(0, at(Math.floor(x), Math.floor(y)) / 3 - g) / R); return Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); }); // planes, a painted depth map
+            const HF = FR ? Hh.map((v, k) => FR(cx(k % (nx + 1)), cy(Math.floor(k / (nx + 1))), v)) : Hh; // the front's own heights (the back keeps the silhouette's)
+            const hv = (i, j, side = 1) => { const jj = Math.max(0, Math.min(ny, j)); return (side > 0 ? HF : Hh)[jj * (nx + 1) + Math.max(0, Math.min(nx, i))] * DR[jj][side > 0 ? 0 : 1]; }, L = [-0.35, 0.55, 0.76], Lb = [0.35, 0.55, -0.76];
             const shadeAt = (i, j, side) => { const gx = (hv(i + 1, j, side) - hv(i - 1, j, side)) / (2 * g * s) * fl, gz = -(hv(i, j + 1, side) - hv(i, j - 1, side)) / (2 * g * s), n = [-gx * side, -gz * side, side], k = Math.hypot(n[0], n[1], n[2]), l = side > 0 ? L : Lb;
                 const lam = Math.max(0, (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]) / k); return (0.55 + 0.55 * lam) * (side > 0 ? 1 : back); };
             const P = (i, j, side) => { const u = (cx(i) - ax) * s * fl, dd = side * hv(i, j, side); return [(o.x || 0) + Rx * u + Nx * dd, (o.y || 0) + Ry * u + Ny * dd, (ay - cy(j)) * s]; };
@@ -705,7 +771,7 @@
             const covers = t => { if (!o.cover) return true; let n = 0, hit = 0; for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) { if (!own[y * w + x]) continue; n++; let ins = false, b = 0; // o.cover: the share of the paint the outline must hold (Painting look)
                 for (const m of t.rings) { for (let q = 0; q < m; q++) { const ax2 = t.pts[(b + q) * 2], ay2 = t.pts[(b + q) * 2 + 1], bx2 = t.pts[(b + (q + 1) % m) * 2], by2 = t.pts[(b + (q + 1) % m) * 2 + 1]; if ((ay2 > y + 0.5) !== (by2 > y + 0.5) && x + 0.5 < ax2 + (y + 0.5 - ay2) * (bx2 - ax2) / (by2 - ay2)) ins = !ins; } b += m; }
                 if (ins) hit++; } return !n || hit / n >= o.cover; };
-            { const tr = e => paperTrace(px, W, rect, { EPS: e, HOLD, GROW: 1 + (o.grow || 0) }); let lo = 0.5, hi = 64, eB = 64; // eB: the finest outline within the budget; eC: the coarsest that still holds the paint
+            { const tr = e => paperTrace(px, W, rect, { EPS: e, HOLD, GROW: 1 + (o.grow || 0), TRIS: false }); let lo = 0.5, hi = 64, eB = 64; // eB: the finest outline within the budget; eC: the coarsest that still holds the paint
               for (let it = 0; it < 12; it++) { const mid = (lo + hi) / 2, t = tr(mid); if (t && t.pts.length / 2 <= Bt) { hi = mid; eB = mid; } else lo = mid; }
               let eC = 64; if (o.cover) { lo = 0.5; hi = 64; eC = 0.5; for (let it = 0; it < 12; it++) { const mid = (lo + hi) / 2, t = tr(mid); if (t && covers(t)) { lo = mid; eC = mid; } else hi = mid; } }
               T = tr(Math.min(eB, eC)) || tr(0.5); } // the paint wins over the budget
@@ -746,7 +812,8 @@
             const faces = tris.filter(t => t[0] > 2 && t[1] > 2 && t[2] > 2 && inPoly((pts[t[0]][0] + pts[t[1]][0] + pts[t[2]][0]) / 3, (pts[t[0]][1] + pts[t[1]][1] + pts[t[2]][1]) / 3)).map(t => [t[0] - 3, t[1] - 3, t[2] - 3]);
             // 5) raise into depth, shade, emit front and back
             const Hv = P.map(p => p[2] && !o.field ? 0 : prof(p[0], p[1])), /* the outline sits at zero (a closed shell); a rig part's outline takes the body's depth where it meets its neighbour */ L = [-0.35, 0.55, 0.76], Lb = [0.35, 0.55, -0.76];
-            const local = (i, side) => { const p = P[i], dr = DRow(p[1]); return [(p[0] - ax) * s * fl, (ay - p[1]) * s, side * Hv[i] * dr[side > 0 ? 0 : 1]]; }; // (right, up, out)
+            const FR = paperFront(F, w, h, o, prof), HvF = FR ? Hv.map((v, i) => FR(P[i][0], P[i][1], v)) : Hv; // planes, a painted depth map: the front only
+            const local = (i, side) => { const p = P[i], dr = DRow(p[1]); return [(p[0] - ax) * s * fl, (ay - p[1]) * s, side * (side > 0 ? HvF : Hv)[i] * dr[side > 0 ? 0 : 1]]; }; // (right, up, out)
             const world = q => [(o.x || 0) + Rx * q[0] + Nx * q[2], (o.y || 0) + Ry * q[0] + Ny * q[2], q[1]];
             const shadeN = (n, side) => { const l = side > 0 ? L : Lb, k = Math.hypot(n[0], n[1], n[2]) || 1, lam = Math.max(0, (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]) / k); return (0.55 + 0.55 * lam) * (side > 0 ? 1 : back); };
             const fN = (A, B, C, side) => { const u = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], v = [C[0] - A[0], C[1] - A[1], C[2] - A[2]], n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; return n[2] * side < 0 ? n.map(x => -x) : n; }; // outward

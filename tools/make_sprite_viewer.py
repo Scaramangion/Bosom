@@ -48,7 +48,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 .panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
 .panel.col{flex-direction:column;align-items:stretch}.panel .line{display:flex;align-items:center;gap:10px}.panel.col>.seg{flex:none}.panel .line .seg{flex:1}.panel .hint{flex:1;min-width:0;font-size:14px;color:var(--label2)}
 .panel input[type=range]{flex:1;min-width:0;accent-color:var(--tint)}.small{font-size:13px;color:var(--label2)}
-.pill{height:32px;padding:0 14px;border-radius:16px;background:var(--fill);font-size:14px;font-weight:500}.pill.tinted{background:var(--tint);color:var(--tint-ink)}
+.pill{height:32px;padding:0 14px;border-radius:16px;background:var(--fill);font-size:14px;font-weight:500}.pill.tinted,.pill[aria-pressed="true"]{background:var(--tint);color:var(--tint-ink)}
 .seg{display:flex;flex:1;background:var(--fill);border-radius:9px;padding:2px;gap:2px}.seg button{flex:1;height:30px;border-radius:7px;font-size:13px;font-weight:500}
 .seg button[aria-pressed="true"]{background:var(--group);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .hello{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100vw - 32px));box-sizing:border-box;border-radius:20px;padding:20px;text-align:center}
@@ -76,7 +76,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <input id="file" type="file" accept="image/*,.json,application/json" hidden>
 <div class="top"><span class="word">Papercraft</span><span class="tr"><button id="save" class="round glass" aria-label="Save" disabled>''' + svg('save') + '''</button><button id="more" class="round glass" aria-label="Options">''' + svg('more') + '''</button></span></div>
 <div id="hello" class="hello glass" hidden><h1>Turn any picture into a paper model</h1><p>Choose a photo or a drawing. Papercraft cuts out the subject and folds it into 3D.</p><label class="primary" for="file">Choose Photo</label></div>
-<div id="pDepth" class="panel glass col" hidden><div class="seg" role="group" aria-label="Shape"><button data-shape="card" aria-pressed="false">Card</button><button data-shape="round" aria-pressed="false">Round</button><button data-shape="facets" aria-pressed="true">Facets</button></div><div class="seg" id="geoSeg" role="group" aria-label="Geometry"><button data-budget="40">PS1 Low</button><button data-budget="100">PS1</button><button data-budget="300" aria-pressed="true">PS2 Low</button><button data-budget="800">PS2</button></div><div class="line"><span class="small">Flat</span><input id="thick" type="range" min="0" max="4" step="0.25" value="2" aria-label="Depth"><span class="small">Sculpted</span></div></div>
+<div id="pDepth" class="panel glass col" hidden><div class="seg" id="shapeSeg" role="group" aria-label="Shape"><button data-shape="card" aria-pressed="false">Card</button><button data-shape="round" aria-pressed="false">Round</button><button data-shape="facets" aria-pressed="true">Facets</button></div><div class="seg" id="geoSeg" role="group" aria-label="Geometry"><button data-budget="40">PS1 Low</button><button data-budget="100">PS1</button><button data-budget="300" aria-pressed="true">PS2 Low</button><button data-budget="800">PS2</button></div><div class="line" id="thickRow"><span class="small">Flat</span><input id="thick" type="range" min="0" max="4" step="0.25" value="2" aria-label="Depth"><span class="small">Sculpted</span></div><div class="line"><div class="seg" id="dsrcSeg" role="group" aria-label="Depth from"><button data-dsrc="shape" aria-pressed="true">Shape</button><button data-dsrc="planes" aria-pressed="false">Planes</button><button data-dsrc="paint" aria-pressed="false">Paint</button></div><button id="layersBtn" class="pill" aria-pressed="false">Layers</button></div><div class="line" id="brushRow" hidden><div class="seg" role="group" aria-label="Brush"><button data-brush="255" aria-pressed="true">Near</button><button data-brush="128" aria-pressed="false">Middle</button><button data-brush="0" aria-pressed="false">Far</button></div><button id="dclear" class="pill">Clear</button><button id="dmap" class="pill">Map</button></div><span class="hint" id="depthHint" hidden></span><input id="fileDepth" type="file" accept="image/*" hidden></div>
 <div id="pCut" class="panel glass col" hidden><div class="line"><div class="seg" role="group" aria-label="Tap to"><button data-mark="keep" aria-pressed="true">Keep</button><button data-mark="drop" aria-pressed="false">Remove</button></div><button id="undo" class="pill">Undo</button><button id="done" class="pill tinted">Done</button></div><span class="hint" id="cutHint">Tap the person or thing you want to keep.</span></div>
 <div id="pPose" class="panel glass col" hidden><div class="seg" role="group" aria-label="Move"><button data-anim="still" aria-pressed="false">Still</button><button data-anim="idle" aria-pressed="true">Idle</button><button data-anim="walk" aria-pressed="false">Walk</button><button data-anim="wave" aria-pressed="false">Wave</button></div><div class="line"><span class="hint" id="poseHint">Drag an arm, a leg or the head to pose it.</span><button id="editJ" class="pill">Edit joints</button><button id="reset" class="pill">Reset</button></div></div>
 <div id="joints" aria-hidden="true"></div>
@@ -85,7 +85,7 @@ button:disabled{opacity:.35;cursor:default}:focus-visible{outline:2px solid var(
 <span class="hint" id="viewsHint">The back is guessed from the front. Choose Picture to use a back view.</span><div class="line" style="justify-content:flex-end"><button id="flipSide" class="pill" hidden>Flip side</button><button id="otherSide" class="pill" hidden>Other side</button><button id="turn" class="pill">Turn</button></div></div>
 <input id="fileBack" type="file" accept="image/*" hidden><input id="fileSide" type="file" accept="image/*" hidden>
 <div id="pLook" class="panel glass col" hidden><div class="seg" role="group" aria-label="Look"><button data-look="clean" aria-pressed="true">Clean</button><button data-look="ps1" aria-pressed="false">PS1</button></div><div class="seg" role="group" aria-label="Abstraction"><button data-abs="painting" aria-pressed="true">Painting</button><button data-abs="polygon" aria-pressed="false">Polygon</button></div></div>
-<nav class="bar glass" aria-label="Tools">
+<nav class="bar glass" id="tabs" aria-label="Tools">
 <label class="tab btn" for="file" id="tPhoto">''' + svg('photo') + '''Photo</label>
 <button class="tab" id="tCut" aria-pressed="false" disabled>''' + svg('cut') + '''Cut</button>
 <button class="tab" id="tDepth" aria-pressed="false">''' + svg('depth') + '''Depth</button>
@@ -128,8 +128,8 @@ const CAST = [['farm/f_elder', 24], ['farm/f_farmer', 24], ['farm/f_franz', 24],
 const STALKER = ['farm/f_farmer', 24 * 1.35]; // the tall one, at the back
 // ---------- state: everything the page shows comes from here ----------
 const Q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
-const ST = { budget: +(Q.get('budget') || 300), abs: Q.get('abs') || 'painting', anim: Q.get('anim') || 'idle', pose: {}, method: 'auto', shape: Q.get('shape') || 'facets', mode: Q.get('mode') || (Q.get('s') ? 'one' : 'start'), sprite: Q.get('s') || 'sud/stand', tool: null, look: Q.get('ps1') === '1' ? 'ps1' : 'clean', detail: 256, tol: 48, one: true };
-const MINE = { sides: [], img: null, px: null, full: null, S: null, fullS: null, w: 0, h: 0, marks: [], mark: 'keep', ms: 0, fold: null, method: '' };
+const ST = { dsrc: Q.get('dsrc') || 'shape', brush: 255, layersOn: false, budget: +(Q.get('budget') || 300), abs: Q.get('abs') || 'painting', anim: Q.get('anim') || 'idle', pose: {}, method: 'auto', shape: Q.get('shape') || 'facets', mode: Q.get('mode') || (Q.get('s') ? 'one' : 'start'), sprite: Q.get('s') || 'sud/stand', tool: null, look: Q.get('ps1') === '1' ? 'ps1' : 'clean', detail: 256, tol: 48, one: true };
+const MINE = { depthMap: null, layers: null, sides: [], img: null, px: null, full: null, S: null, fullS: null, w: 0, h: 0, marks: [], mark: 'keep', ms: 0, fold: null, method: '' };
 // ---------- a tiny renderer: an orbit camera, the SAME fragment shader as the game (PAPER_GLSL.frag) ----------
 const cv = $('c'), gl = cv.getContext('webgl', { antialias: false, preserveDrawingBuffer: true });
 const vsrc = `attribute vec3 aP;attribute vec2 aT;attribute vec2 aS;uniform mat4 uM;varying vec2 vT;varying vec3 vW;varying float vZ,vSh,vEm;
@@ -160,10 +160,14 @@ function stage(R, shadowW) { // the floor: studio disc (clean) or flagstones (PS
     for (let i = 0; i < 32; i++) { const a0 = i / 32 * 2 * Math.PI, a1 = (i + 1) / 32 * 2 * Math.PI; for (const q of [[0, 0], [Math.cos(a0) * D, Math.sin(a0) * D], [Math.cos(a1) * D, Math.sin(a1) * D]]) V.push(q[0], q[1], -1, c, c, s, 0); } }
   gl.bindBuffer(gl.ARRAY_BUFFER, gbuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW); gN = V.length / 7; }
 const depth = () => +$('thick').value;
+// ---------- depth sources (the module's o.planes / o.relief) and depth layers: all on this device, no neural network needed ----------
+const depthFrom = () => ({ planes: ST.dsrc === 'planes' ? 0.8 : 0, relief: ST.dsrc === 'paint' && MINE.depthMap && MINE.depthMap.length === MINE.w * MINE.h ? { px: MINE.depthMap } : null });
+const LAYER = { torso: 1, legL: 1, legR: 1, shinL: 1, shinR: 1, armL: 2, armR: 2, foreL: 2, foreR: 2, head: 3 }, LAYER_NAME = ['background', 'body', 'arms', 'head', 'foreground'];
+const layerOf = (nm, RG) => ST.layersOn && RG && RG.humanoid ? ((MINE.layers && MINE.layers[nm] != null ? MINE.layers[nm] : LAYER[nm]) ?? 1) - 1 : 0; // 0 background .. 4 foreground; 1 (body) stays put
 function build() { // fold every piece on stage; one buffer per texture
   const th = depth(), round = ST.shape === 'round' || ST.shape === 'facets', per = {}, put = (key, h, x, y, ang, flip) => { const S = SPRITE_POLYS.sprites[key]; if (!S) return 0; const at = key.split('/')[0], A = SPRITE_POLYS.atlases[at].size, o = { x, y, ang, flip, s: h / S.rect[3], anchor: S.anchor };
-    if (ST.shape === 'facets' && ATLAS_PX[at]) paperFacet(per[at] || (per[at] = []), ATLAS_PX[at], A[0], A[1], S.rect, Object.assign(o, { depth: th * h * 0.05, budget: ST.budget }));
-    else if (round && ATLAS_PX[at]) paperPuff(per[at] || (per[at] = []), ATLAS_PX[at], A[0], A[1], S.rect, Object.assign(o, { depth: th * h * 0.05 })); else paperSprite(per[at] || (per[at] = []), S, A, Object.assign(o, { thick: th * h / 24 })); return h * S.rect[2] / S.rect[3]; };
+    if (ST.shape === 'facets' && ATLAS_PX[at]) paperFacet(per[at] || (per[at] = []), ATLAS_PX[at], A[0], A[1], S.rect, Object.assign(o, { depth: th * h * 0.05, budget: ST.budget, planes: ST.dsrc === 'planes' ? 0.8 : 0 }));
+    else if (round && ATLAS_PX[at]) paperPuff(per[at] || (per[at] = []), ATLAS_PX[at], A[0], A[1], S.rect, Object.assign(o, { depth: th * h * 0.05, planes: ST.dsrc === 'planes' ? 0.8 : 0 })); else paperSprite(per[at] || (per[at] = []), S, A, Object.assign(o, { thick: th * h / 24 })); return h * S.rect[2] / S.rect[3]; };
   let shadow = 0, R = 120;
   if (ST.mode === 'mine' && MINE.S && ST.tool === 'cut' && MINE.fullS) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; MINE.fold = { s, hh, th: 0 }; MINE.fullS.anchor = S.anchor; // Cut: the whole picture, flat, facing you
     paperSprite(per.cutview = [], MINE.fullS, [MINE.w, MINE.h], { s, thick: 0 }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.5; shadow = 0; R = Math.max(hh, S.rect[2] * s) * 4.2; }
@@ -171,10 +175,11 @@ function build() { // fold every piece on stage; one buffer per texture
     const RG = MINE.rig, P = RG.parts.length, Rg = round ? paperPuff([], MINE.px, MINE.w, MINE.h, [0, 0, MINE.w, MINE.h], { s, depth: D, anchor: S.anchor }).R : 0; // one fullest point for all parts: limbs puff thinner than the body
     MINE.geo = RG.parts.map((pt, k) => { const V = []; const bk = MINE.backDU ? { backDU: MINE.backDU, back: 0.92, shade: [1, 0.9, 0.74] } : {}, SD = MINE.sideFit, Wt = MINE.rigW, Ht = MINE.h * P;
       if (SD && round) { const m = th / 2, floor = 0.35 * s; bk.depthRow = y => { const [f, b] = SD.depth(y); return f + b > 0 ? [Math.max(floor, f * s * m), Math.max(floor, b * s * m)] : [D, D]; }; // the side view's outline: how far the body reaches forward and back at this height
-        bk.sideUV = (x, y, dd, east) => { const q = east ? SD.E : SD.W; return [(q.x0 + Math.max(0.5, Math.min(q.ws - 0.5, q.c + dd / s))) / Wt, (k * MINE.h + y) / Ht]; }; } const po = { s, depth: D, anchor: S.anchor, R: Rg, field: { px: MINE.px, W: MINE.w, rect: [0, 0, MINE.w, MINE.h] }, ...bk };
+        bk.sideUV = (x, y, dd, east) => { const q = east ? SD.E : SD.W; return [(q.x0 + Math.max(0.5, Math.min(q.ws - 0.5, q.c + dd / s))) / Wt, (k * MINE.h + y) / Ht]; }; } const po = { s, depth: D, anchor: S.anchor, R: Rg, field: { px: MINE.px, W: MINE.w, rect: [0, 0, MINE.w, MINE.h] }, ...depthFrom(), ...bk };
       if (ST.shape === 'facets') { let ak = 0; for (let i = 0; i < MINE.w * MINE.h; i++) if (pt.mask[i] && MINE.px[i * 4 + 3] >= 128) ak++; paperFacet(V, MINE.rigPx, MINE.rigW, MINE.h * P, [0, k * MINE.h, MINE.w, MINE.h], { ...po, budget: Math.max(8, Math.round(ST.budget * ak / MINE.area)), grow: Math.max(2, Math.round(0.02 * Math.max(MINE.w, MINE.h))), cover: ST.abs === 'painting' ? 0.985 : 0 }); } // the budget shared out by area
       else if (round) paperPuff(V, MINE.rigPx, MINE.rigW, MINE.h * P, [0, k * MINE.h, MINE.w, MINE.h], po); else if (MINE.rigS[k]) paperSprite(V, MINE.rigS[k], [MINE.rigW, MINE.h * P], { s, thick: MINE.fold.th, ...bk });
-      return { V, name: pt.name, parent: pt.parent, dir: pt.dir, pv: [(pt.pivot[0] - S.anchor[0]) * s, 0, (S.anchor[1] - pt.pivot[1]) * s], n: V.length / 7 }; });
+      const Ly = layerOf(pt.name, RG) * (0.025 * hh + 0.12 * D); if (Ly) for (let i = 1; i < V.length; i += 7) V[i] += Ly; // a depth layer: the whole part moved toward you (or away)
+      return { V, name: pt.name, parent: pt.parent, dir: pt.dir, pv: [(pt.pivot[0] - S.anchor[0]) * s, Ly, (S.anchor[1] - pt.pivot[1]) * s], n: V.length / 7 }; });
     per.rig = [].concat(...MINE.geo.map(g => g.V)); MINE.rest = Float32Array.from(per.rig); MINE.dyn = Float32Array.from(per.rig); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; shadow = S.rect[2] * s * 0.55; R = Math.max(hh, S.rect[2] * s) * 4.2; }
   else if (ST.mode === 'cast') { const n0 = 14, look = [150, 260]; // two arcs on the plaza, each piece turned toward the lens and nudged by the prime
     CAST.forEach(([key, h], i) => { const row = i < n0 ? 0 : 1, k = row ? i - n0 : i, n = row ? CAST.length - n0 : n0, x = (k - (n - 1) / 2) * (row ? 30 : 17) + (paperPrime(i) - 0.5) * 5, y = row ? -40 + Math.abs(k - (n - 1) / 2) * 5 : 10 + Math.abs(k - (n - 1) / 2) * 3;
@@ -198,12 +203,18 @@ const FOV = 1 / Math.tan(0.4);
 function matrix(w, h) { // perspective * lookAt(focus), z up
   const { e, f, r, u } = eye(), V = [r[0], u[0], -f[0], 0, r[1], u[1], -f[1], 0, r[2], u[2], -f[2], 0, -(r[0] * e[0] + r[1] * e[1] + r[2] * e[2]), -(u[0] * e[0] + u[1] * e[1] + u[2] * e[2]), (f[0] * e[0] + f[1] * e[1] + f[2] * e[2]), 1];
   const n = 1, fa = 4000, t = FOV, a = w / h, P = [t / a, 0, 0, 0, 0, t, 0, 0, 0, 0, -(fa + n) / (fa - n), -1, 0, 0, -2 * fa * n / (fa - n), 0];
-  const M = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += P[k * 4 + j] * V[i * 4 + k]; M[i * 4 + j] = s; } return M; }
+  const M = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += P[k * 4 + j] * V[i * 4 + k]; M[i * 4 + j] = s; }
+  for (let i = 0; i < 4; i++) { M[i * 4] *= view.k; M[i * 4 + 1] = view.k * M[i * 4 + 1] + view.s * M[i * 4 + 3]; } return M; } // lifted (and shrunk) into the space an open panel leaves free
+const view = { s: 0, k: 1 }; // the picture's centre, lifted into the free space above an open panel (s, in clip units) and shrunk to fit it (k)
+function viewTarget() { const rc = cv.getBoundingClientRect(), bar = $('tabs').getBoundingClientRect(), pn = ST.tool && $(PANELS[ST.tool]), top = rc.top + 84, b0 = bar.top - 8, b1 = pn && !pn.hidden ? pn.getBoundingClientRect().top - 8 : b0;
+  if (b1 >= b0 - 1 || b1 - top < 120) return [0, 1]; return [((top + b0) / 2 - (top + b1) / 2) * 2 / rc.height, Math.min(1, (b1 - top) / (b0 - top))]; }
+const unview = (nx, ny) => [nx / view.k, (ny - view.s) / view.k]; // a screen point back through the lift, for rays
 let last = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000 || 0); last = now;
   if (cam.to) { const k = 1 - Math.exp(-dt * 9); let dy = ((cam.to.yaw - cam.yaw + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; cam.yaw += dy * k; cam.pitch += (cam.to.pitch - cam.pitch) * k; if (Math.abs(dy) + Math.abs(cam.to.pitch - cam.pitch) < 0.002) { cam.yaw = cam.to.yaw; cam.pitch = cam.to.pitch; } }
-  else if ($('spin').checked && !held && ST.tool !== 'cut') cam.yaw += dt * 0.3;
+  else if ($('spin').checked && !held && ST.tool !== 'cut' && !paintLive()) cam.yaw += dt * 0.3;
+  { const [ts, tk] = viewTarget(), q = 1 - Math.exp(-dt * 10); view.s += (ts - view.s) * q; view.k += (tk - view.k) * q; }
   const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth * dpr | 0, h = cv.clientHeight * dpr | 0; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
   const ps1 = ST.look === 'ps1', sc = ps1 ? [0.55, 0.62, 0.7] : rgb(css('--scene'));
   gl.viewport(0, 0, w, h); gl.clearColor(sc[0], sc[1], sc[2], 1); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -256,7 +267,7 @@ function joints(t) { const box = $('joints'); if (!(rigLive() && ST.tool === 'po
     const [x, y] = jdrag && jdrag.name === g.name ? jdrag.at : toScreen(pivotNow(g.name, t)); d.style.left = x + 'px'; d.style.top = y + 'px'; }); }
 let jdrag = null; // a joint being moved by hand
 function screenToPicture(x, y) { // the point of the picture (px) under the finger: a ray from the lens to the card's plane
-  if (!MINE.S || !MINE.fold) return null; const rc = cv.getBoundingClientRect(), nx = (x - rc.left) / rc.width * 2 - 1, ny = 1 - (y - rc.top) / rc.height * 2, a = rc.width / rc.height, { e, f, r, u } = eye();
+  if (!MINE.S || !MINE.fold) return null; const rc = cv.getBoundingClientRect(), [nx, ny] = unview((x - rc.left) / rc.width * 2 - 1, 1 - (y - rc.top) / rc.height * 2), a = rc.width / rc.height, { e, f, r, u } = eye();
   const d = [0, 1, 2].map(i => f[i] + r[i] * nx * a / FOV + u[i] * ny / FOV); if (Math.abs(d[1]) < 1e-6) return null; const l = -e[1] / d[1], X = e[0] + l * d[0], Z = e[2] + l * d[2], s = MINE.fold.s, A = MINE.S.anchor;
   return l > 0 ? [X / s + A[0], A[1] - Z / s] : null; }
 $('joints').addEventListener('pointerdown', e => { const d = e.target.closest('.joint.edit'); if (!d) return; e.preventDefault(); d.setPointerCapture(e.pointerId); jdrag = { name: d.dataset.name, at: [e.clientX, e.clientY] }; });
@@ -271,19 +282,22 @@ function pickPart(x, y) { const rc = cv.getBoundingClientRect(), M = matrix(rc.w
 // ---------- touch: drag to turn, pinch or wheel to zoom, tap to keep / remove (in Cut), double-tap to reset ----------
 const pts = new Map(); let held = false, pd = 0, down = null, lastTap = 0;
 cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); held = true; cam.to = null; grab = null;
+  if (paintLive() && pts.size === 1) { stroke = { at: [e.clientX, e.clientY] }; dab(e.clientX, e.clientY); depthUI(); } else stroke = null;
   if (ST.tool === 'pose' && rigLive() && MINE.rig.humanoid && pts.size === 1) { const nm = pickPart(e.clientX, e.clientY); if (nm) { const [px, py] = toScreen(pivotNow(nm, performance.now() / 1000)); grab = { nm, a: Math.atan2(-(e.clientY - py), e.clientX - px) }; } } if (pts.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() }; else down = null; closeSheet(); });
 cv.addEventListener('pointermove', e => { const p = pts.get(e.pointerId); if (!p) return; const dx = e.clientX - p[0], dy = e.clientY - p[1]; pts.set(e.pointerId, [e.clientX, e.clientY]);
   if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pd) cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * pd / d)); pd = d; return; }
+  if (stroke && pts.size === 1) { strokeTo(e.clientX, e.clientY); return; }
   if (grab && pts.size === 1) { const [px, py] = toScreen(pivotNow(grab.nm, performance.now() / 1000)), a = Math.atan2(-(e.clientY - py), e.clientX - px); let d = a - grab.a; d = Math.atan2(Math.sin(d), Math.cos(d)); ST.pose[grab.nm] = (ST.pose[grab.nm] || 0) + (Math.cos(cam.yaw) >= 0 ? d : -d); grab.a = a; return; }
   if (ST.tool === 'cut') return; cam.yaw -= dx * 0.006; cam.pitch = Math.max(0.02, Math.min(1.45, cam.pitch + dy * 0.005)); });
-const up = e => { pts.delete(e.pointerId); pd = 0; if (!pts.size) { held = false; if (grab) { grab = null; down = null; return; } }
+const up = e => { pts.delete(e.pointerId); pd = 0; if (!pts.size) { held = false; if (grab) { grab = null; down = null; return; } if (stroke) { stroke = null; down = null; build(); depthUI(); window.PAINTED = (window.PAINTED || 0) + 1; return; } }
   if (down && e.type === 'pointerup' && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 8 && performance.now() - down.t < 400) {
-    if (ST.tool === 'cut') markAt(e.clientX, e.clientY); else { const t = performance.now(); if (t - lastTap < 320) { cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; } lastTap = t; } }
+    if (ST.tool === 'cut') markAt(e.clientX, e.clientY); else if (ST.tool === 'depth' && ST.layersOn && rigLive() && MINE.rig.humanoid) layerTap(e.clientX, e.clientY); else { const t = performance.now(); if (t - lastTap < 320) { cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; } lastTap = t; } }
   down = null; };
+function layerTap(x, y) { const nm = pickPart(x, y); if (!nm) return; const L = MINE.layers = MINE.layers || {}, now = L[nm] != null ? L[nm] : (LAYER[nm] ?? 1); L[nm] = (now + 1) % 5; build(); toast(nm.replace(/L$/, ' (left)').replace(/R$/, ' (right)') + ': layer ' + L[nm] + ', ' + LAYER_NAME[L[nm]]); window.LAYERED = (window.LAYERED || 0) + 1; }
 cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
 cv.addEventListener('wheel', e => { e.preventDefault(); cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * (1 + e.deltaY * 0.001))); }, { passive: false });
 function markAt(x, y) { // cast a ray from the tap onto the picture's face: that spot is to keep, or to remove
-  if (ST.mode !== 'mine' || !MINE.S || !MINE.fold) return; const rc = cv.getBoundingClientRect(), nx = (x - rc.left) / rc.width * 2 - 1, ny = 1 - (y - rc.top) / rc.height * 2, a = rc.width / rc.height, { e, f, r, u } = eye();
+  if (ST.mode !== 'mine' || !MINE.S || !MINE.fold) return; const rc = cv.getBoundingClientRect(), [nx, ny] = unview((x - rc.left) / rc.width * 2 - 1, 1 - (y - rc.top) / rc.height * 2), a = rc.width / rc.height, { e, f, r, u } = eye();
   const d = [0, 1, 2].map(i => f[i] + r[i] * nx * a / FOV + u[i] * ny / FOV), yp = (e[1] >= 0 ? 1 : -1) * MINE.fold.th / 2; if (Math.abs(d[1]) < 1e-6) return;
   const l = (yp - e[1]) / d[1], X = e[0] + l * d[0], Z = e[2] + l * d[2], s = MINE.fold.s, A = MINE.S.anchor, U = (X / s + A[0]) / MINE.w, V = (A[1] - Z / s) / MINE.h;
   if (l <= 0 || U < 0 || V < 0 || U > 1 || V > 1) return; const rp = document.createElement('div'); rp.className = 'ripple'; rp.style.left = x + 'px'; rp.style.top = y + 'px'; document.body.appendChild(rp); setTimeout(() => rp.remove(), 600);
@@ -297,6 +311,8 @@ function setTool(t) { if (ST.tool === t) t = null; const was = ST.tool; ST.tool 
   if (t === 'views' && MINE.img && ST.mode !== 'mine') { ST.mode = 'mine'; build(); }
   if (t === 'pose' && MINE.img) { if (ST.mode !== 'mine') { ST.mode = 'mine'; build(); } cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.12 }; }
   if (t === 'cut' && MINE.img) { ST.mode = 'mine'; cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; $('undo').disabled = !MINE.marks.length; }
+  if (t === 'depth' && ST.dsrc === 'paint' && MINE.img) { if (ST.mode !== 'mine') { ST.mode = 'mine'; build(); } cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; }
+  if ((t === 'depth') !== (was === 'depth')) depthUI();
   if ((t === 'cut') !== (was === 'cut') && MINE.img) build(); // Cut shows the whole picture, with what is removed dimmed
   refreshHello(); }
 for (const b of document.querySelectorAll('[data-mark]')) b.onclick = () => { MINE.mark = b.dataset.mark; document.querySelectorAll('[data-mark]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('cutHint').textContent = MINE.mark === 'keep' ? 'Tap the person or thing you want to keep.' : 'Tap what you want removed.'; };
@@ -322,7 +338,40 @@ $('fileBack').onchange = e => { const f = e.target.files[0]; if (!f) return; con
   im.onerror = () => toast('That file could not be opened as a picture.'); im.src = URL.createObjectURL(f); e.target.value = ''; }; $('tDepth').onclick = () => setTool('depth'); $('tLook').onclick = () => setTool('look'); $('done').onclick = () => setTool(null);
 $('undo').onclick = () => { MINE.marks.pop(); $('undo').disabled = !MINE.marks.length; makeMine(); };
 $('thick').oninput = build;
-for (const b of document.querySelectorAll('[data-shape]')) b.onclick = () => { ST.shape = b.dataset.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('geoSeg').hidden = ST.shape !== 'facets'; build(); };
+// ---------- Depth: from the outline (Shape), the painting's colour regions (Planes), or painted by hand (Paint: Near / Middle / Far, or a grey Map) ----------
+const paintLive = () => ST.tool === 'depth' && ST.dsrc === 'paint' && ST.mode === 'mine' && !!MINE.img && !!MINE.rig;
+function depthView() { // while you paint, the figure's front shows the depth map (white near, black far) over a faint trace of the painting
+  const w = MINE.w, h = MINE.h, W2 = MINE.rigW, out = new Uint8ClampedArray(MINE.rigTex), M = MINE.depthMap;
+  for (let k = 0; k < MINE.rig.parts.length; k++) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const o = ((k * h + y) * W2 + x) * 4, l = 0.299 * out[o] + 0.587 * out[o + 1] + 0.114 * out[o + 2], v = (M ? M[y * w + x] : 128) * 0.8 + l * 0.2; out[o] = out[o + 1] = out[o + 2] = v; }
+  return out; }
+function depthUI() { document.querySelectorAll('[data-dsrc]').forEach(x => x.setAttribute('aria-pressed', x.dataset.dsrc === ST.dsrc)); document.querySelectorAll('[data-brush]').forEach(x => x.setAttribute('aria-pressed', +x.dataset.brush === ST.brush));
+  const paint = ST.dsrc === 'paint'; $('layersBtn').setAttribute('aria-pressed', ST.layersOn); $('brushRow').hidden = !paint; $('dclear').disabled = !MINE.depthMap; // painting: the brush takes the shape rows' place, so the figure stays in view
+  $('shapeSeg').hidden = $('thickRow').hidden = paint; $('geoSeg').hidden = paint || ST.shape !== 'facets';
+  const hint = (paint ? (MINE.img ? 'Near comes toward you, Far goes back. Map: a grey picture, white near.' : 'Choose a picture first, then paint its depth.') : ST.dsrc === 'planes' ? 'Each colour region becomes one plane.' : '')
+    + (ST.layersOn ? (MINE.rig && MINE.rig.humanoid ? ' Tap a part to bring it a layer forward (0 back to 4 front).' : ' Layers need a rig with arms and legs.') : ''); $('depthHint').textContent = hint.trim(); $('depthHint').hidden = !hint;
+  if (TEX.rig && MINE.rigTex && MINE.rig) TEX.rig = texOf({ px: paintLive() ? depthView() : MINE.rigTex, w: MINE.rigW, h: MINE.h * MINE.rig.parts.length }, false, TEX.rig); }
+function providerButtons() { const seg = $('dsrcSeg'); seg.querySelectorAll('[data-dsrc^="p:"]').forEach(b => b.remove()); for (const pr of PAPER_DEPTH.providers) { const b = document.createElement('button'); b.dataset.dsrc = 'p:' + pr.name; b.textContent = pr.name; b.setAttribute('aria-pressed', 'false'); seg.appendChild(b); } }
+window.addDepthProvider = (name, fn) => { PAPER_DEPTH.register(name, fn); providerButtons(); }; // an optional depth estimate (a neural model, say) plugs in here; Papercraft never needs one
+async function runProvider(name) { const pr = PAPER_DEPTH.providers.find(p => p.name === name); if (!pr || !MINE.img) return; toast('Estimating depth (' + name + ')…', true);
+  try { const m = await pr.fn({ px: MINE.px, w: MINE.w, h: MINE.h }); if (!m || m.length !== MINE.w * MINE.h) throw 0; MINE.depthMap = Uint8Array.from(m); ST.dsrc = 'paint'; hideToast(); build(); depthUI(); window.DEPTH_DONE = (window.DEPTH_DONE || 0) + 1; }
+  catch (_) { toast('That depth estimate did not work. Shape, Planes and Paint still do.'); } }
+$('dsrcSeg').onclick = e => { const b = e.target.closest('[data-dsrc]'); if (!b) return; const v = b.dataset.dsrc; if (v.startsWith('p:')) { runProvider(v.slice(2)); return; }
+  ST.dsrc = v; if (v === 'paint' && MINE.img) { if (ST.mode !== 'mine') ST.mode = 'mine'; cam.zoom = 0; cam.to = { yaw: 0, pitch: 0.06 }; } build(); depthUI(); };
+for (const b of document.querySelectorAll('[data-brush]')) b.onclick = () => { ST.brush = +b.dataset.brush; depthUI(); };
+$('layersBtn').onclick = () => { ST.layersOn = !ST.layersOn; build(); depthUI(); };
+$('dclear').onclick = () => { MINE.depthMap = null; build(); depthUI(); };
+$('dmap').onclick = () => $('fileDepth').click();
+$('fileDepth').onchange = e => { const f = e.target.files[0]; if (!f || !MINE.img) return; const im = new Image(); im.onload = () => { // a grey picture the size and framing of your picture: white near, black far
+    const c = document.createElement('canvas'); c.width = MINE.w; c.height = MINE.h; const x = c.getContext('2d'); x.drawImage(im, 0, 0, MINE.w, MINE.h); const d = x.getImageData(0, 0, MINE.w, MINE.h).data, M = new Uint8Array(MINE.w * MINE.h);
+    for (let i = 0; i < M.length; i++) M[i] = d[i * 4 + 3] < 128 ? 128 : Math.round(0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]); MINE.depthMap = M; ST.dsrc = 'paint'; build(); depthUI(); window.DEPTH_DONE = (window.DEPTH_DONE || 0) + 1; };
+  im.onerror = () => toast('That file could not be opened as a picture.'); im.src = URL.createObjectURL(f); e.target.value = ''; };
+let stroke = null, paintT = 0; // a brush stroke in progress
+function dab(x, y) { const p = screenToPicture(x, y); if (!p) return; const w = MINE.w, h = MINE.h; if (!MINE.depthMap || MINE.depthMap.length !== w * h) MINE.depthMap = new Uint8Array(w * h).fill(128);
+  const M = MINE.depthMap, r = Math.max(2, Math.round(Math.max(w, h) * 0.035)), t = ST.brush;
+  for (let yy = Math.floor(p[1] - r); yy <= p[1] + r; yy++) for (let xx = Math.floor(p[0] - r); xx <= p[0] + r; xx++) { if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const d = Math.hypot(xx + 0.5 - p[0], yy + 0.5 - p[1]) / r; if (d > 1) continue; const i = yy * w + xx; M[i] = Math.round(M[i] + (t - M[i]) * 0.35 * (1 - d * d)); } }
+function strokeTo(x, y) { const [x0, y0] = stroke.at, n = Math.max(1, Math.ceil(Math.hypot(x - x0, y - y0) / 6)); for (let i = 1; i <= n; i++) dab(x0 + (x - x0) * i / n, y0 + (y - y0) * i / n); stroke.at = [x, y];
+  const now = performance.now(); if (now - paintT > 220) { paintT = now; build(); depthUI(); } else depthUI(); }
+for (const b of document.querySelectorAll('[data-shape]')) b.onclick = () => { ST.shape = b.dataset.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); depthUI(); };
 for (const b of document.querySelectorAll('[data-budget]')) b.onclick = () => { ST.budget = +b.dataset.budget; document.querySelectorAll('[data-budget]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); };
 for (const b of document.querySelectorAll('[data-abs]')) b.onclick = () => { ST.abs = b.dataset.abs; document.querySelectorAll('[data-abs]').forEach(x => x.setAttribute('aria-pressed', x === b)); if (MINE.rig) { rigMine(true); build(); } };
 for (const b of document.querySelectorAll('[data-look]')) b.onclick = () => { ST.look = b.dataset.look; document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x === b)); build(); };
@@ -360,7 +409,7 @@ function rigMine(keepRig, rerig) { const R = MINE.rig = keepRig && MINE.rig && !
   let tex = px; if (ST.abs === 'polygon') { tex = new Uint8ClampedArray(px); for (let k = 0; k < P; k++) for (const x0 of [0, w]) { // Polygon: each part's paint spread outward over its half, so no face is cut by the alpha (the facets are the outline); the geometry still reads the real alpha
     const q = [], at = (x, y) => (((k * h + y) * W2) + x0 + x) * 4; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (tex[at(x, y) + 3]) q.push(x, y);
     for (let hd = 0; hd < q.length; hd += 2) { const x = q[hd], y = q[hd + 1], o = at(x, y); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue; const n = at(xx, yy); if (tex[n + 3]) continue; tex[n] = tex[o]; tex[n + 1] = tex[o + 1]; tex[n + 2] = tex[o + 2]; tex[n + 3] = 255; q.push(xx, yy); } } } }
-  MINE.backDU = B ? w / W2 : 0; MINE.rigPx = px; MINE.rigTex = tex; MINE.rigW = W2; MINE.rigS = R.parts.map((pt, k) => paperTrace(px, W2, [0, k * h, w, h])); TEX.rig = texOf({ px: tex, w: W2, h: h * P }, false, TEX.rig);
+  MINE.backDU = B ? w / W2 : 0; MINE.rigPx = px; MINE.rigTex = tex; MINE.rigW = W2; MINE.rigS = R.parts.map((pt, k) => paperTrace(px, W2, [0, k * h, w, h])); TEX.rig = texOf({ px: paintLive() ? depthView() : tex, w: W2, h: h * P }, false, TEX.rig);
   document.querySelectorAll('[data-back]').forEach(x => x.setAttribute('aria-pressed', x.dataset.back === MINE.backMode)); $('tViews').disabled = false;
   document.querySelectorAll('[data-side]').forEach(x => x.setAttribute('aria-pressed', x.dataset.side === (SD ? 'picture' : 'round'))); $('flipSide').hidden = $('otherSide').hidden = !SD;
   $('viewsHint').textContent = SD ? (SD.panels.length > 1 ? 'Both side views in: each side painted from its own view, depth from both. ' : `Side view in (facing ${SD.panels[0].facing}): depth from its outline, its paint on both sides. Other side adds the opposite view. `) + (MINE.backMode === 'picture' && MINE.backC ? 'Back from your back view.' : MINE.backMode === 'guess' ? 'Back guessed.' : 'Back mirrored.') : MINE.backMode === 'mirror' ? 'The back shows the front, mirrored and darker.' : MINE.backMode === 'guess' ? 'The back is guessed from the front: hair over the head, clothes without the details.' : MINE.backC ? `Your back view, fitted to the front (${Math.round((MINE.backFit || 0) * 100)}% matched; the rest is guessed).` : 'Choose a back view: the same figure, from behind.';
@@ -373,16 +422,17 @@ function makeMine(first) { if (!MINE.img) return; if (busy) { again = true; retu
 function cutNow(first) { const t0 = performance.now();
   const C = paperCutout(MINE.img, { max: ST.detail, tol: ST.tol, one: ST.one, keep: MINE.marks.filter(m => m[2]).map(m => [m[0], m[1]]), drop: MINE.marks.filter(m => !m[2]).map(m => [m[0], m[1]]), method: ST.method });
   MINE.S = paperTrace(C.px, C.w, [0, 0, C.w, C.h]); if (MINE.S) { const P = MINE.S.pts; let x0 = 1e9, x1 = -1e9, y1 = -1e9; for (let i = 0; i < P.length; i += 2) { x0 = Math.min(x0, P[i]); x1 = Math.max(x1, P[i]); y1 = Math.max(y1, P[i + 1]); } MINE.S.anchor = [(x0 + x1) / 2, y1]; } // it stands on its lowest painted pixel
-  MINE.w = C.w; MINE.px = C.px; MINE.h = C.h; MINE.area = 0; for (let i = 3; i < C.px.length; i += 4) if (C.px[i] >= 128) MINE.area++; rigMine(); MINE.ms = performance.now() - t0; MINE.method = C.method; TEX.mine = texOf(C, false, TEX.mine);
+  if (MINE.pend) { const r = MINE.pend; MINE.pend = null; if (r.depthMap) { const b = atob(r.depthMap); if (b.length === C.w * C.h) MINE.depthMap = Uint8Array.from(b, c => c.charCodeAt(0)); } if (r.depthFrom) ST.dsrc = r.depthFrom; if (r.layers) { ST.layersOn = true; MINE.layers = r.layers; } } // a saved Papercraft file: its depth
+  if (MINE.depthMap && MINE.depthMap.length !== C.w * C.h) MINE.depthMap = null; MINE.w = C.w; MINE.px = C.px; MINE.h = C.h; MINE.area = 0; for (let i = 3; i < C.px.length; i += 4) if (C.px[i] >= 128) MINE.area++; rigMine(); MINE.ms = performance.now() - t0; MINE.method = C.method; TEX.mine = texOf(C, false, TEX.mine);
   { const v = new Uint8ClampedArray(C.full); for (let i = 0; i < C.w * C.h; i++) { if (!C.px[i * 4 + 3]) { const l = 0.299 * v[i * 4] + 0.587 * v[i * 4 + 1] + 0.114 * v[i * 4 + 2], k = ((i % C.w) + ((i / C.w) | 0)) % 6 < 3 ? 0.22 : 0.3; v[i * 4] = v[i * 4 + 1] = v[i * 4 + 2] = l * k + 18; } v[i * 4 + 3] = 255; } /* the Cut view: removed parts dark, grey and lightly striped */
     TEX.cutview = texOf({ px: v, w: C.w, h: C.h }, false, TEX.cutview); MINE.fullS = paperTrace(new Uint8ClampedArray(C.w * C.h * 4).fill(255), C.w, [0, 0, C.w, C.h]); }
   let air = 0; for (let i = 3; i < C.px.length; i += 4) if (!C.px[i]) air++;
   if (!MINE.S) { toast('Everything was removed. Tap Undo, or tap Keep on what you want.'); groups = []; tris = 0; return; }
   if (first && (!air || C.method === 'photo')) setTimeout(() => toast(C.method === 'photo' ? 'Not quite right? Tap Cut, then tap what to keep or remove.' : 'No background found. Tap Cut, then Remove, and tap it.'), 400);
-  ST.mode = 'mine'; $('save').disabled = false; build(); }
+  ST.mode = 'mine'; $('save').disabled = false; build(); depthUI(); }
 $('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); MINE.name = (f.name || 'papercraft').replace(/\\.papercraft\\.json$|\\.[^.]+$/, '').replace(/[^\\w-]+/g, '-').slice(0, 40) || 'papercraft';
-  if (/json/.test(f.type) || /\\.json$/i.test(f.name)) { f.text().then(t => { try { const r = JSON.parse(t); if (!r.picture) throw 0; im.src = r.picture; if (r.shape) { ST.shape = r.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim)); } if (r.depth != null) $('thick').value = r.depth; } catch (_) { toast('That is not a Papercraft file.'); } }); e.target.value = ''; }
-  im.onload = () => { MINE.img = im; MINE.marks = []; MINE.joints = null; MINE.forceRig = false; MINE.backMode = null; MINE.backC = null; MINE.backImg = null; MINE.sideMode = null; MINE.sides = []; MINE.addSide = false; $('tCut').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
+  if (/json/.test(f.type) || /\\.json$/i.test(f.name)) { f.text().then(t => { try { const r = JSON.parse(t); if (!r.picture) throw 0; MINE.pend = r; im.src = r.picture; if (r.shape) { ST.shape = r.shape; document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim)); } if (r.depth != null) $('thick').value = r.depth; } catch (_) { toast('That is not a Papercraft file.'); } }); e.target.value = ''; }
+  im.onload = () => { if (!MINE.pend) { MINE.depthMap = null; MINE.layers = null; } MINE.img = im; MINE.marks = []; MINE.joints = null; MINE.forceRig = false; MINE.backMode = null; MINE.backC = null; MINE.backImg = null; MINE.sideMode = null; MINE.sides = []; MINE.addSide = false; $('tCut').disabled = false; setTool(null); cam.zoom = 0; cam.to = { yaw: 0.5, pitch: 0.22 }; makeMine(true); refreshHello(); window.MINE_READY = (window.MINE_READY || 0) + 1; };
   im.onerror = () => toast('That file could not be opened as a picture.'); if (!im.src) im.src = URL.createObjectURL(f); e.target.value = ''; };
 function refreshHello() { $('hello').hidden = !(ST.mode === 'start' && !MINE.img && !ST.tool); }
 // ---------- Save: a 3D model (.zip: .glb + .obj/.mtl/.png), the cut-out (.png, full size) or a Papercraft file (.json) ----------
@@ -462,12 +512,12 @@ for (const b of document.querySelectorAll('[data-save]')) b.onclick = async () =
   try { if (kind === 'model') { const m = meshNow(); await offer(m.name + '-papercraft.zip', await modelZip(m)); }
     else if (kind === 'png') { const p = await cutoutPng(); if (p) await offer((MINE.name || 'cutout') + '.png', p); else toast('Nothing to save: everything was removed.'); }
     else { const png = await pngOf(MINE.px, MINE.w, MINE.h); let bin = ''; for (let i = 0; i < png.length; i += 32768) bin += String.fromCharCode.apply(null, png.subarray(i, i + 32768));
-      const S = MINE.S, rec = { papercraft: 1, name: MINE.name || 'papercraft', prime: PAPER.PRIME, picture: 'data:image/png;base64,' + btoa(bin), size: [MINE.w, MINE.h], sprite: { rect: S.rect, anchor: S.anchor, pts: S.pts, rings: S.rings, tris: S.tris, ein: S.ein }, shape: ST.shape, depth: depth() };
+      const S = MINE.S, rec = { papercraft: 1, name: MINE.name || 'papercraft', prime: PAPER.PRIME, picture: 'data:image/png;base64,' + btoa(bin), size: [MINE.w, MINE.h], sprite: { rect: S.rect, anchor: S.anchor, pts: S.pts, rings: S.rings, tris: S.tris, ein: S.ein }, shape: ST.shape, depth: depth(), depthFrom: ST.dsrc.startsWith('p:') ? 'paint' : ST.dsrc, depthMap: MINE.depthMap ? btoa(Array.from(MINE.depthMap, c => String.fromCharCode(c)).join('')) : null, layers: ST.layersOn ? Object.assign({}, MINE.layers) : null };
       await offer(rec.name + '.papercraft.json', JSON.stringify(rec)); } }
   catch (e) { toast('Could not save: ' + (e && e.message || e)); } };
 // ---------- start ----------
 if (Q.get('t')) $('thick').value = Q.get('t'); $('wire').checked = Q.get('wire') === '1'; $('spin').checked = Q.get('spin') !== '0';
-document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x.dataset.look === ST.look)); document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim)); document.querySelectorAll('[data-budget]').forEach(x => x.setAttribute('aria-pressed', +x.dataset.budget === ST.budget)); document.querySelectorAll('[data-abs]').forEach(x => x.setAttribute('aria-pressed', x.dataset.abs === ST.abs)); $('geoSeg').hidden = ST.shape !== 'facets';
+providerButtons(); depthUI(); document.querySelectorAll('[data-look]').forEach(x => x.setAttribute('aria-pressed', x.dataset.look === ST.look)); document.querySelectorAll('[data-shape]').forEach(x => x.setAttribute('aria-pressed', x.dataset.shape === ST.shape)); document.querySelectorAll('[data-anim]').forEach(x => x.setAttribute('aria-pressed', x.dataset.anim === ST.anim)); document.querySelectorAll('[data-budget]').forEach(x => x.setAttribute('aria-pressed', +x.dataset.budget === ST.budget)); document.querySelectorAll('[data-abs]').forEach(x => x.setAttribute('aria-pressed', x.dataset.abs === ST.abs)); $('geoSeg').hidden = ST.shape !== 'facets';
 const retheme = () => { if (loaded === names.length) build(); }; matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme); new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 $('save').disabled = false;
 for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); ATLAS_PX[at] = g.getImageData(0, 0, im.width, im.height).data; } /* pixels, for Round */ if (++loaded === names.length) { build(); refreshHello(); requestAnimationFrame(frame); window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }
