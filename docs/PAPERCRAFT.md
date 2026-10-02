@@ -20,6 +20,7 @@ The idea in one line: **the tile map is the blueprint, one painted sheet is the 
 - `paperBuild()` -> `Float32Array` mesh. 7 floats per vertex: `x y z` (world px, z up), `u v` (sheet), `shade`, `glow`.
 - `paperGroundStep(ms)` paints the street texture in slices so loading never stalls.
 - `paperCottage(V)` an example of a hand-folded model that appends triangles to the mesh.
+- `paperCutout(img, o)` any picture -> a clean cut-out (shrunk, background keyed out, tap-to-erase seeds); `paperTrace(px, W, rect, o)` the tracer in the browser; `paperFlood` the flood fill they share.
 - `paperSprite(V, S, A, o)` folds one traced sprite into a standing card and appends it to `V` (see below).
 - `PAPER_GLSL.vert / .frag` the shaders; the fragment shader is the paper look.
 
@@ -67,7 +68,23 @@ Goal: any sprite frame (hero, townsfolk, animals, props, the stalker) becomes a 
 
 **Step 3, the viewer** `papercraft/sprite-viewer.html` (rebuild: `python3 tools/make_sprite_viewer.py`). The module verbatim, the JSON verbatim, the atlases embedded; same fragment shader as the game. "The cast" stands the townsfolk, Sudashorn, Koto, the animals and a few props on a plaza (turns and mirrors nudged by `paperPrime`), the tall one at the back; "one sprite" shows any frame. Thickness slider, wireframe, spin, PS1 look. URL options for screenshots: `?s=farm/f_elder&mode=one&t=1.5&wire=1&ps1=0&yaw=0.6&pitch=0.35&spin=0`. `node tools/shoot_sprite_viewer.js` takes the screenshots in `papercraft/shots/viewer-*.png` and goes RED on any page error.
 
-**Next:** fold the cast into the town demo beside the town mesh (and into the game in place of `asCard` for standing poses), the layer stack (cloak, arm, head) for parallax, hinge folds for cloaks and banners, and the Heads system (headless body + head docking at a neck hinge). Walk cycles can swap frames on the same card: each frame is its own outline, so rebuild just that card's slice of the buffer.
+**The end goal: any image -> a polygon, on your phone.**
+
+**Step 4, the tracer in the browser** `paperTrace(px, W, rect, o)`: the same cut as `tools/sprite_poly.py`, step for step, returning the same record `paperSprite` folds. Check: `node tools/check_paper_trace.js` traces all 424 sprites with both and demands identical polygons. GREEN, 1.3 s for the lot.
+
+**Step 5, any picture** `paperCutout(img, o)` then `paperTrace` then `paperSprite`, all on the device:
+- Shrinks the picture so its long side is `o.max` px (96 / 160 / 256; an area average done in code, not by the browser, so every device gets the same pixels).
+- A picture with its own transparency keeps it. Any other picture has its background keyed out: a flood fill from the border through pixels within `o.tol` of the border's median colour.
+- Tap to erase (`o.seeds`): each tap floods from that spot while the colour changes smoothly (each step within 0.4 tol, all within 3 tol of the tapped colour), so a shaded backdrop goes in a tap or two.
+- `o.one` keeps only the biggest piece (a pair of characters -> the bigger one; stray specks dropped).
+- In the viewer: **+ picture** (camera or gallery on a phone), a detail picker, a background slider, "one piece", and the cut-out preview in the corner: tap it to open it big, tap the background to erase, "undo erase". Pinch to zoom.
+- Speed: about 60 ms to cut and trace a 1112 x 960 picture at detail 160 (desktop Chromium).
+- Check: `node tools/shoot_upload.js` uploads a sprite with alpha, a dagger on black, a pair on white and a character on a vignetted backdrop at phone size, taps to erase, and goes RED on any page error or picture that fails to fold. GREEN. Shots: `papercraft/shots/phone-*.png`.
+- Limits today: busy photographic backgrounds need taps (or, later, a cut-out model); holes in the subject are left to the alpha cut, so a thick card's rim does not run round them.
+
+**Next:** save what you made (the polygon + its cut-out as one file, and a .glb so it opens in other 3D apps); make the viewer an installable phone app (it is already one self-contained page); then the cast in the town demo, layer stacks, hinges and the Heads system.
+
+**Later:** fold the cast into the town demo beside the town mesh (and into the game in place of `asCard` for standing poses), the layer stack (cloak, arm, head) for parallax, hinge folds for cloaks and banners, and the Heads system (headless body + head docking at a neck hinge). Walk cycles can swap frames on the same card: each frame is its own outline, so rebuild just that card's slice of the buffer.
 
 ## Gotchas we hit
 - `//` comments inserted mid-line swallow the rest of the line in a minified or joined file; use `/* */`.

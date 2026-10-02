@@ -465,6 +465,48 @@
             return { rect: [X0, Y0, w, h], anchor: o.anchor || [w / 2, h], pts, rings, tris, ein };
         }
 
+        // ---- any picture -> a cut-out ready for paperTrace. Shrunk so its long side is at most o.max px (an area average done here, not by the
+        // browser, so the same pixels give the same cut on every device). A picture with its own transparency keeps it; any other picture has its
+        // background keyed out: a flood fill from the border through every pixel within o.tol (0..441, RGB distance) of the border's median colour.
+        // o.seeds [[u, v], ...] (0..1 across the picture): extra spots to key out (tap to erase). From each one the fill spreads while the colour changes
+        // smoothly (each step within 0.4 tol of the last pixel) and stays within 3 tol of the tapped colour, so a shaded or vignetted backdrop goes in one tap.
+        // o.one keeps only the biggest piece. Alpha ends up 0 or 255. Returns { cv (a canvas to use as the texture), px (its RGBA), w, h, keyed }.
+        function paperFlood(px, w, h, seeds, ok) { // 4-connected flood fill from the seed pixels through every pixel j that ok(j, from) accepts
+            const seen = new Uint8Array(w * h), q = []; for (const i of seeds) if (!seen[i]) { seen[i] = 1; q.push(i); }
+            for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && !seen[j] && ok(j, i)) { seen[j] = 1; q.push(j); } }
+            return seen;
+        }
+        function paperCutout(src, o = {}) {
+            const MAX = o.max || 160, tol = o.tol == null ? 48 : o.tol, W0 = src.naturalWidth || src.width, H0 = src.naturalHeight || src.height, k0 = Math.min(1, 4096 / Math.max(W0, H0));
+            const sw = Math.max(1, Math.round(W0 * k0)), sh = Math.max(1, Math.round(H0 * k0)), big = document.createElement('canvas'); big.width = sw; big.height = sh;
+            const bg = big.getContext('2d'); bg.drawImage(src, 0, 0, sw, sh); const S = bg.getImageData(0, 0, sw, sh).data;
+            const k = Math.min(1, MAX / Math.max(sw, sh)), w = Math.max(1, Math.round(sw * k)), h = Math.max(1, Math.round(sh * k)), px = new Uint8ClampedArray(w * h * 4);
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { // area average, colour weighted by alpha
+                const xa = Math.floor(x * sw / w), xb = Math.max(xa + 1, Math.floor((x + 1) * sw / w)), ya = Math.floor(y * sh / h), yb = Math.max(ya + 1, Math.floor((y + 1) * sh / h)); let A = 0, R = 0, G = 0, B = 0, n = 0;
+                for (let yy = ya; yy < yb; yy++) for (let xx = xa; xx < xb; xx++) { const i = (yy * sw + xx) * 4, al = S[i + 3]; A += al; R += S[i] * al; G += S[i + 1] * al; B += S[i + 2] * al; n++; }
+                const o4 = (y * w + x) * 4; if (A) { px[o4] = R / A; px[o4 + 1] = G / A; px[o4 + 2] = B / A; } px[o4 + 3] = A / n; }
+            let air = 0, paper = 0; for (let i = 3; i < px.length; i += 4) px[i] >= 128 ? paper++ : air++;
+            const keyed = !(air && paper);
+            if (keyed) { // no transparency of its own: key the background out from the border
+                const border = []; for (let x = 0; x < w; x++) border.push(x, (h - 1) * w + x); for (let y = 1; y < h - 1; y++) border.push(y * w, y * w + w - 1);
+                const med = c => { const v = border.map(i => px[i * 4 + c]).sort((p, q) => p - q); return v[v.length >> 1]; }, key = [med(0), med(1), med(2)];
+                const near = i => { const dr = px[i * 4] - key[0], dg = px[i * 4 + 1] - key[1], db = px[i * 4 + 2] - key[2]; return dr * dr + dg * dg + db * db <= tol * tol; };
+                const seen = paperFlood(px, w, h, border.filter(near), near); for (let i = 0; i < w * h; i++) px[i * 4 + 3] = seen[i] ? 0 : 255;
+            } else for (let i = 3; i < px.length; i += 4) px[i] = px[i] >= 128 ? 255 : 0;
+            for (const [u, v] of o.seeds || []) { const i0 = Math.min(h - 1, Math.max(0, Math.floor(v * h))) * w + Math.min(w - 1, Math.max(0, Math.floor(u * w))); if (!px[i0 * 4 + 3]) continue; // tap to erase
+                const d2 = (i, j) => (px[i * 4] - px[j * 4]) ** 2 + (px[i * 4 + 1] - px[j * 4 + 1]) ** 2 + (px[i * 4 + 2] - px[j * 4 + 2]) ** 2, step = (0.4 * tol) ** 2, far = (3 * tol) ** 2;
+                const near = (j, i) => px[j * 4 + 3] > 0 && d2(j, i) <= step && d2(j, i0) <= far;
+                const seen = paperFlood(px, w, h, [i0], near); for (let i = 0; i < w * h; i++) if (seen[i]) px[i * 4 + 3] = 0; }
+            if (o.one) { // only the biggest piece (8-connected), so stray specks of a photo do not come along
+                const lab = new Int32Array(w * h), size = [0]; let best = 0;
+                for (let s = 0; s < w * h; s++) { if (!px[s * 4 + 3] || lab[s]) continue; const id = size.length, q = [s]; lab[s] = id;
+                    for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy, j = yy * w + xx; if (xx >= 0 && yy >= 0 && xx < w && yy < h && px[j * 4 + 3] && !lab[j]) { lab[j] = id; q.push(j); } } }
+                    size.push(q.length); if (q.length > size[best]) best = id; }
+                for (let i = 0; i < w * h; i++) if (lab[i] !== best) px[i * 4 + 3] = 0; }
+            const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').putImageData(new ImageData(px, w, h), 0, 0);
+            return { cv, px, w, h, keyed };
+        }
+
         // ---- sprites folded into paper: an outline traced by tools/sprite_poly.py (assets/papercraft/sprite-polys.json) becomes a standing
         // cut-out with the sprite painted on the front, a darker mirror of it on the back and, when it has thickness, a card edge between them.
         // S: one sprite record { rect, anchor, pts, rings, tris, ein }. A: its atlas size [w, h] (the UVs are for that texture, not the paper sheet).

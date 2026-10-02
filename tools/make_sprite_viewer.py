@@ -16,11 +16,11 @@ html = '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name=
 <title>Paper Sprites</title><style>html,body{margin:0;height:100%;background:#14161c;color:#e8e6df;font:12px system-ui,sans-serif;overflow:hidden;touch-action:none}
 canvas{display:block;width:100%;height:100%}#ui{position:fixed;left:8px;right:8px;top:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:rgba(12,14,22,.82);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:8px 10px}
 #ui label{display:flex;gap:6px;align-items:center}select,button{background:#222733;color:#fff;border:1px solid #555;border-radius:5px;padding:4px 6px;max-width:46vw}
-#msg{position:fixed;left:8px;bottom:8px;opacity:.7}</style></head><body><canvas id="c"></canvas>
-<div id="ui"><b>PAPER SPRITES</b><select id="mode"><option value="cast">the cast</option><option value="one">one sprite</option></select><select id="spr"></select>
+#msg{position:fixed;left:8px;bottom:8px;right:120px;opacity:.7}.pick{background:#c9a24a;color:#14161c;font-weight:700;border-radius:5px;padding:5px 9px;cursor:pointer}#yours{display:none;gap:10px;flex-wrap:wrap;align-items:center;width:100%}#cut{position:fixed;right:8px;bottom:8px;width:104px;height:104px;cursor:crosshair;transition:width .15s,height .15s;}#cut.big{width:min(86vw,420px);height:min(60vh,420px)}#cutx{position:fixed;right:8px;bottom:calc(min(60vh,420px) + 16px);display:none}#cut{object-fit:contain;image-rendering:pixelated;border:1px solid rgba(255,255,255,.2);border-radius:6px;display:none;background:repeating-conic-gradient(#3a3f4c 0 25%,#2a2e38 0 50%) 0 0/12px 12px}@media (max-width:600px){#ui{gap:6px;padding:6px 8px;font-size:11px}#ui b{display:none}#msg{display:none}}</style></head><body><canvas id="c"></canvas>
+<div id="ui"><b>PAPER SPRITES</b><label class="pick">+ picture<input id="file" type="file" accept="image/*" hidden></label><select id="mode"><option value="cast">the cast</option><option value="one">one sprite</option><option value="mine" disabled>your picture</option></select><select id="spr"></select>
 <label>thick <input id="thick" type="range" min="0" max="4" step="0.25" value="1.25"></label><label><input id="wire" type="checkbox"> wire</label>
-<label><input id="spin" type="checkbox" checked> spin</label><label><input id="grade" type="checkbox" checked> PS1 look</label><span id="stats"></span></div>
-<div id="msg">drag: orbit &middot; wheel: zoom &middot; each sprite is traced to an outline, folded into a card, painted front, darker back</div>
+<label><input id="spin" type="checkbox" checked> spin</label><label><input id="grade" type="checkbox" checked> PS1 look</label><span id="stats"></span><div id="yours"><label>detail <select id="detail"><option>96</option><option selected>160</option><option>256</option></select></label><label id="tolL">background <input id="tol" type="range" min="0" max="160" step="4" value="48"></label><label><input id="one" type="checkbox" checked> one piece</label></div></div><canvas id="cut" title="tap the background to erase it"></canvas><button id="cutx">undo erase</button>
+<div id="msg">drag: orbit &middot; wheel / pinch: zoom &middot; + picture: any image becomes a paper polygon &middot; each sprite is traced to an outline, folded into a card, painted front, darker back</div>
 ''' + atlases + '''<script>
 // ---------- harness: the handful of globals the paper module expects from the game (none of the town is built here) ----------
 const TILE_BUMPER = 15, TILE_SIZE = 16, MAP_COLS = 1, MAP_ROWS = 1, MAP_DATA = [[0]], PAPER_STALLS = new Set(), PAPER_FOUNT = new Set();
@@ -43,7 +43,7 @@ const mk = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); 
 const link = (vs, fs) => { const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.bindAttribLocation(p, 0, 'aP'); gl.bindAttribLocation(p, 1, 'aT'); gl.bindAttribLocation(p, 2, 'aS'); gl.linkProgram(p); return p; };
 const prog = link(vsrc, PAPER_GLSL.frag), wprog = link('attribute vec3 aP;uniform mat4 uM;void main(){gl_Position=uM*vec4(aP,1.);}', 'precision mediump float;void main(){gl_FragColor=vec4(1.,.82,.25,1.);}');
 const texOf = (src, rep) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, rep ? gl.REPEAT : gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, rep ? gl.REPEAT : gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); return t; };
+  if (src.px) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, src.w, src.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(src.px.buffer)); else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); return t; };
 const TEX = {}, ATLAS_IMG = {}; let loaded = 0; const names = Object.keys(SPRITE_POLYS.atlases);
 const ground = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#5c5246'; g.fillRect(0, 0, 64, 64); // flagstones, jittered by the prime
   for (let y = 0, r = 0; y < 64; y += 16, r++) for (let x = -(r % 2) * 8; x < 64; x += 16) { const k = paperPrime(x * 7 + y), v = 150 + k * 30 | 0; g.fillStyle = `rgb(${v},${v - 8},${v - 22})`; g.fillRect(x + 1, y + 1, 14, 14); }
@@ -52,18 +52,20 @@ let groups = [], wire = null, wireN = 0, gbuf = gl.createBuffer(), focus = [0, 0
 function build() { // fold every piece on stage; one buffer per atlas, so each draws with its own texture
   const mode = $('mode').value, th = +$('thick').value, per = {}, put = (key, h, x, y, ang, flip) => { const S = SPRITE_POLYS.sprites[key]; if (!S) return; const at = key.split('/')[0];
     paperSprite(per[at] || (per[at] = []), S, SPRITE_POLYS.atlases[at].size, { x, y, ang, flip, s: h / S.rect[3], thick: th * h / 24 }); };
-  if (mode === 'one') { const key = $('spr').value, S = SPRITE_POLYS.sprites[key]; put(key, 24 * S.rect[3] / 85, 0, 0, 0, false); const h = 24 * S.rect[3] / 85; focus = [0, 0, h / 2]; radius = Math.max(h, 24 * S.rect[2] / 85) * 1.9; }
+  if (mode === 'mine' && MINE.S) { const S = MINE.S, hh = Math.min(40, 60 * S.rect[3] / S.rect[2]), s = hh / S.rect[3]; paperSprite(per.mine = [], S, [MINE.w, MINE.h], { s, thick: th * hh / 24 }); focus = [0, 0, hh / 2]; radius = Math.max(hh, S.rect[2] * s) * 1.7; }
+  else if (mode === 'one') { const key = $('spr').value, S = SPRITE_POLYS.sprites[key]; put(key, 24 * S.rect[3] / 85, 0, 0, 0, false); const h = 24 * S.rect[3] / 85; focus = [0, 0, h / 2]; radius = Math.max(h, 24 * S.rect[2] / 85) * 1.9; }
   else { // two arcs on the plaza, each piece turned to the lens' default spot and nudged by the prime, so it never looks set out with a ruler
     const n0 = 14, look = [150, 260];
     CAST.forEach(([key, h], i) => { const row = i < n0 ? 0 : 1, k = row ? i - n0 : i, n = row ? CAST.length - n0 : n0, x = (k - (n - 1) / 2) * (row ? 30 : 17) + (paperPrime(i) - 0.5) * 5, y = row ? -40 + Math.abs(k - (n - 1) / 2) * 5 : 10 + Math.abs(k - (n - 1) / 2) * 3;
       put(key, h, x, y, Math.atan2(-(look[0] - x), look[1] - y) + (paperPrime(i + 50) - 0.5) * 0.6, paperPrime(i + 99) < 0.3); });
     put(STALKER[0], STALKER[1], -30, -95, 0.3, false); focus = [-20, -25, 12]; radius = 155; }
+  $('spr').style.display = mode === 'mine' ? 'none' : '';
   const tris = Object.values(per).reduce((n, v) => n + v.length / 21, 0);
   groups = Object.entries(per).map(([at, v]) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(v), gl.STATIC_DRAW); return { at, b, n: v.length / 7 }; });
   const L = []; for (const v of Object.values(per)) for (let t = 0; t < v.length / 7; t += 3) for (let i = 0; i < 3; i++) { const a = (t + i) * 7, b = (t + (i + 1) % 3) * 7; L.push(v[a], v[a + 1], v[a + 2], v[b], v[b + 1], v[b + 2]); }
   wire = wire || gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(L), gl.STATIC_DRAW); wireN = L.length / 3;
   const G = 600, u1 = G / 24; gl.bindBuffer(gl.ARRAY_BUFFER, gbuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-G, G, 0, 0, u1, .85, 0, G, G, 0, u1, u1, .85, 0, G, -G, 0, u1, 0, .85, 0, -G, G, 0, 0, u1, .85, 0, G, -G, 0, u1, 0, .85, 0, -G, -G, 0, 0, 0, .85, 0]), gl.STATIC_DRAW);
-  $('stats').textContent = tris + ' triangles, prime ' + PAPER.PRIME;
+  $('stats').textContent = (mode === 'mine' && MINE.S ? MINE.w + ' x ' + MINE.h + ' px, ' + MINE.S.pts.length / 2 + ' corners, ' + (MINE.ms | 0) + ' ms, ' : '') + tris + ' triangles, prime ' + PAPER.PRIME;
 }
 const cam = { yaw: +(Q.get('yaw') || 0.5), pitch: +(Q.get('pitch') || 0.42), zoom: +(Q.get('dist') || 0) };
 function matrix(w, h) { // perspective * lookAt(focus), z up
@@ -94,13 +96,33 @@ function frame(now) {
   if ($('wire').checked && wire) { gl.useProgram(wprog); gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.uniformMatrix4fv(gl.getUniformLocation(wprog, 'uM'), false, M); gl.bindBuffer(gl.ARRAY_BUFFER, wire); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 12, 0); gl.drawArrays(gl.LINES, 0, wireN); }
   requestAnimationFrame(frame);
 }
-let drag = null; cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointerup', () => drag = null);
-cv.addEventListener('pointermove', e => { if (!drag) return; cam.yaw -= (e.clientX - drag[0]) * 0.006; cam.pitch = Math.max(0.02, Math.min(1.45, cam.pitch + (e.clientY - drag[1]) * 0.005)); drag = [e.clientX, e.clientY]; });
+let drag = null; cv.addEventListener('pointerdown', e => { if (!e.isPrimary) { drag = null; return; } drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointerup', () => drag = null);
+cv.addEventListener('pointermove', e => { if (!drag || !e.isPrimary) return; cam.yaw -= (e.clientX - drag[0]) * 0.006; cam.pitch = Math.max(0.02, Math.min(1.45, cam.pitch + (e.clientY - drag[1]) * 0.005)); drag = [e.clientX, e.clientY]; });
 cv.addEventListener('wheel', e => { e.preventDefault(); cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * (1 + e.deltaY * 0.001))); }, { passive: false });
 { const sel = $('spr'); for (const at of names) { const og = document.createElement('optgroup'); og.label = at; for (const k of Object.keys(SPRITE_POLYS.sprites)) if (k.startsWith(at + '/')) { const o = document.createElement('option'); o.value = o.textContent = k; og.appendChild(o); } sel.appendChild(og); }
   sel.value = Q.get('s') || 'farm/f_elder'; $('mode').value = Q.get('mode') || (Q.get('s') ? 'one' : 'cast'); if (Q.get('t')) $('thick').value = Q.get('t');
   $('wire').checked = Q.get('wire') === '1'; $('grade').checked = Q.get('ps1') !== '0'; $('spin').checked = Q.get('spin') !== '0';
   const re = () => { cam.zoom = +(Q.get('dist') || 0); build(); }; sel.onchange = () => { $('mode').value = 'one'; re(); }; $('mode').onchange = re; $('thick').oninput = build; }
+// ---------- your picture: cut out (paperCutout), traced (paperTrace), folded (paperSprite), all on this device ----------
+const MINE = { img: null, S: null, w: 0, h: 0, seeds: [] };
+function makeMine() { if (!MINE.img) return; const t0 = performance.now();
+  const C = paperCutout(MINE.img, { max: +$('detail').value, tol: +$('tol').value, one: $('one').checked, seeds: MINE.seeds });
+  MINE.S = paperTrace(C.px, C.w, [0, 0, C.w, C.h]); MINE.w = C.w; MINE.h = C.h; MINE.ms = performance.now() - t0; $('tolL').style.display = C.keyed ? '' : 'none';
+  const cut = $('cut'); cut.width = C.w; cut.height = C.h; cut.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(C.px), C.w, C.h), 0, 0); cut.style.display = 'block'; $('cutx').style.display = MINE.seeds.length && cut.classList.contains('big') ? 'block' : 'none';
+  if (TEX.mine) gl.deleteTexture(TEX.mine); TEX.mine = texOf(C);
+  if (!MINE.S) { $('stats').textContent = 'nothing left to cut: lower the background slider'; groups = []; return; }
+  $('mode').value = 'mine'; cam.zoom = 0; build(); }
+$('cut').onclick = e => { const c = $('cut'); if (!c.classList.contains('big')) { c.classList.add('big'); $('cutx').style.display = MINE.seeds.length ? 'block' : 'none'; return; } // first tap: open big; then each tap erases from that spot
+  const r = c.getBoundingClientRect(), k = Math.min(r.width / c.width, r.height / c.height), ox = (r.width - c.width * k) / 2, oy = (r.height - c.height * k) / 2, u = (e.clientX - r.left - ox) / (c.width * k), v = (e.clientY - r.top - oy) / (c.height * k);
+  if (u < 0 || v < 0 || u > 1 || v > 1) { c.classList.remove('big'); $('cutx').style.display = 'none'; return; } MINE.seeds.push([u, v]); makeMine(); };
+$('cutx').onclick = () => { MINE.seeds.pop(); makeMine(); };
+cv.addEventListener('pointerdown', () => { $('cut').classList.remove('big'); $('cutx').style.display = 'none'; });
+$('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); im.onload = () => { MINE.img = im; MINE.seeds = []; $('cut').classList.remove('big'); $('mode').querySelector('[value=mine]').disabled = false; $('yours').style.display = 'flex'; makeMine(); window.MINE_READY = (window.MINE_READY || 0) + 1; }; im.src = URL.createObjectURL(f); };
+let redo = 0; for (const id of ['detail', 'tol', 'one']) $(id).addEventListener(id === 'tol' ? 'input' : 'change', () => { clearTimeout(redo); redo = setTimeout(makeMine, 120); });
+{ const pts = new Map(); let pd = 0; // two fingers: pinch to zoom
+  cv.addEventListener('pointerdown', e => pts.set(e.pointerId, [e.clientX, e.clientY])); for (const ev of ['pointerup', 'pointercancel']) cv.addEventListener(ev, e => { pts.delete(e.pointerId); pd = 0; });
+  cv.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size !== 2) return; drag = null;
+    const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pd) cam.zoom = Math.max(10, Math.min(3000, (cam.zoom || radius * 1.6) * pd / d)); pd = d; }); }
 TEX.ground = texOf(ground, true);
 for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = texOf(im); if (++loaded === names.length) { build(); requestAnimationFrame(frame); document.title = 'Paper Sprites'; window.READY = true; } }; im.src = $('atlas-' + at).textContent.trim(); }
 </script></body></html>'''
