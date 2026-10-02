@@ -18,4 +18,4 @@ A mobile 2.5D PS1-style game: one HTML file you install like an app. This folder
 **Seed:** the town is generated from the master prime 113 (`24-papercraft.js`, `PAPER.PRIME`).
 
 ## Papercraft
-The paper-model 3D engine is documented in `docs/PAPERCRAFT.md` and runs on its own in `papercraft/paper-demo.html` (rebuild it with `python3 tools/make_papercraft_demo.py`).
+The paper-model 3D engine is documented in `docs/PAPERCRAFT.md` and runs on its own in `papercraft/paper-demo.html` (rebuild it with `python3 tools/make_papercraft_demo.py`). Sprites folded into paper cards: `papercraft/sprite-viewer.html` (`python3 tools/sprite_poly.py`, then `python3 tools/make_sprite_viewer.py`).

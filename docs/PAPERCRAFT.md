@@ -9,6 +9,8 @@ The idea in one line: **the tile map is the blueprint, one painted sheet is the 
 | Blueprint (the town map and its legend) | `src/js/game/25-the-town-widened.js` |
 | The GL hook that uploads and draws the mesh (`initPaper`, `drawPaper`) | `src/js/game/42-webgl-post-layer.js` |
 | Standalone demo (runs the real module outside the game) | `papercraft/paper-demo.html`, made by `tools/make_papercraft_demo.py` |
+| Sprite outlines (traced) | `tools/sprite_poly.py` -> `assets/papercraft/sprite-polys.json` |
+| Sprite viewer (the real module folding the traced sprites) | `papercraft/sprite-viewer.html`, made by `tools/make_sprite_viewer.py`; screenshots by `tools/shoot_sprite_viewer.js` |
 | Cottage texture strip | `tools/make_cottage_tex.py` -> `assets/atlases/cottage-tex.webp` |
 
 ## Public surface (24-papercraft.js)
@@ -18,6 +20,7 @@ The idea in one line: **the tile map is the blueprint, one painted sheet is the 
 - `paperBuild()` -> `Float32Array` mesh. 7 floats per vertex: `x y z` (world px, z up), `u v` (sheet), `shade`, `glow`.
 - `paperGroundStep(ms)` paints the street texture in slices so loading never stalls.
 - `paperCottage(V)` an example of a hand-folded model that appends triangles to the mesh.
+- `paperSprite(V, S, A, o)` folds one traced sprite into a standing card and appends it to `V` (see below).
 - `PAPER_GLSL.vert / .frag` the shaders; the fragment shader is the paper look.
 
 ## The algorithm (paperBuild)
@@ -54,6 +57,17 @@ Goal: any sprite frame (hero, townsfolk, animals, props, the stalker) becomes a 
 - JSON per sprite: `rect` [x,y,w,h] on its atlas, `anchor` [ax,ay] where it stands, `pts` flat integer sprite px (y down), `rings` point count per outline, `tris` flat index triples (counter-clockwise as the picture is seen), `ein` the nearest painted pixel to each point (the edge ribbon samples it).
 - Checks printed on every run: cover (share of painted pixels inside the cut, must be 1.0), air (cut area / painted area), and the `seal`, a hash salted with the prime 113. Same art in, same seal out.
 - First run: 424 sprites, ~21.5k vertices, cover 1.0000, air 1.14 on average, re-run byte-identical.
+
+**Step 2, the fold** `paperSprite(V, S, A, o)` in `24-papercraft.js`.
+- `S` one sprite record from the JSON, `A` its atlas size (UVs are for the sprite's own atlas texture, not the paper sheet, so it draws with that texture bound).
+- `o`: `x, y` where it stands (world px), `ang` the way the front faces (0 = south, +y), `s` world units per sprite px (a 24-tall villager from an 85 px frame: `s = 24 / 85`), `thick` card thickness in world units (0 = paper-thin), `flip`, `shade` [front, back, edge] (default 1, 0.62, 0.74), `glow`.
+- Front: the sprite as painted. Back: the same paint seen through (so mirrored) and darker. Edge (only when `thick > 0`): one strip per outline segment, flat-coloured from that point's nearest painted pixel, so the card's rim takes the sprite's own outline colour.
+- Winding is decided per triangle against its outward normal (in this left-handed world a front face has (B-A)x(C-A) pointing *into* it), so flips and turns can never turn a card inside out.
+- Check: `node tools/check_paper_sprites.js` folds all 424 sprites twice (plain; mirrored and turned) and demands closed, consistently wound shells. GREEN.
+
+**Step 3, the viewer** `papercraft/sprite-viewer.html` (rebuild: `python3 tools/make_sprite_viewer.py`). The module verbatim, the JSON verbatim, the atlases embedded; same fragment shader as the game. "The cast" stands the townsfolk, Sudashorn, Koto, the animals and a few props on a plaza (turns and mirrors nudged by `paperPrime`), the tall one at the back; "one sprite" shows any frame. Thickness slider, wireframe, spin, PS1 look. URL options for screenshots: `?s=farm/f_elder&mode=one&t=1.5&wire=1&ps1=0&yaw=0.6&pitch=0.35&spin=0`. `node tools/shoot_sprite_viewer.js` takes the screenshots in `papercraft/shots/viewer-*.png` and goes RED on any page error.
+
+**Next:** fold the cast into the town demo beside the town mesh (and into the game in place of `asCard` for standing poses), the layer stack (cloak, arm, head) for parallax, hinge folds for cloaks and banners, and the Heads system (headless body + head docking at a neck hinge). Walk cycles can swap frames on the same card: each frame is its own outline, so rebuild just that card's slice of the buffer.
 
 ## Gotchas we hit
 - `//` comments inserted mid-line swallow the rest of the line in a minified or joined file; use `/* */`.
