@@ -9,3 +9,7 @@
 - 2.83 Character voices, night patrol, Sudashorn keeps the farm while you patrol.
 - 2.82 Wide town and market square with fountain; steady camera; townsfolk schedules; hooded neighbours.
 - 2.81 Brennan's Theme folded into real 3D (papercraft).
+
+## 2.91
+- Title card: removed "2027"; tiny "© Yules" lower right.
+- B button: guarded (cannot throw to the error screen); tested with every tool (axe, torch, lens, staff, sword, rope, none).
