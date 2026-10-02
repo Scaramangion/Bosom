@@ -203,9 +203,9 @@ function matrix(w, h) { // perspective * lookAt(focus), z up
   const M = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += P[k * 4 + j] * V[i * 4 + k]; M[i * 4 + j] = s; }
   for (let i = 0; i < 4; i++) { M[i * 4] *= view.k; M[i * 4 + 1] = view.k * M[i * 4 + 1] + view.s * M[i * 4 + 3]; } return M; } // lifted (and shrunk) into the space an open panel leaves free
 const view = { s: 0, k: 1 }; // the picture's centre, lifted into the free space above an open panel (s, in clip units) and shrunk to fit it (k)
-function freeSpace() { const rc = cv.getBoundingClientRect(), bar = $('tabs').getBoundingClientRect(), pn = ST.tool && $(PANELS[ST.tool]), top = rc.top + 84, b0 = bar.top - 8, sh = [$('sheet'), $('saveSheet')].find(x => x && !x.hidden);
+function freeSpace() { const rc = cv.getBoundingClientRect(), bar = $('tabs').getBoundingClientRect(), pn = ST.tool && $(PANELS[ST.tool]), top = rc.top + 84, b0 = bar.height ? bar.top - 8 : rc.bottom, sh = [$('sheet'), $('saveSheet')].find(x => x && !x.hidden);
   const b1 = sh ? sh.getBoundingClientRect().top - 8 : pn && !pn.hidden ? pn.getBoundingClientRect().top - 8 : b0; return { rc, top, b0, b1: Math.max(top + 120, Math.min(b0, b1)) }; } // between the title bar and whatever covers the bottom
-function viewTarget() { const { rc, top, b0, b1 } = freeSpace(); return [1 - ((top + b1) / 2 - rc.top) * 2 / rc.height, Math.min(1, (b1 - top) / (b0 - top))]; } // the figure's centre at the free space's centre, shrunk with it
+function viewTarget() { const { rc, top, b0, b1 } = freeSpace(); return [1 - ((top + b1) / 2 - rc.top) * 2 / rc.height, Math.max(0.3, Math.min(1, (b1 - top) / Math.max(1, b0 - top)))]; } // the figure's centre at the free space's centre, shrunk with it
 function fitFigure() { if (!MINE.fold) return; const { rc, top, b1 } = freeSpace(), [, k] = viewTarget(); cam.zoom = MINE.fold.hh * 1.12 * k * rc.height / (2 * Math.tan(0.4) * (b1 - top)); } // the whole figure filling the free space (Pose, Edit joints)
 const unview = (nx, ny) => [nx / view.k, (ny - view.s) / view.k]; // a screen point back through the lift, for rays
 let last = 0;
@@ -531,8 +531,10 @@ async function cutoutPng() { // your subject at the photo's own size (up to 2048
 async function offer(filename, data) { // the viewer's own save (with its confirmation) inside Claude; a plain download anywhere else
   const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
   if (dl) { try { await dl.save({ filename, data }); toast('Saved ' + filename + '.'); } catch (e) { if (e && e.code === 'declined') return; toast(e && e.code === 'rate_limited' ? 'One save at a time: try again in a moment.' : 'This view cannot save files.'); } return; }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data])); a.download = filename; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast('Saved ' + filename + '.'); }
-function openSave() { const m = meshNow(); $('saveInfo').textContent = m ? `${m.name}: ${m.parts.reduce((n, q) => n + q.V.length / 21, 0)} triangles, ${ST.shape === 'facets' ? 'facets (' + ({ 40: 'PS1 Low', 100: 'PS1', 300: 'PS2 Low', 800: 'PS2' }[ST.budget] || ST.budget) + ')' : ST.shape}${m.rig ? ', rigged: ' + m.parts.length + ' parts, Idle / Walk / Wave' : ''}.` : '';
+  const blob = data instanceof Blob ? data : new Blob([data]), installed = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone; // the home-screen app: the share sheet (Save to Files, AirDrop, Messages)
+  if (installed && navigator.canShare) { const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' }); if (navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: filename }); } catch (e) { if (e && e.name !== 'AbortError') toast('That could not be shared.'); } return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); toast('Saved ' + filename + '.'); }
+function openSave() { const m = meshNow(); $('saveInfo').textContent = m ? `${m.name}: ${m.parts.reduce((n, q) => n + q.V.length / 21, 0)} triangles, ${ST.shape === 'facets' ? 'facets (' + ({ 40: 'PS1 Low', 100: 'PS1', 300: 'PS2 Low', 800: 'PS2' }[ST.budget] || ST.budget) + ')' : ST.shape}${m.rig ? ', rigged: ' + m.parts.length + ' parts, Idle / Walk / Wave / Jump / Swing' : ''}.` : '';
   document.querySelector('[data-save=png]').disabled = document.querySelector('[data-save=json]').disabled = !(ST.mode === 'mine' && MINE.S); document.querySelector('[data-save=model]').disabled = !m;
   closeSheet(); setTool(null); $('saveSheet').hidden = $('scrim').hidden = false; }
 function closeSave() { $('saveSheet').hidden = true; if ($('sheet').hidden) $('scrim').hidden = true; }
@@ -554,4 +556,40 @@ for (const at of names) { const im = new Image(); im.onload = () => { TEX[at] = 
 if '--artifact' in sys.argv:  # the same page without its own document wrapper (the artifact host adds one)
     body = re.sub(r'^<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport"[^>]*>', '', html).replace('</style></head><body>', '</style>', 1).replace('</body></html>', '')
     dst = sys.argv[sys.argv.index('--artifact') + 1]; open(dst, 'w', encoding='utf-8').write(body); print('wrote', dst)
-out = os.path.join(ROOT, 'papercraft/sprite-viewer.html'); open(out, 'w', encoding='utf-8', newline='').write(html); print('wrote', out, round(len(html) / 1024), 'KB')
+# ---------- the home-screen app (a PWA): the same page with a manifest, an icon and an offline copy; served from papercraft/ (GitHub Pages) ----------
+import hashlib, shutil
+PWA_HEAD = ('<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/papercraft-180.png"><link rel="icon" href="icons/papercraft-192.png">'
+            '<meta name="theme-color" content="#ececf1" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#1b1b1f" media="(prefers-color-scheme: dark)">'
+            '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Papercraft"><meta name="apple-mobile-web-app-status-bar-style" content="default">')
+PWA_SW = "<script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>"
+app = re.sub(r'(<meta name="viewport"[^>]*>)', lambda m: m.group(1) + PWA_HEAD, html, count=1).replace('</body></html>', PWA_SW + '</body></html>')
+out = os.path.join(ROOT, 'papercraft/sprite-viewer.html'); open(out, 'w', encoding='utf-8', newline='').write(app); print('wrote', out, round(len(app) / 1024), 'KB')
+PC = os.path.join(ROOT, 'papercraft'); os.makedirs(os.path.join(PC, 'icons'), exist_ok=True)
+ICONS = ['papercraft-180.png', 'papercraft-192.png', 'papercraft-512.png', 'papercraft-maskable-512.png']
+for f in ICONS: shutil.copy(os.path.join(ROOT, 'assets/icons', f), os.path.join(PC, 'icons', f))
+open(os.path.join(PC, 'manifest.webmanifest'), 'w').write(json.dumps({
+    'name': 'Papercraft', 'short_name': 'Papercraft', 'description': 'Turn any picture into a paper model: cut out, folded into low-poly 3D, rigged and posed, all on your phone.',
+    'id': './', 'start_url': 'sprite-viewer.html', 'scope': './', 'display': 'standalone', 'orientation': 'portrait', 'background_color': '#ececf1', 'theme_color': '#ececf1',
+    'icons': [{'src': 'icons/papercraft-192.png', 'sizes': '192x192', 'type': 'image/png'}, {'src': 'icons/papercraft-512.png', 'sizes': '512x512', 'type': 'image/png'},
+              {'src': 'icons/papercraft-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'}]}, indent=2) + '\n')
+ver = hashlib.sha1(app.encode()).hexdigest()[:10]
+SW = """/* Papercraft service worker (made by tools/make_sprite_viewer.py): the app page is fetched fresh whenever you are online, so every new build
+   shows up, and the last good copy is kept so the app opens with no connection. Everything Papercraft does happens on the phone: nothing is sent anywhere. */
+const VERSION = 'papercraft-@VER@';
+const CORE = ['sprite-viewer.html', 'manifest.webmanifest', @ICONS@];
+self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('papercraft-') && k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('fetch', e => {
+  const req = e.request; if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  if (req.mode === 'navigate') { // the app page: network first, the saved copy when offline
+    e.respondWith(fetch(req, { cache: 'no-store' }).then(r => { if (r.ok && /sprite-viewer\\.html$/.test(new URL(req.url).pathname)) { const copy = r.clone(); caches.open(VERSION).then(c => c.put('sprite-viewer.html', copy)); } return r; })
+      .catch(() => caches.match('sprite-viewer.html')));
+    return; }
+  e.respondWith(caches.match(req).then(hit => hit || fetch(req)));
+});
+"""
+open(os.path.join(PC, 'sw.js'), 'w').write(SW.replace('@VER@', ver).replace('@ICONS@', ', '.join("'icons/" + f + "'" for f in ICONS)))
+open(os.path.join(PC, 'index.html'), 'w').write('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Papercraft</title>'
+    '<meta http-equiv="refresh" content="0; url=sprite-viewer.html"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/papercraft-180.png"></head>'
+    '<body style="font:15px -apple-system,system-ui,sans-serif;background:#ececf1;color:#1d1d1f;text-align:center;padding:40px">Opening <a href="sprite-viewer.html">Papercraft</a>...</body></html>\n')
+print('wrote the app: papercraft/{index.html, manifest.webmanifest, sw.js, icons/} (version', ver + ')')

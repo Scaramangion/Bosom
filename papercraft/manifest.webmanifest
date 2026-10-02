@@ -1,0 +1,30 @@
+{
+  "name": "Papercraft",
+  "short_name": "Papercraft",
+  "description": "Turn any picture into a paper model: cut out, folded into low-poly 3D, rigged and posed, all on your phone.",
+  "id": "./",
+  "start_url": "sprite-viewer.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ececf1",
+  "theme_color": "#ececf1",
+  "icons": [
+    {
+      "src": "icons/papercraft-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/papercraft-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/papercraft-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
