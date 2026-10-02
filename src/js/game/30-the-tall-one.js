@@ -305,7 +305,7 @@
         }
         function drawFarmCards() { // buildings, animals, people and wild herbs stand up off the ground
             if (currentMapName !== 'overworld' || !FARM_ART.img.complete) return; const T = TILE_SIZE;
-            for (const b of HOMESTEAD) { const cx = b.x * T + 8, fy = b.y * T + 15; asCard(cx, fy, () => farmSprite(b.art, cx, fy, b.w * T), 'fa_' + b.art + '_' + b.x, { size: b.big ? 256 : 128, orient: b.fixed }); }
+            for (const b of HOMESTEAD) { if (b.art === 'cottage' && paperLive() && PAPER.cottage) continue; /* the folded 3D cottage stands in its place */ const cx = b.x * T + 8, fy = b.y * T + 15; asCard(cx, fy, () => farmSprite(b.art, cx, fy, b.w * T), 'fa_' + b.art + '_' + b.x, { size: b.big ? 256 : 128, orient: b.fixed }); }
             for (const a of ANIMALS) { const s = animalLive(a), cx = s.px + 8, fy = s.py + 15, hop = s.bob > 0 ? Math.sin(s.bob * Math.PI) * 3 : 0; if (s.bob > 0) s.bob = Math.max(0, s.bob - 0.06);
                 const moving = s.px !== s.tx || s.py !== s.ty, step = moving ? Math.abs(Math.sin(performance.now() / 90)) * 0.8 : 0;
                 asCard(cx, fy, () => farmSprite(a.kind === 'dog' || a.kind === 'cat' ? a.kind : a.kind, cx, fy - hop - step, a.w * T, s.flip)); }

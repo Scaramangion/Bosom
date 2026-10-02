@@ -58,7 +58,7 @@
         const HOME_LINES = ['Jars of preserves, the labels gone brown. Great-grandmother\'s handwriting, small and slanted.', 'Spools of red thread. A cracked teapot. A key that fits nothing you have found yet.', 'Dried herbs tied in bundles. They still smell like summer.', 'Plates, stacked for four people. Nobody has eaten here in years.'];
         function homeInteract(t, gx, gy) {
             if (t === 12) { openKitchen(); return true; }
-            if (t === 13) { const F = farmState(); openNpcConversation('THE BED\nHer quilt, patched in a hundred colours.', [{ label: 'SLEEP UNTIL MORNING', handler: sleepUntilMorning }, { label: 'NOT YET', handler: hideDialogue }]); return true; }
+            if (t === 13) { openNpcConversation('THE BED\nHer quilt, patched in a hundred colours.', [{ label: 'SLEEP UNTIL MORNING', handler: sleepUntilMorning }, { label: 'NOT YET', handler: hideDialogue }]); return true; }
             if (t === 14) { showDialogue('THE TABLE\n' + pantryText()); return true; }
             if (t === 17) { openBasement(); return true; }
             if (t === 19) { showDialogue('THE SHELF\n' + HOME_LINES[(gx * 7 + gy * 3) % HOME_LINES.length]); return true; }

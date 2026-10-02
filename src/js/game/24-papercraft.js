@@ -26,6 +26,52 @@
         // pieces cut from the painted asset sheet (timber walls, doors, windows, two roofs): material 9 on row 9, roofs 5 and 6 on the roof row. Used sparingly.
         const PAPER_PIECES = new Image(); { const el = document.getElementById('paper-pieces'); if (el) PAPER_PIECES.src = el.textContent.trim(); }
         function paperPiecesReady() { return PAPER_PIECES.complete && PAPER_PIECES.naturalWidth > 0; }
+        // ---- the cottage from the opening film, folded from its orthographic sheet: five painted faces plus roofs, wings and a shed ----
+        const COTTAGE_IMG = new Image(); { const el = document.getElementById('cottage-tex'); if (el) COTTAGE_IMG.src = el.textContent.trim(); }
+        function cottageReady() { return COTTAGE_IMG.complete && COTTAGE_IMG.naturalWidth > 0; }
+        const COTTAGE_TEX = { FC: [0, 780, 143, 224], FWL: [146, 780, 92, 90], FWR: [240, 780, 92, 90], BC: [336, 780, 144, 219], BWL: [484, 780, 78, 80], BWR: [566, 780, 78, 80], ROOF: [648, 780, 120, 156], SHEDROOF: [772, 780, 96, 96], SHEDFRAME: [872, 780, 150, 103], CHIM: [572, 866, 33, 53], WIN: [610, 866, 44, 48], PLASTER: [660, 940, 64, 64], WOOD: [730, 940, 64, 40], STONE: [800, 940, 80, 24] }; // the strip made by tools/make_cottage_tex.py
+        const COTTAGE = { X0: 23.5 * 16, YF: 18 * 16, DEPTH: 66, WALL: 46.95, APEX: 67.05 }; // door centre x, the front wall plane (south edge of tile row 17), the main block's depth and heights (world units)
+        function paperCottage(V) { // appends the cottage's triangles to the folded mesh. local x: east of the door; d: north of the front wall; z: up
+            const C = COTTAGE, X0 = C.X0, YF = C.YF, W = 21.45, WW = 49.05, WD = 58, WZ = 27, SH = { S: 1.0, W: 0.9, E: 0.8, N: 0.7 };
+            const P = (lx, d, z) => [X0 + lx, YF - d, z];
+            const emit = (pts, uv, shade, mirror) => { if (mirror) { pts = pts.slice().reverse(); uv = uv.slice().reverse(); }
+                for (const i of pts.length === 4 ? [0, 1, 2, 0, 2, 3] : pts.length === 5 ? [0, 1, 2, 0, 2, 3, 0, 3, 4] : [0, 1, 2]) V.push(pts[i][0], pts[i][1], pts[i][2], uv[i][0] / 1024, uv[i][1] / 1024, shade, 0); };
+            const T = COTTAGE_TEX;
+            const rect = (a, b, c, d, r, sh, m, sub) => { const x0 = r[0] + (sub ? sub[0] : 0), y0 = r[1] + (sub ? sub[1] : 0), x1 = x0 + (sub ? sub[2] : r[2]), y1 = y0 + (sub ? sub[3] : r[3]); emit([a, b, c, d], [[x0, y1], [x1, y1], [x1, y0], [x0, y0]], sh, m); }; // BL, BR, TR, TL painted with a rect (or part of one)
+            // the main block: front and back gables, plastered sides
+            const fp = (d, tex, sh, back) => { const pts = back ? [P(W, d, 0), P(-W, d, 0), P(-W, d, C.WALL), P(0, d, C.APEX), P(W, d, C.WALL)] : [P(-W, d, 0), P(W, d, 0), P(W, d, C.WALL), P(0, d, C.APEX), P(-W, d, C.WALL)];
+                const r = tex, bw = r[2], by = back ? 214 : 223.5, wt = back ? 74 : 67, ap = back ? 2 : 0, u = [[0, by], [bw, by], [bw, wt], [bw / 2, ap], [0, wt]].map(q => [r[0] + q[0], r[1] + q[1]]); emit(pts, u, sh); };
+            fp(0, T.FC, SH.S, false); fp(C.DEPTH, T.BC, SH.N, true);
+            rect(P(W, 0, 0), P(W, C.DEPTH, 0), P(W, C.DEPTH, C.WALL), P(W, 0, C.WALL), T.PLASTER, SH.E, false); rect(P(-W, C.DEPTH, 0), P(-W, 0, 0), P(-W, 0, C.WALL), P(-W, C.DEPTH, C.WALL), T.PLASTER, SH.W, false);
+            const ov = 2.5, ex = W + ov, ez = C.WALL - ov * (C.APEX - C.WALL) / W, R = T.ROOF; // roof: two slopes, the slate cut from the plan view
+            emit([P(ex, -ov, ez), P(ex, C.DEPTH + ov, ez), P(0, C.DEPTH + ov, C.APEX), P(0, -ov, C.APEX)], [[R[0] + 120, R[1] + 156], [R[0] + 120, R[1]], [R[0] + 60, R[1]], [R[0] + 60, R[1] + 156]], 0.86);
+            emit([P(-ex, C.DEPTH + ov, ez), P(-ex, -ov, ez), P(0, -ov, C.APEX), P(0, C.DEPTH + ov, C.APEX)], [[R[0], R[1]], [R[0], R[1] + 156], [R[0] + 60, R[1] + 156], [R[0] + 60, R[1]]], 1.0);
+            // the two wings: plastered, stone-footed, with a hipped roof leaning on the main block
+            for (const sg of [-1, 1]) { const X = a => sg * a, fw = sg < 0 ? T.FWL : T.FWR, bw = sg < 0 ? T.BWL : T.BWR;
+                emit([P(sg < 0 ? -WW : W, 0, 0), P(sg < 0 ? -W : WW, 0, 0), P(sg < 0 ? -W : WW, 0, WZ), P(sg < 0 ? -WW : W, 0, WZ)], [[fw[0], fw[1] + 90], [fw[0] + 92, fw[1] + 90], [fw[0] + 92, fw[1]], [fw[0], fw[1]]], SH.S);                 // front wall
+                emit([P(sg < 0 ? -W : WW, WD, 0), P(sg < 0 ? -WW : W, WD, 0), P(sg < 0 ? -WW : W, WD, WZ), P(sg < 0 ? -W : WW, WD, WZ)], [[bw[0], bw[1] + 80], [bw[0] + 78, bw[1] + 80], [bw[0] + 78, bw[1]], [bw[0], bw[1]]], SH.N);   // back wall
+                const o = X(WW), pl = T.PLASTER, st = T.STONE; // the outer side wall: plaster over a stone foot
+                emit(sg < 0 ? [P(o, WD, 0), P(o, 0, 0), P(o, 0, 4), P(o, WD, 4)] : [P(o, 0, 0), P(o, WD, 0), P(o, WD, 4), P(o, 0, 4)], [[st[0], st[1] + 24], [st[0] + 80, st[1] + 24], [st[0] + 80, st[1]], [st[0], st[1]]], sg < 0 ? SH.W : SH.E);
+                emit(sg < 0 ? [P(o, WD, 4), P(o, 0, 4), P(o, 0, WZ), P(o, WD, WZ)] : [P(o, 0, 4), P(o, WD, 4), P(o, WD, WZ), P(o, 0, WZ)], [[pl[0], pl[1] + 64], [pl[0] + 64, pl[1] + 64], [pl[0] + 64, pl[1]], [pl[0], pl[1]]], sg < 0 ? SH.W : SH.E);
+                const e = WW + ov, ez2 = WZ - ov * 15 / (WW - W), ro = T.ROOF, uvq = [[ro[0] + 120, ro[1] + 156], [ro[0] + 120, ro[1]], [ro[0], ro[1]], [ro[0], ro[1] + 156]], uvt = [[ro[0] + 120, ro[1] + 156], [ro[0] + 120, ro[1]], [ro[0], ro[1] + 78]];
+                const A = P(X(e), -ov, ez2), B = P(X(e), WD + ov, ez2), Cc = P(X(W), 50, WZ + 15), D = P(X(W), 8, WZ + 15); // outer slope, then the front and back hips
+                emit(sg < 0 ? [B, A, D, Cc] : [A, B, Cc, D], sg < 0 ? uvq : uvq, sg < 0 ? 1.0 : 0.86);
+                emit(sg < 0 ? [A, P(X(W), -ov, ez2), D] : [P(X(W), -ov, ez2), A, D], uvt, SH.S * 1.02);
+                emit(sg < 0 ? [P(X(W), WD + ov, ez2), B, Cc] : [B, P(X(W), WD + ov, ez2), Cc], uvt, SH.N * 1.1); }
+            // the shed on the east: open to the south, timber frame, brown shingle
+            const S0 = WW, S1 = WW + 39, D0 = 24, D1 = 64, SZ = 18.9, SA = 30.9, F = T.SHEDFRAME, SR = T.SHEDROOF;
+            emit([P(S0, D0, 0), P(S1, D0, 0), P(S1, D0, SZ), P(S0, D0, SZ)], [[F[0], F[1] + 103], [F[0] + 150, F[1] + 103], [F[0] + 150, F[1] + 40], [F[0], F[1] + 40]], SH.S);
+            emit([P(S1, D0, 0), P(S1, D1, 0), P(S1, D1, SZ), P(S1, (D0 + D1) / 2, SA), P(S1, D0, SZ)], [[F[0], F[1] + 103], [F[0] + 150, F[1] + 103], [F[0] + 150, F[1] + 40], [F[0] + 75, F[1]], [F[0], F[1] + 40]], SH.E);
+            rect(P(S1, D1, 0), P(S0, D1, 0), P(S0, D1, SZ), P(S1, D1, SZ), T.WOOD, SH.N, false);
+            const sm = (D1 - D0) / 2 + D0, sz = SZ - 2;
+            emit([P(S0 - 1, D0 - 3, sz), P(S1 + 2, D0 - 3, sz), P(S1 + 2, sm, SA), P(S0 - 1, sm, SA)], [[SR[0], SR[1] + 96], [SR[0] + 96, SR[1] + 96], [SR[0] + 96, SR[1]], [SR[0], SR[1]]], 1.05);
+            emit([P(S1 + 2, D1 + 3, sz), P(S0 - 1, D1 + 3, sz), P(S0 - 1, sm, SA), P(S1 + 2, sm, SA)], [[SR[0], SR[1] + 96], [SR[0] + 96, SR[1] + 96], [SR[0] + 96, SR[1]], [SR[0], SR[1]]], 0.72);
+            // the chimney, standing through the back of the ridge
+            const cm = T.CHIM, cx0 = -3, cx1 = 3, cd0 = 46, cd1 = 52, cz0 = 60, cz1 = 80, cuv = [[cm[0], cm[1] + 53], [cm[0] + 33, cm[1] + 53], [cm[0] + 33, cm[1]], [cm[0], cm[1]]];
+            emit([P(cx0, cd0, cz0), P(cx1, cd0, cz0), P(cx1, cd0, cz1), P(cx0, cd0, cz1)], cuv, SH.S); emit([P(cx1, cd0, cz0), P(cx1, cd1, cz0), P(cx1, cd1, cz1), P(cx1, cd0, cz1)], cuv, SH.E);
+            emit([P(cx1, cd1, cz0), P(cx0, cd1, cz0), P(cx0, cd1, cz1), P(cx1, cd1, cz1)], cuv, SH.N); emit([P(cx0, cd1, cz0), P(cx0, cd0, cz0), P(cx0, cd0, cz1), P(cx0, cd1, cz1)], cuv, SH.W);
+            emit([P(cx0, cd1, cz1), P(cx1, cd1, cz1), P(cx1, cd0, cz1), P(cx0, cd0, cz1)], [[cm[0] + 2, cm[1] + 2], [cm[0] + 30, cm[1] + 2], [cm[0] + 30, cm[1] + 8], [cm[0] + 2, cm[1] + 8]], 1.1);
+        }
         function paperLive() { return PAPER.on && FX_GL.ok && currentMapName === 'overworld' && COMBAT.amt > 0.97 && (gameState === 'PLAYING' || gameState === 'INVENTORY'); }
         function paperSheet() {
             if (PAPER.sheet) return PAPER.sheet;
@@ -133,6 +179,7 @@
             cell(13, 8, () => awning('#b2382c', '#f1e9da')); cell(15, 8, () => awning('#3f6a34', '#efe4c6'));
             cell(14, 8, () => { box(0, 0, 16, 26, '#6b4a2e'); for (let k = 0; k < 4; k++) { const x0 = 0.5 + k * 3.9; box(x0, 1, 3.4, 24, '#8a6a48'); box(x0, 1, 3.4, 0.6, '#4a3424');
                 const col = [['#c0392b', '#e05a44'], ['#7aa84a', '#5d8a36'], ['#d9a650', '#b98436'], ['#e8c25a', '#c99a2e']][k]; for (let i = 0; i < 22; i++) { const x = x0 + 0.3 + R() * 2.6, y = 2 + R() * 22; box(x, y, 1.1, 1.1, col[(R() * 2) | 0]); box(x + 0.2, y + 0.7, 0.4, 0.3, 'rgba(255,255,255,.4)'); } } }); // goods on the counter: apples, cabbages, loaves, lemons
+            if (cottageReady()) { g.imageSmoothingEnabled = false; g.drawImage(COTTAGE_IMG, 0, 780); } // the cottage's strip, below the town's painted rows
             if (paperPiecesReady()) { g.imageSmoothingEnabled = false;
                 for (let i = 0; i < 7; i++) g.drawImage(PAPER_PIECES, i * 48, 0, 48, 78, i * CW, 9 * CH, CW, CH);
                 g.drawImage(PAPER_PIECES, 7 * 48, 0, 48, 78, 5 * CW, PAPER_CELLS.roofs * CH, CW, CH); g.drawImage(PAPER_PIECES, 8 * 48, 0, 48, 78, 6 * CW, PAPER_CELLS.roofs * CH, CW, CH); }
@@ -276,6 +323,7 @@
                 boxF(cx - 2, cy - 2, cx + 2, cy + 2, 18, 27, st); boxF(cx - 3, cy - 3, cx + 3, cy + 3, 27, 29, st, { top: st });
                 for (let k = 0; k < 4; k++) card2(cx, cy, 20, hW, 15.5, wa, k * Math.PI / 4);                                   // the falling sheet of water
             }
+            PAPER.cottage = cottageReady(); if (PAPER.cottage) paperCottage(V);
             PAPER.verts = V.length / 7;
             return PAPER.mesh = new Float32Array(V);
         }

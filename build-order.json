@@ -197,6 +197,12 @@
    "kind": "icons",
    "file": "assets/icons/apple-touch-icon.png",
    "mime": "image/png"
+  },
+  {
+   "id": "cottage-tex",
+   "kind": "atlases",
+   "file": "assets/atlases/cottage-tex.webp",
+   "mime": "image/webp"
   }
  ]
 }
