@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>{{file src/js/boot-check.js}}</script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.4, maximum-scale=3.0, user-scalable=yes">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Bosom">
+    <link rel="apple-touch-icon" href="{{datauri assets/ui/apple-touch-icon-inline.png}}">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <title>Saga of Koto</title>
+    <style>{{file src/css/main.css}}</style>
+<style id="local-ui">{{file src/css/local-ui.css}}</style>
+<style id="menu-ui">{{file src/css/menu-ui.css}}</style>
+<style id="opening-ui">{{file src/css/opening-ui.css}}</style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-2 sm:p-4" style="min-height:100dvh">
+
+    <div class="relative w-full max-w-xl flex flex-col items-center flex-1 h-full">
+        
+        <div class="w-full flex justify-between items-center mb-2 px-2 text-xs">
+            <div class="flex items-center space-x-2 text-sky-400">
+                <button id="lens-btn" type="button" aria-label="Lens" style="display:flex;padding:10px;margin:-10px;-webkit-tap-highlight-color:transparent"><i class="fa-solid fa-magnifying-glass text-sm animate-pulse"></i></button>
+                <button id="tp-btn" type="button" aria-label="Teleport" title="Teleport (T)" style="display:flex;align-items:center;justify-content:center;width:26px;height:22px;margin-left:10px;border-radius:5px;border:1px solid #7dd3fc;background:#0c4a6e;color:#e0f2fe;-webkit-tap-highlight-color:transparent;transition:opacity .2s"><svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h6"/><path d="M3 2.5 6.5 6 3 9.5" opacity=".55"/><path d="M8 1.5 12.5 6 8 10.5"/></svg></button>
+                <button id="pouch-btn" type="button" aria-label="Pouch" title="Pouch (Q)" style="display:flex;align-items:center;justify-content:center;width:26px;height:22px;margin-left:6px;border-radius:5px;border:1px solid #d6a46a;background:#5b3a1e;color:#fde7c7;-webkit-tap-highlight-color:transparent"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3 5.2h8l.9 6.2a1 1 0 0 1-1 1.1H3.1a1 1 0 0 1-1-1.1z"/><path d="M4.6 5.2V4a2.4 2.4 0 0 1 4.8 0v1.2"/><path d="M5.5 8h3"/></svg></button>
+                <span class="hidden sm:inline font-bold tracking-wider">AXE ENGINE (V11.1)</span>
+            </div>
+
+            <div class="flex items-center space-x-1">
+                <button onclick="toggleJournal()" id="journal-btn" class="hidden px-2 py-1 bg-indigo-900 hover:bg-indigo-800 text-[9px] rounded border border-indigo-400"><i class="fa-solid fa-book"></i> JOURNAL</button>
+                <button onclick="toggleBGM()" id="bgm-btn" class="px-2 py-1 bg-emerald-900 hover:bg-emerald-800 text-[9px] rounded border border-emerald-400 ml-2"><i class="fa-solid fa-music"></i> AMBIENT: OFF</button>
+            </div>
+        </div>
+
+        <div class="relative w-full aspect-[10/9] bg-black gb-container overflow-hidden flex items-center justify-center">
+            
+            <canvas id="game-canvas" class="pixel-art w-full h-full block bg-slate-950"></canvas>
+            
+            <div id="scanlines" class="scanlines"></div>
+
+            <div id="title-screen" class="hidden absolute inset-0 flex flex-col items-center justify-end p-6 z-40 text-center cursor-pointer" onclick="showSlotSelect()">
+                <canvas id="title-canvas" width="320" height="288"></canvas>
+                <img id="title-logo" alt="Saga of Koto" src="{{datauri assets/ui/title-logo.webp}}">
+                <div id="title-press-start">PRESS START</div>
+                <button onclick="event.stopPropagation(); showCredits();" class="absolute top-3 right-3 text-[7px] py-1 px-2 rounded" style="z-index:3;color:#a8a29e;background:rgba(10,8,14,.55);border:1px solid rgba(168,162,158,.3);letter-spacing:2px">
+                    CREDITS
+                </button>
+            </div>
+
+            <div id="slot-select-screen" class="hidden absolute inset-0 bg-slate-900/97 flex flex-col items-center justify-center p-6 z-40 text-center">
+                <div class="text-yellow-400 text-[10px] font-bold mb-4 tracking-widest">SELECT SAVE FILE</div>
+                <div id="slot-list" class="w-full max-w-[220px] flex flex-col gap-2"></div>
+                <button onclick="setActiveScreen('title')" class="mt-4 bg-slate-700 hover:bg-slate-600 text-gray-200 py-1.5 px-3 rounded text-[8px] border border-slate-500 active:scale-95">BACK</button>
+            </div>
+
+            <div id="head-vision" style="display:none;position:absolute;inset:0;z-index:8;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 42%,rgba(8,6,18,.45) 100%);-webkit-backdrop-filter:saturate(.55);backdrop-filter:saturate(.55)"></div>
+
+            <div id="opening-screen" style="display:none;position:absolute;inset:0;z-index:55;background:#000;cursor:pointer;-webkit-tap-highlight-color:transparent">
+                <canvas id="opening-canvas" width="160" height="144" style="position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated"></canvas>
+                <div id="opening-caption"></div>
+                <button id="opening-skip" type="button">SKIP &#9656;&#9656;</button>
+            </div>
+
+            <div id="crawl-screen" class="hidden absolute inset-0 bg-black flex flex-col items-center justify-center p-6 z-50 text-center">
+                <div id="crawl-text" class="text-cyan-300 text-[9px] sm:text-[10px] leading-relaxed max-w-sm font-mono transition-all duration-700 opacity-0">
+                    An Age of Mystery Has Fallen Upon The Planet.<br><br>
+                    The Supreme Spirit Above All Things, no longer speaks. Man does not listen.<br><br>
+                    Across the desert lands, the balance between <span class="text-yellow-300">LIGHT</span> and <span class="text-purple-400">DARK</span> has begun to waver.<br><br>
+                    Throughout the ages, whenever that balance is disturbed, the Supreme Spirit sends down a dew drop of its power to a human worthy, in this age, that human is a child.<br><br>
+                    That child is <span class="text-yellow-400">YOU!</span>
+                </div>
+                <button onclick="beginCinematicIntroFromCrawl()" class="mt-4 bg-cyan-600 hover:bg-cyan-500 text-white py-1.5 px-3 rounded text-[8px] border border-cyan-300 active:scale-95">SKIP CRAWL</button>
+            </div>
+
+            <div id="credits-modal" class="hidden absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-6 z-50 text-center">
+                <div class="text-sky-400 text-xs font-bold mb-3">AXE ENGINE V11.1 CREDITS</div>
+                <div class="text-white text-[9px] leading-relaxed space-y-2 mb-4 bg-slate-800 p-3 rounded border border-slate-700 max-w-xs">
+                    <div><strong>Project:</strong> Detective Scaramangion V11.1</div>
+                    <div><strong>Update:</strong> Item Hiding & Fluid Action (No Talk Boxes)</div>
+                    <div><strong>Status:</strong> Fully Interactive & Polished</div>
+                </div>
+                <button onclick="hideCredits()" class="bg-rose-600 hover:bg-rose-500 text-white py-2 px-4 rounded text-[9px] border border-rose-300 active:scale-95">BACK</button>
+            </div>
+
+            <div id="journal-modal" class="hidden absolute inset-0 bg-slate-900/97 flex flex-col p-3 z-50 text-left overflow-hidden">
+                <div class="flex justify-between items-center mb-2 flex-shrink-0">
+                    <div class="text-yellow-400 text-xs font-bold"><i class="fa-solid fa-book"></i> INVESTIGATION JOURNAL</div>
+                    <button onclick="toggleJournal()" class="px-2 py-1 bg-slate-800 text-gray-300 text-[8px] rounded border border-slate-600 hover:bg-slate-700"><i class="fa-solid fa-xmark"></i> CLOSE</button>
+                </div>
+                <div id="journal-body" class="text-[8px] leading-relaxed text-white overflow-y-auto flex-1 bg-slate-800/60 p-2 rounded border border-slate-700"></div>
+            </div>
+
+            <div id="inventory-screen" class="hidden absolute inset-0 oot-menu-bg flex flex-col p-3 z-50 text-center select-none">
+                <div class="mn-tabs">
+                    <button class="mn-tab on" data-tab="items" onclick="menuTab('items')">ITEMS</button>
+                    <button class="mn-tab" data-tab="gear" onclick="menuTab('gear')">HEADS</button>
+                    <button class="mn-tab" data-tab="quest" onclick="menuTab('quest')">QUEST</button>
+                    <button class="mn-tab" data-tab="save" onclick="menuTab('save')">SAVE</button>
+                    <button class="mn-tab mn-x" onclick="closeInventory()">X</button>
+                </div>
+
+                <div id="mn-items" class="mn-pane">
+                    <div class="mn-row">
+                        <div class="mn-card"><span id="inv-item-name">TIMBER AXE</span></div>
+                        <div class="mn-card mn-tap" id="outfit-btn" onclick="toggleOutfit()"><canvas id="outfit-icon" width="16" height="16"></canvas><span id="outfit-label">OUTFIT</span></div>
+                    </div>
+                    <div class="mn-row">
+                        <div class="mn-card"><span id="mn-hand">(HELD)</span></div>
+                        <div class="mn-card mn-dim">CLICK HELD ITEM TO HESITATE/SHEATH</div>
+                    </div>
+                    <div class="mn-main">
+                        <div class="mn-panel">
+                            <div class="mn-title">INVENTORY <span class="mn-badge" id="mn-clock">DAY 1, AM 08:00</span></div>
+                            <div class="mn-sub">EQUIPPED SLOTS</div>
+                            <div class="mn-slots" style="grid-template-columns:repeat(6,1fr)">
+                                <div id="slot-axe" onclick="selectInventoryItem('axe')" class="oot-slot mn-slot selected"><canvas id="axe-icon" width="20" height="24"></canvas><span>AXE</span></div>
+                                <div id="slot-torch" onclick="selectInventoryItem('torch')" class="oot-slot mn-slot"><i class="fa-solid fa-fire" style="color:#fb923c"></i><span>TORCH</span></div>
+                                <div id="slot-lens" onclick="selectInventoryItem('lens')" class="oot-slot mn-slot"><i class="fa-solid fa-eye" style="color:#22d3ee"></i><span>LENS</span></div>
+                                <div id="slot-staff" onclick="selectInventoryItem('staff')" class="oot-slot mn-slot"><canvas id="staff-icon" width="20" height="24"></canvas><span>STAFF</span></div>
+                                <div id="slot-sword" onclick="selectInventoryItem('sword')" class="oot-slot mn-slot"><canvas id="sword-icon" width="20" height="24"></canvas><span>SWORD</span></div>
+                                <div id="slot-rope" onclick="selectInventoryItem('rope')" class="oot-slot mn-slot"><canvas id="rope-icon" width="20" height="24"></canvas><span>LASSO</span></div>
+                            </div>
+                            <div class="mn-sub">GENERAL INVENTORY</div>
+                            <div class="mn-slots">
+                                <div id="slot-potion" onclick="usePotion()" class="oot-slot mn-slot"><i class="fa-solid fa-flask" style="color:#6ee7b7"></i><span>POTION <b id="potion-slot-count">0</b></span></div>
+                                <div class="oot-slot mn-slot"><i class="fa-solid fa-gem" style="color:#7dd3fc"></i><span id="mn-gems">0/12</span></div>
+                                <div class="oot-slot mn-slot" id="mn-key"><i class="fa-solid fa-key" style="color:#fde047"></i><span>KEY</span></div>
+                            </div>
+                        </div>
+                        <div class="mn-panel">
+                            <div class="mn-title">EQUIPPED PREVIEW</div>
+                            <canvas id="menu-hero-canvas" width="64" height="64"></canvas>
+                            <div id="inv-item-desc" class="mn-desc">Heavy timber axe used for clearing forest overgrowth.</div>
+                        </div>
+                    </div>
+                    <div class="mn-bottom">
+                        <div class="mn-panel">
+                            <div class="mn-title">QUEST</div>
+                            <canvas id="mn-map" width="120" height="42"></canvas>
+                            <div class="mn-hearts"><span id="mn-hearts"></span><span id="mn-weapon">AXE</span></div>
+                        </div>
+                        <div class="mn-panel">
+                            <div class="mn-title">PARTY</div>
+                            <div class="mn-party">
+                                <img id="party-portrait" alt="Hero" src="{{datauri assets/ui/party-portrait.webp}}">
+                                <div class="mn-pbody">
+                                    <div class="mn-name">HERO <small>(LVL 1)</small></div>
+                                    <div class="mn-bar"><label>HP</label><b><i id="mn-hp"></i></b></div>
+                                    <div class="mn-bar exp"><label>EXP</label><b><i id="mn-exp"></i></b></div>
+                                </div>
+                            </div>
+                            <div class="mn-heads"><span>HEADS</span><em></em><em></em><em></em></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mn-gear" class="mn-pane mn-off">
+                    <div class="mn-title">HEADS</div>
+                    <div id="mn-outfits" class="mn-outfits"></div>
+                    <div class="mn-dim" style="margin-top:6px">TAP A HEAD TO TAKE ON THAT BUILD.</div>
+                </div>
+
+                <div id="mn-quest" class="mn-pane mn-off">
+                    <div class="mn-title">WORLD MAP</div>
+                    <canvas id="mn-map-big" width="600" height="250"></canvas>
+                    <div class="mn-dim" id="mn-nav-hint" style="margin-top:3px">TAP A PLACE TO SET YOUR COURSE. THE ARROW UNDER THE MINIMAP WILL LEAD YOU.</div>
+                    <div id="mn-nav-places"></div>
+                    <div class="mn-list" id="mn-quest-list"></div>
+                </div>
+
+                <div id="mn-save" class="mn-pane mn-off">
+                    <div class="mn-title">SAVE</div>
+                    <button class="mn-btn" onclick="menuSaveNow()">SAVE NOW</button>
+                    <button class="mn-btn danger" onclick="if (confirm('Erase this save slot and start over?')) resetSave()">ERASE THIS SLOT &amp; RESTART</button>
+                    <div class="mn-dim" style="margin-top:6px">THE GAME AUTOSAVES EVERY 3 SECONDS. SLOT <span id="mn-slot-num"></span>.</div>
+                    <button class="mn-btn" style="background:#312e81;border-color:#a5b4fc" onclick="replayOpening()">REPLAY OPENING</button>
+                    <div class="mn-dim" id="mn-build">BUILD</div>
+                </div>
+
+                <div class="mn-foot">PRESS [S] OR START TO RESUME</div>
+            </div>
+
+            <!-- BOSOM V2 HUD: status panel top-left -->
+            <div id="v2-hud">
+              <div id="v2-status-panel">
+                <div id="v2-portrait-wrap">
+                  <img id="v2-portrait" src="{{datauri assets/ui/v2-portrait.webp}}" alt="">
+                </div>
+                <div id="v2-info">
+                  <div class="v2-stat-row">
+                    <span class="v2-stat-icon">❤️</span>
+                    <div class="v2-stat-bar-track"><div class="v2-stat-bar-fill" id="v2-hp-fill"></div></div>
+                    <span class="v2-stat-num" id="v2-hp-num">1/1</span>
+                  </div>
+                  <div class="v2-stat-row">
+                    <span class="v2-stat-icon">⚡</span>
+                    <div class="v2-stat-bar-track"><div class="v2-stat-bar-fill" id="v2-en-fill"></div></div>
+                    <span class="v2-stat-num" id="v2-en-num">1/1</span>
+                  </div>
+                  <div class="v2-clock-row">
+                    <div id="v2-period">Afternoon</div>
+                    <div id="v2-time">15:06</div>
+                    <div id="v2-date">Sunday, 2 Apr</div>
+                  </div>
+                  <div id="v2-track-row">
+                    <span id="v2-track-icon">✦</span>
+                    <span id="v2-track-name">Brennan's Theme</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- navigation: minimap (tap for the full map) and the guide pointing the way to wherever you've set your course -->
+            <canvas id="nav-mini" width="192" height="192" title="Map"></canvas>
+            <div id="nav-guide"><span id="nav-arrow">&#9650;</span><span id="nav-text"></span></div>
+            <div id="farm-hud"></div>
+            <div id="rain-fx"></div><div id="lightning"></div>
+            <div id="wrong-fig"><svg viewBox="0 0 60 200" preserveAspectRatio="xMidYMax meet"><path d="M30 4c-5 0-7 5-7 9 0 3 1 6 3 7-7 2-10 9-11 18-1 12-3 24-6 38-2 9-3 20-4 31l3 1c3-12 5-24 8-35 1 18 1 40 0 62-1 22-3 42-4 62h5c2-18 4-38 6-58l3-50 3 50c2 20 4 40 6 58h5c-1-20-3-40-4-62-1-22-1-44 0-62 3 11 5 23 8 35l3-1c-1-11-2-22-4-31-3-14-5-26-6-38-1-9-4-16-11-18 2-1 3-4 3-7 0-4-2-9-7-9z" fill="#05060a"/></svg></div>
+            <div id="sleep-fade"></div>
+            <div id="grow-cat">
+                <div class="gc-head">HOLLOW CATALOG <span>every seed grows a plant that has never existed</span></div>
+                <div class="gc-species"></div>
+                <canvas width="300" height="240"></canvas>
+                <div class="gc-stats"></div>
+                <div class="gc-sliders">
+                    <label>LEAF SIZE<input type="range" min="0" max="100" data-k="leaf"></label>
+                    <label>SPREAD<input type="range" min="0" max="100" data-k="spread"></label>
+                    <label>DROOP<input type="range" min="0" max="100" data-k="droop"></label>
+                    <label>VARIATION<input type="range" min="0" max="100" data-k="vary"></label>
+                </div>
+                <div class="gc-info"></div>
+                <div class="gc-btns"><button class="gc-shuffle" onclick="catalogShuffle()">&#x21bb; SHUFFLE</button><button class="gc-plant" onclick="catalogPlant()">PLANT HERE</button><button onclick="closeCatalog()">CLOSE</button></div>
+            </div>
+            <!-- ghost elements for JS compatibility (never visible) -->
+            <div id="v2-gem-count" style="display:none">0</div>
+            <div id="hud-bar" style="display:none"></div>
+            <span id="location-name" style="display:none">BRENNAN'S THEME</span>
+            <span id="coords-display" style="display:none">X:21 Y:21</span>
+            <span id="gem-count" style="display:none">0/12</span>
+
+            <div id="fluid-toast"></div>
+
+            <div id="hero-hud-corner" class="hidden">
+                <div id="hero-avatar-badge">
+                    <img src="{{datauri assets/ui/hero-avatar-badge.webp}}" alt="Character portrait">
+                    <div id="hero-health-bar-track">
+                        <div id="hero-health-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dialogue-box" class="hidden absolute bottom-2 left-2 right-2 bg-slate-900 border-4 border-white p-3 rounded text-[10px] leading-relaxed z-30 shadow-2xl">
+                <div id="dialogue-text" class="text-white min-h-[36px]"></div>
+                
+                <div id="dialogue-actions" class="hidden grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-slate-700">
+                    <button onclick="handleShopChoice('buy')" class="bg-emerald-800 hover:bg-emerald-700 py-1.5 px-2 rounded text-[8px] text-white active:scale-95 border border-emerald-400">SHOP ITEMS</button>
+                    <button onclick="handleShopChoice('ghost')" id="ghost-recruit-btn" class="bg-cyan-800 hover:bg-cyan-700 py-1.5 px-2 rounded text-[8px] text-white active:scale-95 border border-cyan-400">RECRUIT GHOST</button>
+                    <button onclick="handleShopChoice('rumors')" class="bg-amber-800 hover:bg-amber-700 py-1.5 px-2 rounded text-[8px] text-white active:scale-95 border border-amber-400">INVESTIGATE CLUES</button>
+                    <button onclick="hideDialogue()" class="bg-slate-700 hover:bg-slate-600 py-1.5 px-2 rounded text-[8px] text-white active:scale-95 border border-slate-400">GOODBYE</button>
+                </div>
+
+                <div id="shop-buy-actions" class="hidden grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-slate-700">
+                    <button onclick="buyItem('potion')" class="bg-emerald-700 hover:bg-emerald-600 py-1.5 px-2 rounded text-[8px] text-white active:scale-95">POTION (1 Gem) <span id="potion-owned-count"></span></button>
+                    <button onclick="buyItem('apartment')" class="bg-amber-700 hover:bg-amber-600 py-1.5 px-2 rounded text-[8px] text-white active:scale-95">RENT APARTMENT (3 Gems)</button>
+                    <button onclick="showTigerShopMenu()" class="col-span-2 bg-slate-800 hover:bg-slate-700 py-1 px-2 rounded text-[8px] text-yellow-300">BACK TO TALK</button>
+                </div>
+
+                <div id="npc-dialogue-actions" class="hidden grid grid-cols-1 gap-1.5 mt-2 pt-2 border-t border-slate-700"></div>
+
+                <div id="dialogue-continue-prompt" class="text-right text-[8px] text-yellow-400 animate-bounce mt-1">PRESS [A] TO CONTINUE</div>
+            </div>
+
+        </div>
+
+        <div id="pad" style="margin-top:auto">
+            <div class="pad-row">
+                <div id="dpad" aria-label="D-pad: up opens the bag, left/right switch what's in hand, down puts the camera behind you">
+                    <button id="dp-up" class="dp dp-u" type="button" aria-label="Bag"></button>
+                    <button id="dp-left" class="dp dp-l" type="button" aria-label="Previous item"></button>
+                    <div class="dp-c"></div>
+                    <button id="dp-right" class="dp dp-r" type="button" aria-label="Next item"></button>
+                    <button id="dp-down" class="dp dp-d" type="button" aria-label="Camera behind"></button>
+                </div>
+                <div id="pad-mid">
+                    <button onclick="handleStartButton()" id="btn-start" type="button" aria-label="Menu (Space / S)"><svg width="14" height="10" viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 1h12M1 5h12M1 9h12"/></svg></button><span class="pm-l">Menu</span>
+                    <button id="btn-play" type="button" aria-label="Start: the map (M)"><svg width="9" height="10" viewBox="0 0 9 10"><path d="M1 1l7 4-7 4z" fill="currentColor"/></svg></button><span class="pm-l">Start</span>
+                </div>
+                <div id="face-buttons">
+                    <button id="btn-x" type="button" class="gp-small fb-x" aria-label="Jump (J)"><span class="gp-letter">X</span></button>
+                    <button id="btn-y" type="button" class="gp-small fb-y" aria-label="Roll (R)"><span class="gp-letter">Y</span></button>
+                    <button id="btn-a" type="button" class="gp-small fb-a" aria-label="Interact (tap) / use (hold)"><span class="gp-letter">A</span></button>
+                    <button id="btn-b" type="button" class="gp-small fb-b" aria-label="Back / use tool (X key)"><span class="gp-letter">B</span></button>
+                </div>
+            </div>
+            <div class="pad-row pad-sticks">
+            <div id="joystick-zone" aria-label="Movement stick">
+                <div class="js-plate"></div>
+                <svg class="js-ring" viewBox="0 0 100 100" aria-hidden="true"><path id="js-seg-0" d="M34.37 4.62A48 48 0 0 1 65.63 4.62L62.70 13.12A39 39 0 0 0 37.30 13.12Z"/><path id="js-seg-1" d="M71.04 6.86A48 48 0 0 1 93.14 28.96L85.05 32.90A39 39 0 0 0 67.10 14.95Z"/><path id="js-seg-2" d="M95.38 34.37A48 48 0 0 1 95.38 65.63L86.88 62.70A39 39 0 0 0 86.88 37.30Z"/><path id="js-seg-3" d="M93.14 71.04A48 48 0 0 1 71.04 93.14L67.10 85.05A39 39 0 0 0 85.05 67.10Z"/><path id="js-seg-4" d="M65.63 95.38A48 48 0 0 1 34.37 95.38L37.30 86.88A39 39 0 0 0 62.70 86.88Z"/><path id="js-seg-5" d="M28.96 93.14A48 48 0 0 1 6.86 71.04L14.95 67.10A39 39 0 0 0 32.90 85.05Z"/><path id="js-seg-6" d="M4.62 65.63A48 48 0 0 1 4.62 34.37L13.12 37.30A39 39 0 0 0 13.12 62.70Z"/><path id="js-seg-7" d="M6.86 28.96A48 48 0 0 1 28.96 6.86L32.90 14.95A39 39 0 0 0 14.95 32.90Z"/></svg>
+                <div class="js-well"></div>
+                <div id="joystick-stick" class="joystick-stick"></div>
+            </div>
+                <div id="cam-zone" aria-label="Camera stick">
+                    <div class="js-plate"></div><div class="js-well"></div>
+                    <div id="cam-stick" class="joystick-stick"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/plain" id="bg-town">{{datauri assets/backgrounds/bg-town.webp}}</script>
+<script type="text/plain" id="bg-wastes">{{datauri assets/backgrounds/bg-wastes.webp}}</script>
+    <script type="text/plain" id="bg-haven">{{datauri assets/backgrounds/bg-haven.webp}}</script>
+    <script type="text/plain" id="farm-atlas">{{datauri assets/atlases/farm-atlas.webp}}</script>
+<script type="text/plain" id="bg-vista">{{datauri assets/backgrounds/bg-vista.webp}}</script>
+<script type="text/plain" id="bg-trail">{{datauri assets/backgrounds/bg-trail.webp}}</script>
+    <script type="text/plain" id="trail-atlas">{{datauri assets/atlases/trail-atlas.webp}}</script>
+<script type="text/plain" id="hero-atlas">{{datauri assets/atlases/hero-atlas.webp}}</script>
+<script type="text/plain" id="temple-atlas">{{datauri assets/atlases/temple-atlas.webp}}</script>
+<script type="text/plain" id="item-atlas">{{datauri assets/atlases/item-atlas.webp}}</script>
+<script type="text/plain" id="world-atlas">{{datauri assets/atlases/world-atlas.webp}}</script>
+<script type="text/plain" id="interior-atlas">{{datauri assets/atlases/interior-atlas.webp}}</script>
+<script>{{jsjoin src/js/game}}</script>
+<script>{{file src/js/sw-register.js}}</script>
+</body>
+</html>

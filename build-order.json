@@ -1,0 +1,173 @@
+{
+ "js_order": [
+  "src/js/game/00-core.js",
+  "src/js/game/01-8-directions.js",
+  "src/js/game/02-rite-sites.js",
+  "src/js/game/03-hero-sprite.js",
+  "src/js/game/04-world-art.js",
+  "src/js/game/05-the-horse.js",
+  "src/js/game/06-the-pouch.js",
+  "src/js/game/07-title.js",
+  "src/js/game/08-held-items.js",
+  "src/js/game/09-start-menu.js",
+  "src/js/game/10-bosom-v2-hud-tick.js",
+  "src/js/game/11-navigation.js",
+  "src/js/game/12-heads.js",
+  "src/js/game/13-menu-theme.js",
+  "src/js/game/14-in-game-music.js",
+  "src/js/game/15-opening-sequence.js",
+  "src/js/game/16-world-architecture.js",
+  "src/js/game/17-zones.js",
+  "src/js/game/18-the-long-trail.js",
+  "src/js/game/19-spatial-filedex.js",
+  "src/js/game/20-cardbook.js",
+  "src/js/game/21-the-grow-hollow.js",
+  "src/js/game/22-terrain.js",
+  "src/js/game/23-papercraft.js",
+  "src/js/game/24-guard-targets.js",
+  "src/js/game/25-rahjai.js",
+  "src/js/game/26-wild-horses.js",
+  "src/js/game/27-the-lasso.js",
+  "src/js/game/28-triangle.js",
+  "src/js/game/29-combat-stance.js",
+  "src/js/game/30-standing-cards.js",
+  "src/js/game/31-camera.js",
+  "src/js/game/32-the-long-trail.js",
+  "src/js/game/33-the-mission.js",
+  "src/js/game/34-npc-system.js",
+  "src/js/game/35-render-fx.js",
+  "src/js/game/36-perspective-room-module.js",
+  "src/js/game/37-webgl-post-layer.js",
+  "src/js/game/38-save-load.js",
+  "src/js/game/39-lens.js",
+  "src/js/game/40-locations-hybrid-camera.js"
+ ],
+ "assets": [
+  {
+   "id": "bg-town",
+   "kind": "backgrounds",
+   "file": "assets/backgrounds/bg-town.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "bg-wastes",
+   "kind": "backgrounds",
+   "file": "assets/backgrounds/bg-wastes.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "bg-haven",
+   "kind": "backgrounds",
+   "file": "assets/backgrounds/bg-haven.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "farm-atlas",
+   "kind": "atlases",
+   "file": "assets/atlases/farm-atlas.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "bg-vista",
+   "kind": "backgrounds",
+   "file": "assets/backgrounds/bg-vista.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "bg-trail",
+   "kind": "backgrounds",
+   "file": "assets/backgrounds/bg-trail.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "trail-atlas",
+   "kind": "atlases",
+   "file": "assets/atlases/trail-atlas.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "hero-atlas",
+   "kind": "atlases",
+   "file": "assets/atlases/hero-atlas.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "temple-atlas",
+   "kind": "atlases",
+   "file": "assets/atlases/temple-atlas.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "item-atlas",
+   "kind": "atlases",
+   "file": "assets/atlases/item-atlas.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "world-atlas",
+   "kind": "atlases",
+   "file": "assets/atlases/world-atlas.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "interior-atlas",
+   "kind": "atlases",
+   "file": "assets/atlases/interior-atlas.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "apple-touch-icon-inline",
+   "kind": "ui",
+   "file": "assets/ui/apple-touch-icon-inline.png",
+   "mime": "image/png"
+  },
+  {
+   "id": "title-logo",
+   "kind": "ui",
+   "file": "assets/ui/title-logo.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "party-portrait",
+   "kind": "ui",
+   "file": "assets/ui/party-portrait.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "v2-portrait",
+   "kind": "ui",
+   "file": "assets/ui/v2-portrait.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "hero-avatar-badge",
+   "kind": "ui",
+   "file": "assets/ui/hero-avatar-badge.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "menu-backdrop",
+   "kind": "ui",
+   "file": "assets/ui/menu-backdrop.webp",
+   "mime": "image/webp"
+  },
+  {
+   "id": "icon-192",
+   "kind": "icons",
+   "file": "assets/icons/icon-192.png",
+   "mime": "image/png"
+  },
+  {
+   "id": "icon-512",
+   "kind": "icons",
+   "file": "assets/icons/icon-512.png",
+   "mime": "image/png"
+  },
+  {
+   "id": "apple-touch-icon",
+   "kind": "icons",
+   "file": "assets/icons/apple-touch-icon.png",
+   "mime": "image/png"
+  }
+ ]
+}
