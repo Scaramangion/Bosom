@@ -33,9 +33,12 @@ async function boot() {
   let t = 0;
   function frame() {
     const now = performance.now(); const dt = Math.min((now - last) / 1000, 1 / 20); last = now;
-    t += dt;
+    // ctx.timeScale: hitstop / slow-mo (combat sets it briefly; ctx.realDt stays unscaled for UI/camera)
+    const sdt = dt * (ctx.timeScale ?? 1);
+    ctx.realDt = dt;
+    t += sdt;
     ctx.time = t;
-    for (const u of updaters) u.update(dt, t);
+    for (const u of updaters) u.update(sdt, t);
     if (ctx.render) ctx.render(dt); else ctx.renderer.render(ctx.scene, ctx.camera);
     ctx.frames++;
     requestAnimationFrame(frame);
