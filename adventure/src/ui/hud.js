@@ -121,7 +121,7 @@ export async function init(ctx) {
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = canvas.height = Math.round(180 * DPR);
   const g = canvas.getContext('2d');
-  const mapImg = buildMinimapImage({ heightAt: (x, z) => (ctx.terrain?.heightAt ? ctx.terrain.heightAt(x, z) : layoutHeightAt(x, z)) });
+  const mapImg = buildMinimapImage({ heightAt: (x, z) => (ctx.terrain?.heightAt ? ctx.terrain.heightAt(x, z) : layoutHeightAt(x, z)), sync: shotMode });
 
   // area card
   const card = el('div', { id: 'k-area-card', class: 'k-layer', style: 'inset:auto' }, hud);
@@ -399,7 +399,7 @@ export async function init(ctx) {
     g.beginPath(); g.moveTo(0, -10); g.lineTo(0, 3.5); g.lineTo(7, 7); g.closePath(); g.fillStyle = 'rgba(184,150,81,.75)'; g.fill();
     g.restore();
     // compass rose rotation: north (0,-1) on screen
-    const nAng = Math.atan2(-fx, fz) * 180 / Math.PI;
+    const nAng = Math.atan2(-fx, -fz) * 180 / Math.PI;
     rose.setAttribute('transform', `rotate(${nAng.toFixed(2)} 104 104)`);
   }
   function drawIcon(kind, x, y, s, a) {
