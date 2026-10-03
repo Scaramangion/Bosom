@@ -23,7 +23,11 @@
             if (!viewFirst()) return [0, 0];
             const yw = camYaw(); return [Math.sin(yw) * VIEW.FP_Z, -Math.cos(yw) * VIEW.FP_Z];
         }
+        // STREET: the town's everyday camera, down at street level close behind him (the direction art: art-source/direction/03-street-level-town.jpg)
+        const STREET = { on: true, z0: 70, mag: 2.0, hY: 20 };
+        function viewStreet() { return STREET.on && VIEW.mode === 'normal' && currentMapName === 'overworld' && paperLive(); }
         function viewApply() { // each drawn frame, before the 3D layer reads the lens settings
+            if (viewStreet()) { CINE.hY = STREET.hY; CINE.mag = STREET.mag + CAM.zoom * 0.6; return; }
             if (!viewFirst()) return;
             CINE.hY = VIEW.FP_HY; CINE.mag = VIEW.FP_MAG;
             if (!player.isMoving && CAM.back == null) { const v = DIR8_VEC[player.face8 || player.dir] || [0, -1], want = Math.atan2(v[0], -v[1]); let d = want - CAM.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); if (Math.abs(d) > 0.01) CAM.back = want; }

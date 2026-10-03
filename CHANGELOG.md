@@ -59,3 +59,9 @@
   - Riding still uses the flat sprite: the horse has no paper model yet.
 - Paper hero posing reuses its buffers (no per-frame garbage), and the GPU buffer is refilled in place.
 - Site fix: the build now also writes the playable game to the repo root (index.html, sw.js, manifest, icons), which is what GitHub Pages (scaramangion.github.io/Bosom/) serves. The game's service worker now leaves the other pages on the site alone (papercraft/, docs).
+
+## 2.98 — Street level (direction art 03)
+- Direction art saved in `art-source/direction/`: the stable door and horse, Koto in rags with a sword, and the street-level town.
+- STREET camera: in the paper town, the everyday view sits low and close behind Koto, as in the direction art (`STREET` in `47-view-modes.js`: z0 70, mag 2.0, horizon 20). The right stick's zoom still nudges it. Anything standing between the lens and him (grass, props) is left out so the view stays clear.
+- Tile spacing: the street is laid in cobbles at street scale (about a fifth of his height). They're blue-grey, rounded, slightly uneven, set in dark joints with moss, with wet patches and a glint on wet crowns. The market square uses slightly larger stones of the same kind instead of big flagstones.
+- The axe in his hand is a little shorter (9 px).

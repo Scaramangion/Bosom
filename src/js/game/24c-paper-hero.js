@@ -34,7 +34,7 @@
         const PAPER_POUCH = { armR: -38, armL: -30, foreR: -64, foreL: -58, head: 22 }; // degrees about the shoulder/elbow/neck axis while he digs in the pouch
         const PAPER_TOOLS = { // held tools, from the hero atlas: length in world px, where the fist grips (fraction from the art's top), whether the business end is at the top, and the angle out from the forearm
             sword: { frame: 'rj_sword', len: 13, grip: 0.85, top: true, angle: 150 },
-            axe: { frame: 'tool_axe', len: 11, grip: 0.16, top: false, angle: 150 } };
+            axe: { frame: 'tool_axe', len: 9, grip: 0.16, top: false, angle: 150 } };
         function paperHeroSample(clip, t, node, path, out) { // a clip's value for one node and channel at time t (looping, linear; rotations slerp-free nlerp)
             const c = clip && clip.ch.find(k => k.node === node && k.path === path); if (!c) return false;
             const n = c.t.length, w = path === 'rotation' ? 4 : 3, tt = clip.len ? t % clip.len : 0; let i = 0; while (i < n - 2 && c.t[i + 1] <= tt) i++;

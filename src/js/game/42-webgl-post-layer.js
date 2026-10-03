@@ -236,6 +236,7 @@
                 gl.activeTexture(gl.TEXTURE7); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
                 for (const e of list) {
                     const S = e.S || 128, p = this.viewForward(e.fx - lastCamX, e.fy - lastCamY); if (!p[2] || (COMBAT.amt > 0.5 && p[2] > 2.9 * 110 / CINE.z0 && e.orient == null)) continue; // nothing looms up against the lens
+                    if (e.orient == null && p[3] && p[3] < CINE.z0 * 0.72 && viewStreet()) continue; // street camera: nothing standing between the lens and him
                     let quadPts;
                     if (e.orient != null) { // a plane fixed in the world (a fence): each end projected on its own, so it turns edge-on as the camera goes round
                         const hw = S / 4, c = Math.cos(e.orient), sn = Math.sin(e.orient);
@@ -480,7 +481,7 @@
                 else { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas); this.texReady = true; }
                 gl.uniform2f(this.u('uCam'), lastCamX, lastCamY);
                 gl.uniform3f(this.u('uView'), diorama.cur.cyl, diorama.cur.zoom, diorama.yaw);
-                viewApply(); { const wz = viewFirst() ? VIEW.FP_Z : 110; /* the camera holds its distance; walls in the way are cut away instead */ CINE.z0 += (wz - CINE.z0) * (wz < CINE.z0 ? 0.3 : 0.05); if (Math.abs(wz - CINE.z0) < 0.05) CINE.z0 = wz; } gl.uniform1f(this.u('uZ0'), CINE.z0);
+                viewApply(); { const wz = viewFirst() ? VIEW.FP_Z : viewStreet() ? STREET.z0 : 110; /* the camera holds its distance; walls in the way are cut away instead */ CINE.z0 += (wz - CINE.z0) * (wz < CINE.z0 ? 0.3 : 0.05); if (Math.abs(wz - CINE.z0) < 0.05) CINE.z0 = wz; } gl.uniform1f(this.u('uZ0'), CINE.z0);
                 gl.uniform1f(this.u('uTP'), COMBAT.amt); gl.uniform1f(this.u('uMag'), CINE.mag); gl.uniform1f(this.u('uFogD'), CINE.fogD); gl.uniform1f(this.u('uHY'), CINE.hY); this.nbrUniforms(gl); gl.uniform1f(this.u('uYaw'), camYaw()); gl.uniform1f(this.u('uDS'), this.cv.width / 240); this.rhythm = nerveGrade(this.curMode === 1 ? rhythmNow() : { tint: [1, 1, 1], ds: 0.45, fog: null }); gl.uniform3f(this.u('uTint'), this.rhythm.tint[0], this.rhythm.tint[1], this.rhythm.tint[2]); gl.uniform1f(this.u('uDesat'), this.rhythm.ds); gl.uniform1f(this.u('uVistaOn'), CINE.vista); gl.uniform1f(this.u('uVPan'), currentMapName === 'overworld' ? 0.1 * Math.min(1, Math.max(0, (player.pixelX + 8) / (MAP_COLS * TILE_SIZE))) : 0.05); gl.uniform2f(this.u('uTileS'), z && z.tile ? z.tile[0] : 0, z && z.tile ? z.tile[1] : 0); gl.uniform1f(this.u('uGrade'), gameStarted ? 1 : 0);
                 { const fc = this.fogColor(mode, night); gl.uniform3f(this.u('uFogC'), fc[0], fc[1], fc[2]); } { const a = tpAnchor(); gl.uniform2f(this.u('uHero'), a[0], a[1]); }
                 gl.uniform1f(this.u('uTime'), Date.now() / 1000 % 1000);
