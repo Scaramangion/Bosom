@@ -75,3 +75,9 @@
   - The paper sheet canvas (4 MB) is freed once it's on the GPU.
   - Phones draw the 3D layer at 720x648 at most, instead of 960x864.
 - Measured in a desktop browser at the crash spot, GPU textures dropped from about 41 MB to 30 MB, plus the freed canvases and decoded photos.
+
+## 3.00 — Near-only cards, one card atlas, lint clean
+- A trace while walking found no growing JavaScript memory. But every standing card stayed in memory for good: 53 farmhouse wall cards were still held in town. Moving things also re-allocated a GPU texture for each card, every frame (about 28 per frame).
+- Keep only what's near (as Minecraft loads and unloads chunks): a static card nobody has drawn for 12 s frees its canvas and texture, and is redrawn if it comes back into view. In the test, 85 cached cards dropped to 19 once the farmhouse was behind him.
+- One texture atlas for moving things (as Minecraft's terrain sheet does): a single 1024x1024 texture allocated once, each card copied into its own slot. No per-card allocation.
+- Lint: the last two unused variables (papercraft module) removed. The lint check now reports nothing.

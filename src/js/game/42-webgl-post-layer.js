@@ -246,14 +246,23 @@
                     }
                     const k = p[2] * 0.5, x0 = p[0] - S / 2 * k, x1 = p[0] + S / 2 * k, y0 = p[1] - (S - 8) * k, y1 = p[1] + 8 * k;
                     gl.uniform1f(U('uFogA'), this.spriteFog(p[2])); gl.uniform1f(U('uZ'), this.paperZ ? this.zN(p[3]) : 0);
+                    let uv = [0, 0, 1, 1];
                     if (e.cached) { // static prop: its own texture, uploaded once
                         if (!e.cached.tex) { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
                             [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
                             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, e.cv); e.cached.tex = t; }
                         else gl.bindTexture(gl.TEXTURE_2D, e.cached.tex);
-                    } else { gl.bindTexture(gl.TEXTURE_2D, this.tex7); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, e.cv); }
-                    const Q = quadPts || [x0, y0, x1, y0, x1, y1, x0, y1];
-                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([Q[0], Q[1], 0, 0, Q[2], Q[3], 1, 0, Q[4], Q[5], 1, 1, Q[0], Q[1], 0, 0, Q[4], Q[5], 1, 1, Q[6], Q[7], 0, 1]), gl.DYNAMIC_DRAW);
+                    } else { // moving things: one shared atlas texture, allocated once; each card fills its own 128 px slot (no new GPU allocation per card per frame)
+                        if (!this.cardTex) { this.cardTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, this.cardTex);
+                            [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1024, 1024, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); }
+                        else gl.bindTexture(gl.TEXTURE_2D, this.cardTex);
+                        const n = this.cardSlot = (this.cardSlot || 0) % 64, sx = (n % 8) * 128, sy = (n >> 3) * 128; this.cardSlot++;
+                        gl.texSubImage2D(gl.TEXTURE_2D, 0, sx, sy, gl.RGBA, gl.UNSIGNED_BYTE, e.cv); uv = [sx / 1024, sy / 1024, (sx + 128) / 1024, (sy + 128) / 1024];
+                    }
+                    const Q = quadPts || [x0, y0, x1, y0, x1, y1, x0, y1], A = this.cardQ || (this.cardQ = new Float32Array(24)); // one reused vertex array
+                    A.set([Q[0], Q[1], uv[0], uv[1], Q[2], Q[3], uv[2], uv[1], Q[4], Q[5], uv[2], uv[3], Q[0], Q[1], uv[0], uv[1], Q[4], Q[5], uv[2], uv[3], Q[6], Q[7], uv[0], uv[3]]);
+                    gl.bufferData(gl.ARRAY_BUFFER, A, gl.DYNAMIC_DRAW);
                     gl.drawArrays(gl.TRIANGLES, 0, 6);
                 }
                 gl.bindTexture(gl.TEXTURE_2D, this.tex7); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -522,6 +531,7 @@
                 this.curMode = mode;
                 this.paperZ = mode === 1 && paperLive() && this.drawPaper(gl); // the folded town, then everything standing is depth-tested against it
                 if (this.paperZ) { gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); }
+                cardSweep(gl); this.cardSlot = 0;
                 this.drawCards(gl, true);
                 if (heroHD.req) { if (!this.heroPaper && !viewFirst()) this.drawHero(gl); heroHD.req = null; }
                 this.drawCards(gl, false); CARDS.list.length = 0;

@@ -12,6 +12,7 @@
                 if (!c) { const cv = document.createElement('canvas'); cv.width = cv.height = S; const cx = cv.getContext('2d'); cx.imageSmoothingEnabled = false;
                     cx.setTransform(2, 0, 0, 2, S / 2 - fx * 2, S - 8 - fy * 2); const prev = ctx; ctx = cx; try { draw(); } finally { ctx = prev; }
                     c = CARD_CACHE[key] = { cv, tex: null }; }
+                c.used = performance.now(); // for the sweep: cards out of sight for a while are let go (see cardSweep)
                 const e = { fx, fy, cv: c.cv, cached: c, S, orient: opt && opt.orient != null ? opt.orient : null }; CARDS.list.push(e); return e;
             }
             let e = CARDS.pool[CARDS.list.length];
@@ -20,6 +21,10 @@
             c.setTransform(2, 0, 0, 2, 64 - fx * 2, 120 - fy * 2); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
             const prev = ctx; ctx = c; try { draw(); } finally { ctx = prev; }
             e.fx = fx; e.fy = fy; CARDS.list.push(e); return e;
+        }
+        function cardSweep(gl) { // the Minecraft trick: keep only what's near. A static card nobody has drawn for 12 s (another zone, the far end of town) frees its canvas and texture; it is redrawn if it comes back into view
+            const now = performance.now(); if (now - (CARDS.swept || 0) < 3000) return; CARDS.swept = now;
+            for (const k in CARD_CACHE) { const c = CARD_CACHE[k]; if (now - (c.used || 0) > 12000) { if (c.tex && gl) gl.deleteTexture(c.tex); c.cv.width = c.cv.height = 0; delete CARD_CACHE[k]; } }
         }
         function cardFlash(amount) { // inside an asCard draw: tint just what was drawn on the card
             if (!cardMode() || amount <= 0) return;

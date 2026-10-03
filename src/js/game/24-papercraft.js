@@ -780,7 +780,7 @@
               let eC = 64; if (o.cover) { lo = 0.5; hi = 64; eC = 0.5; for (let it = 0; it < 12; it++) { const mid = (lo + hi) / 2, t = tr(mid); if (t && covers(t)) { lo = mid; eC = mid; } else hi = mid; } }
               T = tr(Math.min(eB, eC)) || tr(0.5); } // the paint wins over the budget
             if (!T || !T.rings.length) return V;
-            const P = [], segs = [], ringsIdx = []; { let b = 0; for (const n of T.rings) { const ids = []; for (let q = 0; q < n; q++) { ids.push(P.length); P.push([T.pts[(b + q) * 2], T.pts[(b + q) * 2 + 1], 1]); } ringsIdx.push(ids); b += n; } } // [x, y, onOutline]
+            const P = [], ringsIdx = []; { let b = 0; for (const n of T.rings) { const ids = []; for (let q = 0; q < n; q++) { ids.push(P.length); P.push([T.pts[(b + q) * 2], T.pts[(b + q) * 2 + 1], 1]); } ringsIdx.push(ids); b += n; } } // [x, y, onOutline]
             const inPoly = (x, y) => { let ins = false; for (const ids of ringsIdx) for (let q = 0; q < ids.length; q++) { const A = P[ids[q]], B = P[ids[(q + 1) % ids.length]]; if ((A[1] > y) !== (B[1] > y) && x < A[0] + (y - A[1]) * (B[0] - A[0]) / (B[1] - A[1])) ins = !ins; } return ins; };
             // 2) points inside, by importance: colour boundaries and depth bends, kept apart by a spacing that shrinks where they matter
             const lum = (x, y) => { x = Math.max(0, Math.min(w - 1, x)); y = Math.max(0, Math.min(h - 1, y)); const j = ((Y0 + y) * W + X0 + x) * 4; return [px[j], px[j + 1], px[j + 2]]; };
@@ -826,7 +826,7 @@
                 const q = f.map(i => local(i, side)), n = fN(q[0], q[1], q[2], side), pw = q.map(world), out = [Nx * side, Ny * side, 0];
                 const ux = pw[1][0] - pw[0][0], uy = pw[1][1] - pw[0][1], uz = pw[1][2] - pw[0][2], vx = pw[2][0] - pw[0][0], vy = pw[2][1] - pw[0][1], vz = pw[2][2] - pw[0][2];
                 const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2]; // a face is front when (B-A)x(C-A) points INTO it (left-handed world)
-                const nh = Math.hypot(n[0], n[1], n[2]) || 1, sideways = o.sideUV && Math.abs(n[0]) > 1.2 * Math.abs(n[2]) + 0.2 * Math.abs(n[1]), east = n[0] > 0, sh = shadeN(n, side);
+                const sideways = o.sideUV && Math.abs(n[0]) > 1.2 * Math.abs(n[2]) + 0.2 * Math.abs(n[1]), east = n[0] > 0, sh = shadeN(n, side);
                 for (const j of ord) { const i = f[j], p = P[i], t = sideways ? o.sideUV(p[0], p[1], q[j][2], east) : [(X0 + p[0]) / W + (side < 0 && o.backDU ? o.backDU : 0), (Y0 + p[1]) / H];
                     V.push(pw[j][0], pw[j][1], pw[j][2], t[0], t[1], vn ? shadeN(vn[side > 0 ? 0 : 1][i], side) : sh, em); } }
             return V;

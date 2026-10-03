@@ -11,7 +11,7 @@
         box = document.createElement('div');
         box.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.45 monospace;padding:10px 12px;border-radius:8px;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto;box-shadow:0 4px 18px rgba(0,0,0,.5)';
         box.onclick = function () { box.style.display = 'none'; };
-        box.textContent = 'BOSOM build 2.99 hit a problem. Screenshot this for Claude:\n';
+        box.textContent = 'BOSOM build 3.00 hit a problem. Screenshot this for Claude:\n';
         (document.body || document.documentElement).appendChild(box);
         notes.forEach(function (n) { box.textContent += '\n  (note) ' + n; }); notes = [];
       }
@@ -41,7 +41,7 @@
     setTimeout(function () {
       if (window.__bosomBooted) return;
       var kb = Math.round(document.documentElement.outerHTML.length / 1024);
-      show('The game code never finished starting.\nPage received: ' + kb + ' KB (the full build is about 5099 KB).\n' + (kb < 5099 * 0.97 ? 'The page arrived INCOMPLETE — the upload or download got cut off. Re-upload index.html.' : 'The page arrived complete, so the error above is the cause.'));
+      show('The game code never finished starting.\nPage received: ' + kb + ' KB (the full build is about 5100 KB).\n' + (kb < 5100 * 0.97 ? 'The page arrived INCOMPLETE — the upload or download got cut off. Re-upload index.html.' : 'The page arrived complete, so the error above is the cause.'));
     }, 6000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchdog); else watchdog();
@@ -1849,7 +1849,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
         }
 
         // ================= START MENU (tabs: ITEMS / GEAR / QUEST / SAVE) =================
-        const BUILD_VERSION = '2.99';
+        const BUILD_VERSION = '3.00';
         let menuLast = 0;
         
         // ===== BOSOM V2 HUD tick =====
@@ -4504,7 +4504,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
               let eC = 64; if (o.cover) { lo = 0.5; hi = 64; eC = 0.5; for (let it = 0; it < 12; it++) { const mid = (lo + hi) / 2, t = tr(mid); if (t && covers(t)) { lo = mid; eC = mid; } else hi = mid; } }
               T = tr(Math.min(eB, eC)) || tr(0.5); } // the paint wins over the budget
             if (!T || !T.rings.length) return V;
-            const P = [], segs = [], ringsIdx = []; { let b = 0; for (const n of T.rings) { const ids = []; for (let q = 0; q < n; q++) { ids.push(P.length); P.push([T.pts[(b + q) * 2], T.pts[(b + q) * 2 + 1], 1]); } ringsIdx.push(ids); b += n; } } // [x, y, onOutline]
+            const P = [], ringsIdx = []; { let b = 0; for (const n of T.rings) { const ids = []; for (let q = 0; q < n; q++) { ids.push(P.length); P.push([T.pts[(b + q) * 2], T.pts[(b + q) * 2 + 1], 1]); } ringsIdx.push(ids); b += n; } } // [x, y, onOutline]
             const inPoly = (x, y) => { let ins = false; for (const ids of ringsIdx) for (let q = 0; q < ids.length; q++) { const A = P[ids[q]], B = P[ids[(q + 1) % ids.length]]; if ((A[1] > y) !== (B[1] > y) && x < A[0] + (y - A[1]) * (B[0] - A[0]) / (B[1] - A[1])) ins = !ins; } return ins; };
             // 2) points inside, by importance: colour boundaries and depth bends, kept apart by a spacing that shrinks where they matter
             const lum = (x, y) => { x = Math.max(0, Math.min(w - 1, x)); y = Math.max(0, Math.min(h - 1, y)); const j = ((Y0 + y) * W + X0 + x) * 4; return [px[j], px[j + 1], px[j + 2]]; };
@@ -4550,7 +4550,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                 const q = f.map(i => local(i, side)), n = fN(q[0], q[1], q[2], side), pw = q.map(world), out = [Nx * side, Ny * side, 0];
                 const ux = pw[1][0] - pw[0][0], uy = pw[1][1] - pw[0][1], uz = pw[1][2] - pw[0][2], vx = pw[2][0] - pw[0][0], vy = pw[2][1] - pw[0][1], vz = pw[2][2] - pw[0][2];
                 const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2]; // a face is front when (B-A)x(C-A) points INTO it (left-handed world)
-                const nh = Math.hypot(n[0], n[1], n[2]) || 1, sideways = o.sideUV && Math.abs(n[0]) > 1.2 * Math.abs(n[2]) + 0.2 * Math.abs(n[1]), east = n[0] > 0, sh = shadeN(n, side);
+                const sideways = o.sideUV && Math.abs(n[0]) > 1.2 * Math.abs(n[2]) + 0.2 * Math.abs(n[1]), east = n[0] > 0, sh = shadeN(n, side);
                 for (const j of ord) { const i = f[j], p = P[i], t = sideways ? o.sideUV(p[0], p[1], q[j][2], east) : [(X0 + p[0]) / W + (side < 0 && o.backDU ? o.backDU : 0), (Y0 + p[1]) / H];
                     V.push(pw[j][0], pw[j][1], pw[j][2], t[0], t[1], vn ? shadeN(vn[side > 0 ? 0 : 1][i], side) : sh, em); } }
             return V;
@@ -6671,6 +6671,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                 if (!c) { const cv = document.createElement('canvas'); cv.width = cv.height = S; const cx = cv.getContext('2d'); cx.imageSmoothingEnabled = false;
                     cx.setTransform(2, 0, 0, 2, S / 2 - fx * 2, S - 8 - fy * 2); const prev = ctx; ctx = cx; try { draw(); } finally { ctx = prev; }
                     c = CARD_CACHE[key] = { cv, tex: null }; }
+                c.used = performance.now(); // for the sweep: cards out of sight for a while are let go (see cardSweep)
                 const e = { fx, fy, cv: c.cv, cached: c, S, orient: opt && opt.orient != null ? opt.orient : null }; CARDS.list.push(e); return e;
             }
             let e = CARDS.pool[CARDS.list.length];
@@ -6679,6 +6680,10 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
             c.setTransform(2, 0, 0, 2, 64 - fx * 2, 120 - fy * 2); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
             const prev = ctx; ctx = c; try { draw(); } finally { ctx = prev; }
             e.fx = fx; e.fy = fy; CARDS.list.push(e); return e;
+        }
+        function cardSweep(gl) { // the Minecraft trick: keep only what's near. A static card nobody has drawn for 12 s (another zone, the far end of town) frees its canvas and texture; it is redrawn if it comes back into view
+            const now = performance.now(); if (now - (CARDS.swept || 0) < 3000) return; CARDS.swept = now;
+            for (const k in CARD_CACHE) { const c = CARD_CACHE[k]; if (now - (c.used || 0) > 12000) { if (c.tex && gl) gl.deleteTexture(c.tex); c.cv.width = c.cv.height = 0; delete CARD_CACHE[k]; } }
         }
         function cardFlash(amount) { // inside an asCard draw: tint just what was drawn on the card
             if (!cardMode() || amount <= 0) return;
@@ -8709,14 +8714,23 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                     }
                     const k = p[2] * 0.5, x0 = p[0] - S / 2 * k, x1 = p[0] + S / 2 * k, y0 = p[1] - (S - 8) * k, y1 = p[1] + 8 * k;
                     gl.uniform1f(U('uFogA'), this.spriteFog(p[2])); gl.uniform1f(U('uZ'), this.paperZ ? this.zN(p[3]) : 0);
+                    let uv = [0, 0, 1, 1];
                     if (e.cached) { // static prop: its own texture, uploaded once
                         if (!e.cached.tex) { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
                             [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
                             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, e.cv); e.cached.tex = t; }
                         else gl.bindTexture(gl.TEXTURE_2D, e.cached.tex);
-                    } else { gl.bindTexture(gl.TEXTURE_2D, this.tex7); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, e.cv); }
-                    const Q = quadPts || [x0, y0, x1, y0, x1, y1, x0, y1];
-                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([Q[0], Q[1], 0, 0, Q[2], Q[3], 1, 0, Q[4], Q[5], 1, 1, Q[0], Q[1], 0, 0, Q[4], Q[5], 1, 1, Q[6], Q[7], 0, 1]), gl.DYNAMIC_DRAW);
+                    } else { // moving things: one shared atlas texture, allocated once; each card fills its own 128 px slot (no new GPU allocation per card per frame)
+                        if (!this.cardTex) { this.cardTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, this.cardTex);
+                            [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
+                            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1024, 1024, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); }
+                        else gl.bindTexture(gl.TEXTURE_2D, this.cardTex);
+                        const n = this.cardSlot = (this.cardSlot || 0) % 64, sx = (n % 8) * 128, sy = (n >> 3) * 128; this.cardSlot++;
+                        gl.texSubImage2D(gl.TEXTURE_2D, 0, sx, sy, gl.RGBA, gl.UNSIGNED_BYTE, e.cv); uv = [sx / 1024, sy / 1024, (sx + 128) / 1024, (sy + 128) / 1024];
+                    }
+                    const Q = quadPts || [x0, y0, x1, y0, x1, y1, x0, y1], A = this.cardQ || (this.cardQ = new Float32Array(24)); // one reused vertex array
+                    A.set([Q[0], Q[1], uv[0], uv[1], Q[2], Q[3], uv[2], uv[1], Q[4], Q[5], uv[2], uv[3], Q[0], Q[1], uv[0], uv[1], Q[4], Q[5], uv[2], uv[3], Q[6], Q[7], uv[0], uv[3]]);
+                    gl.bufferData(gl.ARRAY_BUFFER, A, gl.DYNAMIC_DRAW);
                     gl.drawArrays(gl.TRIANGLES, 0, 6);
                 }
                 gl.bindTexture(gl.TEXTURE_2D, this.tex7); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -8985,6 +8999,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                 this.curMode = mode;
                 this.paperZ = mode === 1 && paperLive() && this.drawPaper(gl); // the folded town, then everything standing is depth-tested against it
                 if (this.paperZ) { gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); }
+                cardSweep(gl); this.cardSlot = 0;
                 this.drawCards(gl, true);
                 if (heroHD.req) { if (!this.heroPaper && !viewFirst()) this.drawHero(gl); heroHD.req = null; }
                 this.drawCards(gl, false); CARDS.list.length = 0;
