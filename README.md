@@ -11,6 +11,7 @@ A mobile 2.5D PS1-style game: one HTML file you install like an app. This folder
 | `src/js/game/` | the game script, one numbered file per system (`24-papercraft.js`, `28-townsfolk.js` …) |
 | `assets/` | every picture and film packed into the game: `backgrounds/`, `atlases/`, `ui/`, `icons/`, `video/` |
 | `art-source/` | hand-made sheets the atlases were cut from; `incoming/` holds everything you've sent (images, videos, 3D models) |
+| `art-source/loading-screens/` | character art saved for future loading screens (not packed into the game yet) |
 | `docs/design-notes/` | the design ideas you've written (D20 web, Silent Hill nights, lasso, 113 seed …) |
 | `pwa/` | offline-play service worker, app manifest, install notes |
 
