@@ -65,3 +65,13 @@
 - STREET camera: in the paper town, the everyday view sits low and close behind Koto, as in the direction art (`STREET` in `47-view-modes.js`: z0 70, mag 2.0, horizon 20). The right stick's zoom still nudges it. Anything standing between the lens and him (grass, props) is left out so the view stays clear.
 - Tile spacing: the street is laid in cobbles at street scale (about a fifth of his height). They're blue-grey, rounded, slightly uneven, set in dark joints with moss, with wet patches and a glint on wet crowns. The market square uses slightly larger stones of the same kind instead of big flagstones.
 - The axe in his hand is a little shorter (9 px).
+
+## 2.99 — Memory diet (the crash report from the phone)
+- The crash guard caught it: the phone closed the page for memory while Koto stood in town (23,21). Memory now:
+  - The old desert town photo is no longer decoded when the paper town is on. A plain stand-in shows while the street is painted.
+  - The town has no photo "beyond the edge" previews, which kept the 704x1974 wastes photo in memory. The neighbour picture is freed when it isn't needed.
+  - Only the photo in use stays decoded, and the painted floors of other zones are dropped on leaving. The trail floor alone was 11 MB.
+  - The town's street lives in its own GPU texture, so its 7 MB canvas is freed once uploaded. The shared picture slot is emptied while in town.
+  - The paper sheet canvas (4 MB) is freed once it's on the GPU.
+  - Phones draw the 3D layer at 720x648 at most, instead of 960x864.
+- Measured in a desktop browser at the crash spot, GPU textures dropped from about 41 MB to 30 MB, plus the freed canvases and decoded photos.

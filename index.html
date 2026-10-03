@@ -11,7 +11,7 @@
         box = document.createElement('div');
         box.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.45 monospace;padding:10px 12px;border-radius:8px;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto;box-shadow:0 4px 18px rgba(0,0,0,.5)';
         box.onclick = function () { box.style.display = 'none'; };
-        box.textContent = 'BOSOM build 2.98 hit a problem. Screenshot this for Claude:\n';
+        box.textContent = 'BOSOM build 2.99 hit a problem. Screenshot this for Claude:\n';
         (document.body || document.documentElement).appendChild(box);
         notes.forEach(function (n) { box.textContent += '\n  (note) ' + n; }); notes = [];
       }
@@ -41,7 +41,7 @@
     setTimeout(function () {
       if (window.__bosomBooted) return;
       var kb = Math.round(document.documentElement.outerHTML.length / 1024);
-      show('The game code never finished starting.\nPage received: ' + kb + ' KB (the full build is about 5096 KB).\n' + (kb < 5096 * 0.97 ? 'The page arrived INCOMPLETE — the upload or download got cut off. Re-upload index.html.' : 'The page arrived complete, so the error above is the cause.'));
+      show('The game code never finished starting.\nPage received: ' + kb + ' KB (the full build is about 5099 KB).\n' + (kb < 5099 * 0.97 ? 'The page arrived INCOMPLETE — the upload or download got cut off. Re-upload index.html.' : 'The page arrived complete, so the error above is the cause.'));
     }, 6000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchdog); else watchdog();
@@ -1849,7 +1849,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
         }
 
         // ================= START MENU (tabs: ITEMS / GEAR / QUEST / SAVE) =================
-        const BUILD_VERSION = '2.98';
+        const BUILD_VERSION = '2.99';
         let menuLast = 0;
         
         // ===== BOSOM V2 HUD tick =====
@@ -8561,7 +8561,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                 try {
                     const cv = document.createElement('canvas');
                     const want = Math.max(3, Math.min(6, Math.round((window.innerWidth || 400) * (window.devicePixelRatio || 1) / 160)));
-                    this.level = want >= 6 ? 0 : want >= 4 ? 1 : 2; [cv.width, cv.height] = this.LEVELS[this.level]; // 6x, 4.5x, 3x, 2x of the 160x144 game
+                    this.level = want >= 6 ? 0 : want >= 4 ? 1 : 2; if (this.level === 0 && (navigator.maxTouchPoints || 0) > 0) this.level = 1; // phones: 720x648 is plenty and saves several MB of GPU memory [cv.width, cv.height] = this.LEVELS[this.level]; // 6x, 4.5x, 3x, 2x of the 160x144 game
                     cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated;';
                     const gl = cv.getContext('webgl', { alpha: false, antialias: false });
                     if (!gl) throw new Error('WebGL unavailable');
@@ -8581,7 +8581,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                         const w = rep_ ? gl.REPEAT : gl.CLAMP_TO_EDGE;
                         [[gl.TEXTURE_MIN_FILTER, rep_ ? gl.LINEAR : gl.NEAREST], [gl.TEXTURE_MAG_FILTER, rep_ ? gl.LINEAR : gl.NEAREST], [gl.TEXTURE_WRAP_S, w], [gl.TEXTURE_WRAP_T, w]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
                         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([226, 192, 140, 255])); return t; };
-                    mkTex(4, false); gl.activeTexture(gl.TEXTURE4);
+                    this.bgTex = mkTex(4, false); gl.activeTexture(gl.TEXTURE4);
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
                     gl.activeTexture(gl.TEXTURE0);
                     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -8615,7 +8615,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                       const ve = document.getElementById('bg-vista'); if (ve) vi.src = ve.textContent.trim(); }
                     this.frame = 0;
                     this.tex = tex; this.gl = gl; this.cv = cv; this.pr = pr; this.imgs = {}; this.bgKey = null;
-                    this.useBg('town');
+                    this.useBg(PAPER.on ? 'blank' : 'town'); // the paper town paints its own street: don't decode the old town photo
                     try { this.initHero(gl); } catch (e) { console.warn('HD hero disabled:', e); }
                     const ucache = {}; this.u = n => (n in ucache ? ucache[n] : (ucache[n] = gl.getUniformLocation(pr, n))); // look each uniform up once
                     gl.viewport(0, 0, cv.width, cv.height);
@@ -8815,7 +8815,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                 const mesh = paperBuild(); this.ppBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.ppBuf); gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
                 this.ppTex = gl.createTexture(); gl.activeTexture(gl.TEXTURE7); gl.bindTexture(gl.TEXTURE_2D, this.ppTex);
                 [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, paperSheet());
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, paperSheet()); PAPER.sheet = null; // on the GPU now: free the 4 MB canvas
                 gl.bindTexture(gl.TEXTURE_2D, this.tex7); gl.activeTexture(gl.TEXTURE0);
             },
             drawPaper(gl) {
@@ -8858,7 +8858,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
             photoFor(room) { return this.ok && this.bgReady && this.bgKey === 'emporium'; }, // true once the room picture is on the GPU
             nbrPick() { // the place beyond the nearest edge doorway of this zone (photo zones and the town only), and where it sits in this zone's coordinates
                 const here = currentMapName, ARR = { 'overworld>wastes': [2, 34] };
-                const bgOf = m => m === 'overworld' ? 'town' : BG_IDS[m] && ZONES[m] && ZONES[m].photo ? m : null;
+                const bgOf = m => m === 'overworld' ? (PAPER.on ? null : 'town') : BG_IDS[m] && ZONES[m] && ZONES[m].photo ? m : null;
                 if (!bgOf(here)) return null;
                 const g = navGrid(here); if (!g) return null; const [, cols, rows] = g;
                 let best = null;
@@ -8890,6 +8890,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                     }
                 }
                 const n = this.nbr, on = n && this.nbrReady && this.nbrKey === n.key ? 1 : 0;
+                if (!n && this.nbrTex && (this.nbrOn || 0) < 0.01) { this.gl.deleteTexture(this.nbrTex); this.nbrTex = null; delete this.imgs[this.nbrKey]; this.nbrKey = null; this.nbrReady = false; } // memory: let the neighbour picture go
                 this.nbrOn = (this.nbrOn || 0) + (on - (this.nbrOn || 0)) * 0.08;
                 gl.uniform1f(this.u('uNbrOn'), this.nbrOn < 0.01 ? 0 : this.nbrOn);
                 if (n) { gl.uniform4f(this.u('uNbrR'), n.rect[0], n.rect[1], n.rect[2], n.rect[3]); gl.uniform2f(this.u('uNbrT'), n.tile[0], n.tile[1]); }
@@ -8897,7 +8898,18 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
             useBg(key) { // one photo per zone: decode once, upload to unit 4 when the zone changes
                 if (!this.ok && !this.gl) return;
                 if (this.bgKey === key) return;
+                if (this.gl && this.bgTex) { this.gl.activeTexture(this.gl.TEXTURE4); this.gl.bindTexture(this.gl.TEXTURE_2D, this.bgTex); this.gl.activeTexture(this.gl.TEXTURE0); } // the shared picture slot (the town's street has its own, below)
                 this.bgKey = key; this.bgReady = false;
+                for (const k in this.imgs) if (k !== key && k !== this.nbrKey) delete this.imgs[k]; // memory: keep only the photos in use (they decode again if we come back)
+                for (const k in GEN_CACHE) if (k !== 'overworld' && 'gen:' + k !== key) delete GEN_CACHE[k]; // painted floors of other zones are repainted on return
+                if (key === 'blank') { const gl = this.gl; gl.activeTexture(gl.TEXTURE4); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([58, 60, 62, 255])); gl.activeTexture(gl.TEXTURE0); this.bgReady = true; return; } // a plain stand-in while the street is painted
+                if (key === 'gen:overworld' && PAPER.on) { // the town's street lives in its own texture for good, so its 7 MB canvas can go once it is on the GPU
+                    const gl = this.gl; gl.activeTexture(gl.TEXTURE4); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([58, 60, 62, 255])); // empty the shared slot (the last zone's floor can be 11 MB)
+                    if (!this.owTex) { this.owTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, this.owTex);
+                        [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, genGround('overworld')); GEN_CACHE.overworld = true; } // keep the 'painted' flag, drop the canvas
+                    else gl.bindTexture(gl.TEXTURE_2D, this.owTex);
+                    gl.activeTexture(gl.TEXTURE0); this.bgReady = true; return; }
                 if (key.startsWith('gen:')) { const gl = this.gl, cv = genGround(key.slice(4)); gl.activeTexture(gl.TEXTURE4); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv); gl.activeTexture(gl.TEXTURE0); this.bgReady = true; return; } // painted, not photographed
                 if (key === 'emporium' && !document.getElementById(BG_IDS.emporium)) { // no photo supplied yet: use the stand-in picture drawn on the frame
                     const gl = this.gl; gl.activeTexture(gl.TEXTURE4); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, roomBackdrop(ROOMS.emporium)); gl.activeTexture(gl.TEXTURE0); this.bgReady = true; return;
@@ -8938,7 +8950,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                 const z = ZONES[currentMapName], playing = gameState === 'PLAYING' || gameState === 'INVENTORY';
                 if (PAPER.on && !GEN_CACHE.overworld && gameStarted && currentMapName !== 'overworld') paperGroundStep(4); // paint the town's street in the background, a sliver a frame
                 const mode = !playing ? 0 : z ? (z.dungeon ? 2 : 1) : currentMapName === 'overworld' || currentMapName === 'wolf_hollow' ? 1 : roomOfMap(currentMapName) ? 3 : 0;
-                this.useBg(currentMapName === 'wolf_hollow' || (z && z.dungeon) || (currentMapName === 'overworld' && PAPER.on && mode === 1 && paperGroundStep(currentMapName === 'overworld' ? 10 : 6)) ? 'gen:' + currentMapName : z && z.photo && BG_IDS[currentMapName] ? currentMapName : mode === 3 ? 'emporium' : 'town');
+                this.useBg(currentMapName === 'wolf_hollow' || (z && z.dungeon) || (currentMapName === 'overworld' && PAPER.on && mode === 1 && paperGroundStep(currentMapName === 'overworld' ? 10 : 6)) ? 'gen:' + currentMapName : currentMapName === 'overworld' && PAPER.on && mode === 1 ? 'blank' : z && z.photo && BG_IDS[currentMapName] ? currentMapName : mode === 3 ? 'emporium' : 'town');
                 this.ambient += ((mode === 2 ? (z && z.home ? 0.5 : 0.28) : mode === 3 ? 0.72 : night ? 0.42 : currentMapName === 'overworld' && PAPER.on ? 0.8 : 0.64) - this.ambient) * 0.02; // slow dusk/dawn blend (kept low: the eerie look leans on the hero's own light)
                 if (this.texReady) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvas); // update in place, no reallocation
                 else { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas); this.texReady = true; }
