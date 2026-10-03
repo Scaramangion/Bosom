@@ -17,6 +17,7 @@ self.addEventListener('fetch', e => {
     }));
     return;
   }
+  if (req.mode === 'navigate' && !/^\/(index\.html)?$/.test(url.pathname.replace(new URL(self.registration.scope).pathname, '/'))) return; // other pages on the site (papercraft/, docs) are left alone
   if (req.mode === 'navigate') { // game page: network first, cached copy when offline
     e.respondWith(fetch(req, { cache: 'no-store' }).then(r => { const copy = r.clone(); caches.open(VERSION).then(c => c.put('index.html', copy)); return r; }).catch(() => caches.match('index.html')));
     return;

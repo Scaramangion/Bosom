@@ -30,6 +30,10 @@ def build():
     open(os.path.join(g, 'index.html'), 'w', encoding='utf-8', newline='').write(out)
     for f in os.listdir(os.path.join(ROOT, 'pwa')): shutil.copy(os.path.join(ROOT, 'pwa', f), g)
     for f in os.listdir(os.path.join(ROOT, 'assets/icons')): shutil.copy(os.path.join(ROOT, 'assets/icons', f), g)
+    # the GitHub Pages site (scaramangion.github.io/Bosom/) serves the repo root: the playable build lives there too
+    open(os.path.join(ROOT, 'index.html'), 'w', encoding='utf-8', newline='').write(out)
+    for f in ['sw.js', 'manifest.webmanifest']: shutil.copy(os.path.join(ROOT, 'pwa', f), ROOT)
+    for f in ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png']: shutil.copy(os.path.join(ROOT, 'assets/icons', f), ROOT)
     return out
 if __name__ == '__main__':
     out = build(); print('built game/index.html', round(len(out) / 1024), 'KB')

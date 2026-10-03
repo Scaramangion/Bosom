@@ -58,3 +58,4 @@
   - In the pouch, his hands come forward and his head bows.
   - Riding still uses the flat sprite: the horse has no paper model yet.
 - Paper hero posing reuses its buffers (no per-frame garbage), and the GPU buffer is refilled in place.
+- Site fix: the build now also writes the playable game to the repo root (index.html, sw.js, manifest, icons), which is what GitHub Pages (scaramangion.github.io/Bosom/) serves. The game's service worker now leaves the other pages on the site alone (papercraft/, docs).
