@@ -4611,6 +4611,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
         // the chest). Each limb overlaps its parent by a few px, so a joint never opens a hole when it turns. px: RGBA (W wide); rect [x, y, w, h].
         // Returns { humanoid, parts: [{ name, parent (index), pivot: [x, y] (px in the rect), mask (Uint8Array w*h), dir (radians, the limb's direction, 0 = down) }] }.
         // Limbs have two bones (o.bend !== false): armL/armR with foreL/foreR from the elbow, legL/legR with shinL/shinR from the knee.
+        // o.body (Uint8Array w*h): pixels painted to stay with the body (a cape, a pack, a sheathed sword), whatever lies beside them.
         // A figure without a neck or a leg split still gets a one-part rig (humanoid: false), so anything can at least bob and sway.
         function paperRig(px, W, rect, o = {}) {
             const [X0, Y0, w, h] = rect, a = new Uint8Array(w * h); let top = h, bot = -1;
@@ -4645,6 +4646,7 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                 const seen = new Uint8Array(w * h), q = []; for (let y = neck + 1; y < neck + 1 + Math.max(2, (hip - neck) * 0.35); y++) for (let x = 0; x < w; x++) if (lab[y * w + x] === arm) { seen[y * w + x] = 1; q.push(y * w + x); }
                 for (let hd = 0; hd < q.length; hd++) { const i = q[hd], x = i % w, y = (i / w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, yy = y + dy, j = yy * w + xx; if (xx >= 0 && yy >= 0 && xx < w && yy < h && lab[j] === arm && !seen[j]) { seen[j] = 1; q.push(j); } } }
                 for (let i = 0; i < w * h; i++) if (lab[i] === arm && !seen[i]) { const x = i % w, y = (i / w) | 0; lab[i] = y > hip ? (x < legX ? 4 : 5) : 0; } }
+            if (humanoid && o.body) for (let i = 0; i < w * h; i++) if (o.body[i] && lab[i] > 1) lab[i] = 0; // o.body (w*h, 1 = stays with the body): painted by hand, a cape or a pack beside the arms is no longer arm
             if (humanoid) for (let k = 2; k <= 5; k++) { // thin wisps (a lock of hair beside an arm) are not limb: open the limb by 1 px and hand what falls off back to the head or torso
                 const er = new Uint8Array(w * h); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { let all = 1; for (let dy = -1; dy <= 1 && all; dy++) for (let dx = -1; dx <= 1; dx++) if (lab[(y + dy) * w + x + dx] !== k) { all = 0; break; } er[y * w + x] = all; }
                 for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (lab[i] !== k) continue; let keep = 0; for (let dy = -1; dy <= 1 && !keep; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < w && yy < h && er[yy * w + xx]) { keep = 1; break; } }
@@ -4728,6 +4730,38 @@ body.intro-ride #v2-hud,body.intro-ride #hero-hud-corner,body.intro-ride #locati
                 upperLeg: avg(r('HIP_L', 'KNEE_L'), r('HIP_R', 'KNEE_R')), lowerLeg: avg(r('KNEE_L', 'ANKLE_L'), r('KNEE_R', 'ANKLE_R')), shoulders: +(d(px.SHOULDER_L, px.SHOULDER_R) / T).toFixed(4), hips: +(d(px.HIP_L, px.HIP_R) / T).toFixed(4) };
             const symmetry = S.PAIRS.map(([a, b]) => { const A = joints.find(q => q.name === a).pos, B = joints.find(q => q.name === b).pos; return { a: S.ID[a], b: S.ID[b], offset: +Math.hypot(A[0] + B[0], A[1] - B[1]).toFixed(4) }; }); // 0: mirror images across the spine
             return { version: 1, unit: 'torso height', torsoPx: +T.toFixed(2), humanoid: !!rig.humanoid, joints, bones, profile, symmetry };
+        }
+
+        // ---- props: a held object (a sword, a staff, a torch) as its own piece, carried in a socket (on the back, in a hand) and moved between them.
+        // paperProp reads a prop's picture: its long axis (the principal axis of its paint), which end is the tip (the end that narrows), the
+        // guard (the widest cross-section on the handle's side) and the grip (between the pommel and the guard). px: RGBA W wide, rect [x, y, w, h].
+        // Returns { grip, tip, pommel, guard: [x, y] in the rect, axis: [ux, uy] (unit, grip -> tip, picture coords), length, width } or null.
+        function paperProp(px, W, rect) {
+            const [X0, Y0, w, h] = rect, P = []; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[((Y0 + y) * W + X0 + x) * 4 + 3] >= 128) P.push(x + 0.5, y + 0.5);
+            const n = P.length / 2; if (n < 8) return null; let mx = 0, my = 0; for (let i = 0; i < P.length; i += 2) { mx += P[i]; my += P[i + 1]; } mx /= n; my /= n;
+            let cxx = 0, cyy = 0, cxy = 0; for (let i = 0; i < P.length; i += 2) { const dx = P[i] - mx, dy = P[i + 1] - my; cxx += dx * dx; cyy += dy * dy; cxy += dx * dy; }
+            const th = 0.5 * Math.atan2(2 * cxy, cxx - cyy); let ux = Math.cos(th), uy = Math.sin(th); const nx = -uy, ny = ux; // the long axis, and across it
+            let t0 = 1e9, t1 = -1e9; for (let i = 0; i < P.length; i += 2) { const t = (P[i] - mx) * ux + (P[i + 1] - my) * uy; t0 = Math.min(t0, t); t1 = Math.max(t1, t); }
+            const L = t1 - t0, B = Math.max(8, Math.round(L)), lo = new Float32Array(B).fill(1e9), hi = new Float32Array(B).fill(-1e9); // the width, all along the axis
+            for (let i = 0; i < P.length; i += 2) { const dx = P[i] - mx, dy = P[i + 1] - my, b = Math.min(B - 1, Math.floor((dx * ux + dy * uy - t0) / L * B)), s = dx * nx + dy * ny; lo[b] = Math.min(lo[b], s); hi[b] = Math.max(hi[b], s); }
+            const wid = Array.from(lo, (v, b) => hi[b] >= v ? hi[b] - v + 1 : 0), end = (a, b) => { let s = 0, c = 0; for (let k = a; k < b; k++) { s += wid[k]; c++; } return s / (c || 1); }, e = Math.max(1, Math.round(B * 0.06));
+            if (end(0, e) < end(B - e, B)) { ux = -ux; uy = -uy; lo.reverse(); hi.reverse(); wid.reverse(); [t0, t1] = [-t1, -t0]; } // the tip narrows: make the axis point from the handle to the tip
+            let g = 0, gw = -1; for (let k = 0; k < Math.round(B * 0.45); k++) if (wid[k] > gw * 1.15) { gw = wid[k]; g = k; } // the guard: the widest cross-section on the handle's side
+            const at = t => [mx + ux * (t0 + t), my + uy * (t0 + t)], tg = g > 2 ? (g * 0.5) / B * L : 0.08 * L;
+            return { grip: at(tg), tip: at(L), pommel: at(0), guard: at(g / B * L), axis: [ux, uy], length: L, width: gw };
+        }
+        // a sword drawn from scratch, the PS1 way: a few flat-shaded boxes and a diamond blade. Local frame: the grip at the origin, the blade along +z,
+        // its flat faces toward +-y. L: its whole length (world units). UVs point into the four swatches of PAPER_SWORD_TEX (steel, edge, brass, leather).
+        const PAPER_SWORD_TEX = [[196, 204, 212], [132, 142, 152], [186, 146, 70], [92, 58, 34]];
+        function paperSword(V, L, o = {}) {
+            const sw = k => [(k + 0.5) / 4, 0.5], tri = (a, b, c, k, sh) => { const t = sw(k); for (const p of [a, b, c]) V.push(p[0], p[1], p[2], t[0], t[1], sh, 0); };
+            const box = (x0, x1, y0, y1, z0, z1, k) => { const P = (i, j, l) => [[x0, x1][i], [y0, y1][j], [z0, z1][l]], F = [[[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1], 0.8], [[1, 1, 0], [0, 1, 0], [0, 1, 1], [1, 1, 1], 0.95], [[0, 1, 0], [0, 0, 0], [0, 0, 1], [0, 1, 1], 0.7], [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1], 0.85], [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1], 1.05], [[0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0], 0.6]];
+                for (const f of F) { const q = f.slice(0, 4).map(c => P(...c)); tri(q[0], q[1], q[2], k, f[4]); tri(q[0], q[2], q[3], k, f[4]); } };
+            const g = o.grip == null ? 0.035 : o.grip; box(-g, g, -g, g, -0.11 * L, 0.03 * L, 3); box(-1.6 * g, 1.6 * g, -1.6 * g, 1.6 * g, -0.14 * L, -0.11 * L, 2); // grip, pommel
+            box(-0.13 * L, 0.13 * L, -0.035 * L, 0.035 * L, 0.03 * L, 0.065 * L, 2); // the guard
+            const w = 0.045 * L, t = 0.01 * L, z0 = 0.065 * L, z1 = 0.78 * L, z2 = 0.86 * L, ring = z => [[-w, 0, z], [0, -t, z], [w, 0, z], [0, t, z]], A = ring(z0), Bq = ring(z1), tip = [0, 0, z2];
+            for (let i = 0; i < 4; i++) { const j = (i + 1) % 4, k = i % 2 ? 0 : 1, sh = [0.75, 1.0, 0.8, 1.1][i]; tri(A[i], A[j], Bq[j], k, sh); tri(A[i], Bq[j], Bq[i], k, sh); tri(Bq[i], Bq[j], tip, k, sh * 1.05); } // a diamond blade, its edges darker
+            return V;
         }
 
         // ---- the GPU half: the shaders that draw the folded mesh (the game's camera in the vertex stage, the paper look in the fragment stage) ----
