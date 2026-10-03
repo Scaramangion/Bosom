@@ -35,3 +35,9 @@
 - Plays Idle (arms lowered from the export's T-pose), Walk (faster when running), Jump, Swing (sword/axe). Side views turn 3/4 toward the lens so the flat figure never shows as a sliver.
 - Horse, pouch and roll still use the flat sprite; held tools are not drawn on the paper hero yet. Combat and every non-town zone are unchanged.
 - `build.py` packs `.glb` files as data URIs.
+
+## 2.96 — Koto as the paper hero
+- `assets/models/paper-hero.glb` is now Koto (Papercraft export IMG_7918): blue gi, red sash, wrapped arms and shins, barefoot, his hair on the back.
+- The player measures each export's rest height and scales it to stand 25 px tall with his feet on the ground (this export is 0.77 m, not the 1 m its README says).
+- The arm-lowering for T-pose exports only applies when the export really is a T-pose; Koto's own Idle plays as made.
+- Sources kept in `art-source/models/paper-hero/` (both exports and the front-view sheet).

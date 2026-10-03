@@ -18,9 +18,13 @@
                 PAPER_HERO.parts = J.meshes.map(m => { const p = m.primitives[0].attributes; return { pos: acc(p.POSITION), uv: acc(p.TEXCOORD_0), col: p.COLOR_0 != null ? acc(p.COLOR_0) : null }; });
                 (J.animations || []).forEach(a => { const ch = a.channels.map(c => { const sm = a.samplers[c.sampler]; return { node: c.target.node, path: c.target.path, t: acc(sm.input), v: acc(sm.output) }; }); PAPER_HERO.clips[a.name] = { len: ch.reduce((m, c) => Math.max(m, c.t[c.t.length - 1]), 0), ch }; });
                 PAPER_HERO.total = PAPER_HERO.nodes.reduce((m, n) => m + (n.mesh != null ? PAPER_HERO.parts[n.mesh].pos.length / 3 : 0), 0);
-                let top = -1e9, bot = 1e9; PAPER_HERO.parts.forEach(p => { for (let i = 1; i < p.pos.length; i += 3) { top = Math.max(top, p.pos[i]); bot = Math.min(bot, p.pos[i]); } }); // rest-pose extent (parts are in node space, so this is rough)
-                const im = J.images && J.images[0], v = im && J.bufferViews[im.bufferView];
+                                const im = J.images && J.images[0], v = im && J.bufferViews[im.bufferView];
                 if (v) { PAPER_HERO.img = new Image(); PAPER_HERO.img.onload = () => { PAPER_HERO.ready = true; }; PAPER_HERO.img.src = URL.createObjectURL(new Blob([b.subarray(bo + (v.byteOffset || 0), bo + (v.byteOffset || 0) + v.byteLength)], { type: im.mimeType })); }
+                { const ai = PAPER_HERO.nodes.findIndex(n => n.name === 'armL'), am = ai >= 0 ? PAPER_HERO.parts[PAPER_HERO.nodes[ai].mesh] : null; // a T-pose export (arms reach out sideways) gets its arms lowered while he stands
+                  if (am) { let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (let i = 0; i < am.pos.length; i += 3) { x0 = Math.min(x0, am.pos[i]); x1 = Math.max(x1, am.pos[i]); y0 = Math.min(y0, am.pos[i + 1]); y1 = Math.max(y1, am.pos[i + 1]); } PAPER_HERO.tpose = x1 - x0 > y1 - y0; } }
+                { const N = PAPER_HERO.nodes, at = i => i < 0 ? [0, 0, 0] : at(N[i].parent).map((v, k) => v + N[i].t[k]); let y0 = 1e9, y1 = -1e9; // rest-pose height, so every export stands PAPER_HERO.H px tall, feet on the ground
+                  N.forEach((n, i) => { if (n.mesh == null) return; const o = at(i), p = PAPER_HERO.parts[n.mesh].pos; for (let j = 1; j < p.length; j += 3) { y0 = Math.min(y0, o[1] + p[j]); y1 = Math.max(y1, o[1] + p[j]); } });
+                  PAPER_HERO.y0 = y0 < 1e9 ? y0 : 0; PAPER_HERO.h = y1 > y0 ? y1 - y0 : 1; }
                 PAPER_HERO.out = new Float32Array(PAPER_HERO.total * 7);
             } catch (e) { console.warn('paper hero disabled:', e); PAPER_HERO.on = false; }
         }
@@ -45,7 +49,7 @@
             let ph = Math.atan2(Math.sin(tw + yw), Math.cos(tw + yw)); // relative to the lens: 0 faces it, +-90 deg is side-on, 180 faces away
             const target = -yw + paperHeroTurn(ph);
             let dy = target - P.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); P.yaw += dy * Math.min(1, dt * 14);
-            const F = [Math.sin(P.yaw), Math.cos(P.yaw)], R = [F[1], -F[0]], S = P.H, ox = player.pixelX + 8, oy = player.pixelY + 15;
+            const F = [Math.sin(P.yaw), Math.cos(P.yaw)], R = [F[1], -F[0]], S = P.H / (P.h || 1), ox = player.pixelX + 8, oy = player.pixelY + 15;
             const M = new Array(P.nodes.length), tr = [0, 0, 0];
             const mul = (a, b) => { const o = new Float32Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; o[c * 4 + r] = s; } return o; };
             const clip = P.clips[P.clip], prev = P.clips[P.lastClip], q = [0, 0, 0, 1], q2 = [0, 0, 0, 1], t2 = [0, 0, 0];
@@ -53,7 +57,7 @@
                 let r = n.r, t = n.t;
                 if (paperHeroSample(clip, P.t, i, 'rotation', q)) { r = q.slice(); if (P.blend < 1 && paperHeroSample(prev, P.t, i, 'rotation', q2)) { for (let k = 0; k < 4; k++) r[k] = q2[k] + (r[k] - q2[k]) * P.blend; } }
                 if (paperHeroSample(clip, P.t, i, 'translation', tr)) { t = tr.slice(); if (P.blend < 1 && paperHeroSample(prev, P.t, i, 'translation', t2)) { for (let k = 0; k < 3; k++) t[k] = t2[k] + (t[k] - t2[k]) * P.blend; } }
-                if (P.clip === 'Idle' && /^(arm|fore)[LR]$/.test(n.name) && P.clips.Walk && paperHeroSample(P.clips.Walk, 0, i, 'rotation', q)) r = q.slice(); // the export rests in a T-pose: let the arms hang (the Walk clip's first frame) while he stands
+                if (P.tpose && P.clip === 'Idle' && /^(arm|fore)[LR]$/.test(n.name) && P.clips.Walk && paperHeroSample(P.clips.Walk, 0, i, 'rotation', q)) r = q.slice(); // the export rests in a T-pose: let the arms hang (the Walk clip's first frame) while he stands
                 const l = Math.hypot(r[0], r[1], r[2], r[3]) || 1, x = r[0] / l, y = r[1] / l, z = r[2] / l, w = r[3] / l;
                 const L = new Float32Array([1 - 2 * (y * y + z * z), 2 * (x * y + z * w), 2 * (x * z - y * w), 0, 2 * (x * y - z * w), 1 - 2 * (x * x + z * z), 2 * (y * z + x * w), 0, 2 * (x * z + y * w), 2 * (y * z - x * w), 1 - 2 * (x * x + y * y), 0, t[0], t[1], t[2], 1]);
                 M[i] = n.parent < 0 ? L : mul(M[n.parent], L);
@@ -64,7 +68,7 @@
                 for (let j = 0; j < pos.length / 3; j++) {
                     const x = pos[j * 3], y = pos[j * 3 + 1], z = pos[j * 3 + 2];
                     const gx = m[0] * x + m[4] * y + m[8] * z + m[12], gy = m[1] * x + m[5] * y + m[9] * z + m[13], gz = m[2] * x + m[6] * y + m[10] * z + m[14]; // model space: x right, y up, z front
-                    o[k++] = ox + (R[0] * gx + F[0] * gz) * S; o[k++] = oy + (R[1] * gx + F[1] * gz) * S; o[k++] = gy * S;
+                    o[k++] = ox + (R[0] * gx + F[0] * gz) * S; o[k++] = oy + (R[1] * gx + F[1] * gz) * S; o[k++] = (gy - (P.y0 || 0)) * S;
                     o[k++] = uv[j * 2]; o[k++] = uv[j * 2 + 1]; o[k++] = col ? Math.min(1.1, col[j * 3]) : 1; o[k++] = 0;
                 }
             });
