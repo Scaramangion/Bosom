@@ -7,7 +7,7 @@
         box = document.createElement('div');
         box.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:2147483647;background:#7f1d1d;color:#fff;font:12px/1.45 monospace;padding:10px 12px;border-radius:8px;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto;box-shadow:0 4px 18px rgba(0,0,0,.5)';
         box.onclick = function () { box.style.display = 'none'; };
-        box.textContent = 'BOSOM build 2.81 hit a problem. Screenshot this for Claude:\n';
+        box.textContent = 'BOSOM build 2.97 hit a problem. Screenshot this for Claude:\n';
         (document.body || document.documentElement).appendChild(box);
         notes.forEach(function (n) { box.textContent += '\n  (note) ' + n; }); notes = [];
       }
@@ -37,7 +37,7 @@
     setTimeout(function () {
       if (window.__bosomBooted) return;
       var kb = Math.round(document.documentElement.outerHTML.length / 1024);
-      show('The game code never finished starting.\nPage received: ' + kb + ' KB (the full build is about 5077 KB).\n' + (kb < 5077 * 0.97 ? 'The page arrived INCOMPLETE — the upload or download got cut off. Re-upload index.html.' : 'The page arrived complete, so the error above is the cause.'));
+      show('The game code never finished starting.\nPage received: ' + kb + ' KB (the full build is about 5095 KB).\n' + (kb < 5095 * 0.97 ? 'The page arrived INCOMPLETE — the upload or download got cut off. Re-upload index.html.' : 'The page arrived complete, so the error above is the cause.'));
     }, 6000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchdog); else watchdog();

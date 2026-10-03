@@ -224,6 +224,7 @@
             player.isRunning = !!(dx || dy) && (!!keys['shift'] || push >= RUN_STICK_PUSH);
             if (!dx && !dy && jumpTimer > 0 && player.jumpDir) { dx = player.jumpDir[0]; dy = player.jumpDir[1]; player.isRunning = player.jumpRun; } // airborne: momentum carries him on
             if (jumpTimer <= 0) player.jumpDir = null;
+            if (VIEW.mode === 'inspect') { viewInspectMove(dx, dy, player.isRunning); player.isRunning = false; return; } // the inspect circle walks instead of him
             // letting go of a diagonal almost never releases both keys on the same frame; don't turn that into a stray straight step
             const nowT = performance.now();
             if (dx && dy) player.lastDiag = [dx, dy, nowT];
@@ -572,7 +573,7 @@
 
             if (currentMapName === 'overworld') for (const w of wildHorses) { if (w.alive) asCard(w.pixelX + 8, w.pixelY + 15, () => { const d0 = w.dir; w.dir = camDir(d0); drawWildHorse(w); w.dir = d0; }); }
             drawFarmCards(); drawFollower(); drawPatrolCards(); drawStalker();
-            drawSparks();
+            drawSparks(); drawInspectCircle();
 
             for (const t of guardTargetsOnMap(currentMapName)) {
                 const cx = t.gridX * TILE_SIZE + TILE_SIZE / 2, cy = t.gridY * TILE_SIZE + TILE_SIZE / 2;

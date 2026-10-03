@@ -48,10 +48,10 @@
                 swordAttackW: [0.8, 0.8, 0.9, 1.1, 0.7, 0.7, 0.8, 1.6, 1.8], swordAttackFrames: 40, swordImpact: 0.52 } // per-frame weights; ~0.67s; the blow lands as the arc completes
         };
         const heroHD = {
-            outfit: (() => { try { const o = localStorage.getItem('bosom-outfit-v2'); return HERO_OUTFITS[o] ? o : DEFAULT_OUTFIT; } catch (e) { return DEFAULT_OUTFIT; } })(),
+            outfit: 'koto', // you play Koto; the other outfits are people on the security roster (29b-security-roster.js)
             ready: false, img: null, req: null, phase: 0, lastT: 0, moveUntil: 0, lastSide: 'right',
             active() { return FX_GL.ok && this.ready; },
-            setOutfit(id) { this.outfit = id; try { localStorage.setItem('bosom-outfit-v2', id); } catch (e) {} refreshOutfitUI(); },
+            setOutfit(id) { if (id !== 'koto') { rosterSay(id); return; } this.outfit = id; refreshOutfitUI(); },
             refH(o) { // self-calibrating scale: every outfit is normalized off its own idle frame's native pixel height,
                 // instead of assuming every sprite sheet was drawn at the same source resolution (a mismatch here is
                 // what makes a whole outfit render too big or too small relative to the others).
@@ -149,7 +149,7 @@
         };
         function toggleOutfit() {
             if (!heroHD.active()) { showFluidMessage('Outfits need WebGL on this device.'); return; }
-            const ids = Object.keys(HERO_OUTFITS); heroHD.setOutfit(ids[(ids.indexOf(heroHD.outfit) + 1) % ids.length]); audio.playSelect();
+            showFluidMessage('You play Koto. The others are on the security roster: ' + HIRE_ROSTER.map(r => r.name).join(', ') + '.', 2600); audio.playSelect();
         }
         document.addEventListener('DOMContentLoaded', refreshOutfitUI);
         function drawHeroTool(c, dir, isActioning, tool) { // the held tool, drawn small and placed over the hero by the WebGL layer (same shapes as the pixel hero)

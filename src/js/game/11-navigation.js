@@ -166,10 +166,10 @@
         }
         function renderGear() {
             const box = document.getElementById('mn-outfits'); if (!box) return; box.innerHTML = '';
-            Object.keys(HERO_OUTFITS).forEach(id => {
-                const o = HERO_OUTFITS[id], d = document.createElement('div'); d.className = 'mn-out' + (id === heroHD.outfit ? ' on' : '');
-                const cv = document.createElement('canvas'); cv.width = cv.height = 96; d.appendChild(cv); d.appendChild(document.createTextNode(o.label));
-                d.onclick = () => { if (!heroHD.active()) { showFluidMessage('Outfits need WebGL on this device.'); return; } heroHD.setOutfit(id); audio.playSelect(); };
+            ['koto'].concat(HIRE_ROSTER.map(r => r.outfit)).forEach(id => { // Koto, then the security roster (for hire, not to wear)
+                const o = HERO_OUTFITS[id]; if (!o) return; const r = rosterOf(id), d = document.createElement('div'); d.className = 'mn-out' + (id === heroHD.outfit ? ' on' : '');
+                const cv = document.createElement('canvas'); cv.width = cv.height = 96; d.appendChild(cv); d.appendChild(document.createTextNode(r ? r.name + ' · FOR HIRE' : o.label));
+                d.onclick = () => { if (r) rosterSay(id); else heroHD.setOutfit(id); audio.playSelect(); };
                 box.appendChild(d); drawHeadPortrait(cv, o.idle.down || o.idle.right);
             });
         }

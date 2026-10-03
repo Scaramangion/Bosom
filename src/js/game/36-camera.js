@@ -24,7 +24,8 @@
             if (turning) CAM.idleT = 0; else if (++CAM.idleT > 6 && !pushing) CAM.ctrl = CAM.yaw; // let go of the camera (and the walk) and 'up' becomes 'away from the camera'
         }
         function tpAnchor() { // the point the third-person camera is built around (canvas px): the hero, nudged toward a locked target, plus shake
-            return [player.pixelX + 8 - lastCamX + COMBAT.fx + COMBAT.sx, player.pixelY + 15 - lastCamY + COMBAT.fy + COMBAT.sy];
+            const v = viewAnchorShift(); // first person / inspect move the anchor (see 47-view-modes.js)
+            return [player.pixelX + 8 - lastCamX + COMBAT.fx + COMBAT.sx + v[0], player.pixelY + 15 - lastCamY + COMBAT.fy + COMBAT.sy + v[1]];
         }
         function spawnSparks(x, y) {
             const parts = Array.from({ length: 9 }, (_, i) => { const a = i / 9 * Math.PI * 2 + Math.random() * 0.5, v = 0.7 + Math.random() * 0.9; return { x: 0, y: 0, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.5 }; });

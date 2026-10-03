@@ -1,4 +1,4 @@
         // ================= START MENU (tabs: ITEMS / GEAR / QUEST / SAVE) =================
-        const BUILD_VERSION = '2.96';
+        const BUILD_VERSION = '2.97';
         let menuLast = 0;
         

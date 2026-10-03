@@ -26,6 +26,7 @@
         <div class="w-full flex justify-between items-center mb-2 px-2 text-xs">
             <div class="flex items-center space-x-2 text-sky-400">
                 <button id="lens-btn" type="button" aria-label="Lens" style="display:flex;padding:10px;margin:-10px;-webkit-tap-highlight-color:transparent"><i class="fa-solid fa-magnifying-glass text-sm animate-pulse"></i></button>
+                <button id="cam-btn" type="button" aria-label="View" title="View: first person / inspect (G)" style="display:flex;align-items:center;justify-content:center;width:26px;height:22px;margin-left:10px;border-radius:5px;border:1px solid #7dd3fc;background:#0c4a6e;color:#e0f2fe;-webkit-tap-highlight-color:transparent"><svg width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="1" y="2" width="9" height="7" rx="1.5"/><path d="M10 4.6 14 2.5v6L10 6.4Z"/></svg></button>
                 <button id="tp-btn" type="button" aria-label="Teleport" title="Teleport (T)" style="display:flex;align-items:center;justify-content:center;width:26px;height:22px;margin-left:10px;border-radius:5px;border:1px solid #7dd3fc;background:#0c4a6e;color:#e0f2fe;-webkit-tap-highlight-color:transparent;transition:opacity .2s"><svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h6"/><path d="M3 2.5 6.5 6 3 9.5" opacity=".55"/><path d="M8 1.5 12.5 6 8 10.5"/></svg></button>
                 <button id="pouch-btn" type="button" aria-label="Pouch" title="Pouch (Q)" style="display:flex;align-items:center;justify-content:center;width:26px;height:22px;margin-left:6px;border-radius:5px;border:1px solid #d6a46a;background:#5b3a1e;color:#fde7c7;-webkit-tap-highlight-color:transparent"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3 5.2h8l.9 6.2a1 1 0 0 1-1 1.1H3.1a1 1 0 0 1-1-1.1z"/><path d="M4.6 5.2V4a2.4 2.4 0 0 1 4.8 0v1.2"/><path d="M5.5 8h3"/></svg></button>
                 <span class="hidden sm:inline font-bold tracking-wider">AXE ENGINE (V11.1)</span>
@@ -43,6 +44,7 @@
             <canvas id="game-canvas" class="pixel-art w-full h-full block bg-slate-950"></canvas>
             
             <div id="scanlines" class="scanlines"></div>
+            <div id="view-info" style="display:none;position:absolute;left:6px;bottom:6px;z-index:30;max-width:70%;padding:4px 6px;border-radius:4px;background:rgba(8,20,32,.72);border:1px solid rgba(125,211,252,.55);color:#e0f2fe;font:9px/1.35 monospace;white-space:pre;pointer-events:none"></div>
 
             <div id="title-screen" class="hidden absolute inset-0 flex flex-col items-center justify-end p-6 z-40 text-center cursor-pointer" onclick="showSlotSelect()">
                 <canvas id="title-canvas" width="320" height="288"></canvas>

@@ -171,6 +171,7 @@
         }, { passive: true }));
         function gameLoop(now = performance.now()) {
             try {
+                crashTick();
                 syncMenuTheme();
                 if (!simLast) simLast = now;
                 simAcc += Math.min(now - simLast, 100); simLast = now; // clamp long pauses (tab switch) so nothing teleports

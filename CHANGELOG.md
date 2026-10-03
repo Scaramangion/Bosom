@@ -41,3 +41,20 @@
 - The player measures each export's rest height and scales it to stand 25 px tall with his feet on the ground (this export is 0.77 m, not the 1 m its README says).
 - The arm-lowering for T-pose exports only applies when the export really is a T-pose; Koto's own Idle plays as made.
 - Sources kept in `art-source/models/paper-hero/` (both exports and the front-view sheet).
+
+## 2.97 — Crash guard, security roster, view modes, paper hero tools
+- **Crash guard** (`46-crash-guard.js`). The movement crash didn't reproduce on desktop: no script errors and no memory growth over long walks with every outfit. So the likely cause is the phone itself:
+  - If the phone takes the GPU back (WebGL context lost), the game drops to the 2D view instead of freezing, and says so.
+  - Every 2 s the game notes where Koto is. If the phone closes the page, the next start shows what was happening (map, tile, walking or standing, paper hero, 3D).
+  - A watchdog reports if the frame loop stops for 5 s while the page is on screen.
+- **Security roster** (`29b-security-roster.js`). You play Koto only. Rahjai, Kael, Basic Standard, Starter and the Child are logged in `HIRE_ROSTER` as hireable city security, with wage, shift, beat and notes. The outfit card and the gear list show them as FOR HIRE. Live patrolling is the next step.
+- **Camera button** next to the lens (key G) cycles three views:
+  - NORMAL.
+  - FIRST PERSON: the lens sits in Koto's head and turns with him.
+  - INSPECT: a see-through shadow circle walks instead of Koto (within 7 tiles of him). A readout shows the tile, whether it's solid, and any door, person, wolf, building, horse or Koto there.
+- **Paper hero:**
+  - The sword and axe are held in his fist as crossed paper cards from the hero atlas, so they follow the arm through Swing.
+  - The roll is a real forward tumble.
+  - In the pouch, his hands come forward and his head bows.
+  - Riding still uses the flat sprite: the horse has no paper model yet.
+- Paper hero posing reuses its buffers (no per-frame garbage), and the GPU buffer is refilled in place.

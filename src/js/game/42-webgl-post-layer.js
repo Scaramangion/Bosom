@@ -102,6 +102,7 @@
                     cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated;';
                     const gl = cv.getContext('webgl', { alpha: false, antialias: false });
                     if (!gl) throw new Error('WebGL unavailable');
+                    cv.addEventListener('webglcontextlost', e => { e.preventDefault(); crashGLLost(); }); // the phone took the GPU back: drop to 2D instead of freezing
                     const mk = (t, src) => { const sh = gl.createShader(t); gl.shaderSource(sh, src); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
                     const pr = gl.createProgram();
                     gl.attachShader(pr, mk(gl.VERTEX_SHADER, this.VERT)); gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, this.FRAG));
@@ -375,15 +376,16 @@
                 gl.drawArrays(gl.TRIANGLES, 0, PAPER.verts);
                 gl.disable(gl.CULL_FACE);
                 this.heroPaper = false;
-                if (heroHD.req && paperHeroLive()) { // the rigged paper hero: posed on the CPU each frame, drawn through the same shader and depth buffer
+                if (heroHD.req && paperHeroLive() && !viewFirst()) { // the rigged paper hero: posed on the CPU each frame, drawn through the same shader and depth buffer
                     const pv = paperHeroPose();
                     if (!this.phBuf) { this.phBuf = gl.createBuffer(); this.phTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, this.phTex);
                         [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k, v]) => gl.texParameteri(gl.TEXTURE_2D, k, v));
                         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, PAPER_HERO.img); }
                     else gl.bindTexture(gl.TEXTURE_2D, this.phTex);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, this.phBuf); gl.bufferData(gl.ARRAY_BUFFER, pv, gl.DYNAMIC_DRAW);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, this.phBuf); if (this.phLen !== pv.length) { gl.bufferData(gl.ARRAY_BUFFER, pv, gl.DYNAMIC_DRAW); this.phLen = pv.length; } else gl.bufferSubData(gl.ARRAY_BUFFER, 0, pv); // one buffer, refilled in place
                     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 28, 0); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 28, 12); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 28, 20);
-                    gl.drawArrays(gl.TRIANGLES, 0, PAPER_HERO.verts); this.heroPaper = true;
+                    gl.drawArrays(gl.TRIANGLES, 0, PAPER_HERO.bodyVerts); this.heroPaper = true; heroHD.lastP = this.viewForward(heroHD.req.x, heroHD.req.y); // the pouch fan and the held-item effects still read where he stands
+                    if (PAPER_HERO.toolVerts) { gl.uniform1i(U('uSheet'), 6); gl.drawArrays(gl.TRIANGLES, PAPER_HERO.bodyVerts, PAPER_HERO.toolVerts); gl.uniform1i(U('uSheet'), 7); } // the tool card samples the hero atlas (unit 6)
                 }
                 gl.bindTexture(gl.TEXTURE_2D, this.tex7); gl.activeTexture(gl.TEXTURE0);
                 gl.disableVertexAttribArray(2); gl.disableVertexAttribArray(1); this.bindMain(gl);
@@ -478,7 +480,7 @@
                 else { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas); this.texReady = true; }
                 gl.uniform2f(this.u('uCam'), lastCamX, lastCamY);
                 gl.uniform3f(this.u('uView'), diorama.cur.cyl, diorama.cur.zoom, diorama.yaw);
-                { const wz = 110; /* the camera holds its distance; walls in the way are cut away instead */ CINE.z0 += (wz - CINE.z0) * (wz < CINE.z0 ? 0.3 : 0.05); if (Math.abs(wz - CINE.z0) < 0.05) CINE.z0 = wz; } gl.uniform1f(this.u('uZ0'), CINE.z0);
+                viewApply(); { const wz = viewFirst() ? VIEW.FP_Z : 110; /* the camera holds its distance; walls in the way are cut away instead */ CINE.z0 += (wz - CINE.z0) * (wz < CINE.z0 ? 0.3 : 0.05); if (Math.abs(wz - CINE.z0) < 0.05) CINE.z0 = wz; } gl.uniform1f(this.u('uZ0'), CINE.z0);
                 gl.uniform1f(this.u('uTP'), COMBAT.amt); gl.uniform1f(this.u('uMag'), CINE.mag); gl.uniform1f(this.u('uFogD'), CINE.fogD); gl.uniform1f(this.u('uHY'), CINE.hY); this.nbrUniforms(gl); gl.uniform1f(this.u('uYaw'), camYaw()); gl.uniform1f(this.u('uDS'), this.cv.width / 240); this.rhythm = nerveGrade(this.curMode === 1 ? rhythmNow() : { tint: [1, 1, 1], ds: 0.45, fog: null }); gl.uniform3f(this.u('uTint'), this.rhythm.tint[0], this.rhythm.tint[1], this.rhythm.tint[2]); gl.uniform1f(this.u('uDesat'), this.rhythm.ds); gl.uniform1f(this.u('uVistaOn'), CINE.vista); gl.uniform1f(this.u('uVPan'), currentMapName === 'overworld' ? 0.1 * Math.min(1, Math.max(0, (player.pixelX + 8) / (MAP_COLS * TILE_SIZE))) : 0.05); gl.uniform2f(this.u('uTileS'), z && z.tile ? z.tile[0] : 0, z && z.tile ? z.tile[1] : 0); gl.uniform1f(this.u('uGrade'), gameStarted ? 1 : 0);
                 { const fc = this.fogColor(mode, night); gl.uniform3f(this.u('uFogC'), fc[0], fc[1], fc[2]); } { const a = tpAnchor(); gl.uniform2f(this.u('uHero'), a[0], a[1]); }
                 gl.uniform1f(this.u('uTime'), Date.now() / 1000 % 1000);
@@ -508,7 +510,7 @@
                 this.paperZ = mode === 1 && paperLive() && this.drawPaper(gl); // the folded town, then everything standing is depth-tested against it
                 if (this.paperZ) { gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); }
                 this.drawCards(gl, true);
-                if (heroHD.req) { if (!this.heroPaper) this.drawHero(gl); heroHD.req = null; }
+                if (heroHD.req) { if (!this.heroPaper && !viewFirst()) this.drawHero(gl); heroHD.req = null; }
                 this.drawCards(gl, false); CARDS.list.length = 0;
                 if (this.paperZ) { gl.disable(gl.DEPTH_TEST); this.paperZ = false; }
             }
