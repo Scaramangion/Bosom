@@ -448,22 +448,26 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
             const LANES = [[[29.5, 17], [29.5, 22.35]], [[5.5, 22.35], [64, 22.35]], [[64, 22.35], [67.5, 19.5], [70, 18.5]], [[12.5, 22.35], [12.5, 24]], [[47.5, 22.35], [47.5, 24]]];
             const laneD = (wx, wy) => { let m = 99; const p = [wx / 16, wy / 16]; for (const L of LANES) for (let i = 0; i < L.length - 1; i++) { const [ax, ay] = L[i], [bx, by] = L[i + 1], vx = bx - ax, vy = by - ay, t = Math.max(0, Math.min(1, ((p[0] - ax) * vx + (p[1] - ay) * vy) / (vx * vx + vy * vy))); m = Math.min(m, Math.hypot(p[0] - ax - vx * t, p[1] - ay - vy * t)); } return m; };
             const YARDS = [[23, 20.6, 2.3], [37.5, 20.4, 2.6], [18.5, 21.4, 1.6]];
-            const STONES = [[163, 155, 141], [176, 168, 153], [150, 141, 126], [168, 160, 146], [139, 133, 122]];
+            const STONES = [[150, 150, 146], [166, 162, 152], [134, 138, 140], [156, 150, 138], [124, 128, 132], [142, 146, 150]]; // blue-grey street stone (direction art 03)
             for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
                 const o = (y * W + x) * 4, wx = x / K, wy = y / K, tx = Math.floor(wx / 16), ty = Math.floor(wy / 16), t = MAP_DATA[Math.min(rows - 1, ty)][Math.min(cols - 1, tx)];
                 const m = n1(wx / 21, wy / 21) * 0.6 + n2(wx / 6, wy / 6) * 0.3 + n3(wx / 1.7, wy / 1.7) * 0.1;
                 const field = wy / 16 + (n2(wx / 9, 3) - 0.5) * 0.7 > 17.6;
                 let r, g, b;
                 if (!field) {
-                    const avenue = wx >= 22 * 16 && wx < 38 * 16 && wy >= 16; // the market square: big flagstones
-                    const cw = avenue ? 9 : 4.3, ch = avenue ? 7 : 3.5, row = Math.floor(wy / ch), off = (row % 2) * cw * 0.5 + H(row, 3) * 1.7, col = Math.floor((wx + off) / cw);
-                    const lx = (wx + off) - col * cw - cw / 2, ly = wy - row * ch - ch / 2, hs = H(col, row, avenue ? 5 : 1);
-                    const ex = cw / 2 - (avenue ? 0.35 : 0.42) - hs * 0.25, ey = ch / 2 - (avenue ? 0.35 : 0.4), pw = avenue ? 8 : 4, dd = Math.pow(Math.abs(lx) / ex, pw) + Math.pow(Math.abs(ly) / ey, pw);
-                    const base = avenue ? [182, 174, 160] : STONES[(hs * STONES.length) | 0];
-                    if (dd < 1) { const k = (0.86 + m * 0.28) * (1 - 0.1 * lx / ex - 0.14 * ly / ey) * (0.94 + hs * 0.1); r = base[0] * k; g = base[1] * k; b = base[2] * k; }
-                    else { const k = 0.55 + m * 0.2; r = 92 * k + 20; g = 82 * k + 18; b = 66 * k + 14; }
+                    const avenue = wx >= 22 * 16 && wx < 38 * 16 && wy >= 16; // the market square: a touch larger stones
+                    // cobbles at street scale (direction art 03): about a fifth of his height, laid in uneven courses, rounded, set in dark wet joints
+                    const cw = avenue ? 6.4 : 5.4, ch = avenue ? 4.8 : 4.1, row = Math.floor(wy / ch), off = (row % 2) * cw * 0.5 + H(row, 3) * 2.1, col = Math.floor((wx + off) / cw);
+                    const hs = H(col, row, avenue ? 5 : 1), jx = (H(col, row, 11) - 0.5) * 0.7, jy = (H(col, row, 13) - 0.5) * 0.5; // each stone a little off its grid
+                    const lx = (wx + off) - col * cw - cw / 2 - jx, ly = wy - row * ch - ch / 2 - jy;
+                    const ex = cw / 2 - 0.5 - hs * 0.35, ey = ch / 2 - 0.45 - H(col, row, 17) * 0.25, pw = 2.6 + hs * 1.4, dd = Math.pow(Math.abs(lx) / ex, pw) + Math.pow(Math.abs(ly) / ey, pw);
+                    const base = STONES[(hs * STONES.length) | 0], wet = n1(wx / 17 + 40, wy / 17); // wet: puddled, darker, bluer
+                    if (dd < 1) { const dome = Math.sqrt(Math.max(0, 1 - dd)), k = (0.74 + m * 0.24) * (0.82 + 0.28 * dome) * (1 - 0.12 * lx / ex - 0.16 * ly / ey) * (0.92 + hs * 0.12);
+                        r = base[0] * k; g = base[1] * k; b = base[2] * k;
+                        if (dome > 0.55 && ly < 0 && lx < 0) { const sp = (dome - 0.55) * (wet > 0.65 ? 60 : 22); r += sp; g += sp; b += sp * 1.1; } } // a glint on the wet crown
+                    else { const k = 0.4 + m * 0.16, mo = n3(wx / 1.3, wy / 1.3) > 0.72 && wet < 0.55; r = mo ? 58 + m * 20 : 52 * k + 16; g = mo ? 70 + m * 26 : 48 * k + 16; b = mo ? 40 : 44 * k + 16; } // joints: dark grit, moss where it's dry enough
+                    if (wet > 0.7) { const w = Math.min(1, (wet - 0.7) * 6); r = r * (1 - 0.3 * w); g = g * (1 - 0.27 * w); b = b * (1 - 0.2 * w) + 4 * w; } // standing water
                     if (n3(wx / 2.4 + 9, wy / 2.4) > 0.78) { r += 10; g += 9; b += 6; }      // dust and wear
-                    if (n1(wx / 13 + 40, wy / 13) > 0.74) { r -= 14; g -= 10; b -= 12; }    // damp patches
                     if (t === 12) { const fx = (wx % 16) - 8, fy = (wy % 16) - 8; if (Math.abs(fx) < 6.5 && Math.abs(fy) < 6.5) { r = 74 + m * 30; g = 58 + m * 20; b = 40; const fl = H(Math.floor(wx), Math.floor(wy), 9);
                         if (fl < 0.3) { r = 70; g = 120 + m * 30; b = 52; } else if (fl < 0.38) { r = 230; g = 90; b = 100; } else if (fl < 0.44) { r = 240; g = 205; b = 90; } else if (fl < 0.48) { r = 236; g = 232; b = 220; } } }
                 } else {
@@ -868,7 +872,7 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
               let eC = 64; if (o.cover) { lo = 0.5; hi = 64; eC = 0.5; for (let it = 0; it < 12; it++) { const mid = (lo + hi) / 2, t = tr(mid); if (t && covers(t)) { lo = mid; eC = mid; } else hi = mid; } }
               T = tr(Math.min(eB, eC)) || tr(0.5); } // the paint wins over the budget
             if (!T || !T.rings.length) return V;
-            const P = [], segs = [], ringsIdx = []; { let b = 0; for (const n of T.rings) { const ids = []; for (let q = 0; q < n; q++) { ids.push(P.length); P.push([T.pts[(b + q) * 2], T.pts[(b + q) * 2 + 1], 1]); } ringsIdx.push(ids); b += n; } } // [x, y, onOutline]
+            const P = [], ringsIdx = []; { let b = 0; for (const n of T.rings) { const ids = []; for (let q = 0; q < n; q++) { ids.push(P.length); P.push([T.pts[(b + q) * 2], T.pts[(b + q) * 2 + 1], 1]); } ringsIdx.push(ids); b += n; } } // [x, y, onOutline]
             const inPoly = (x, y) => { let ins = false; for (const ids of ringsIdx) for (let q = 0; q < ids.length; q++) { const A = P[ids[q]], B = P[ids[(q + 1) % ids.length]]; if ((A[1] > y) !== (B[1] > y) && x < A[0] + (y - A[1]) * (B[0] - A[0]) / (B[1] - A[1])) ins = !ins; } return ins; };
             // 2) points inside, by importance: colour boundaries and depth bends, kept apart by a spacing that shrinks where they matter
             const lum = (x, y) => { x = Math.max(0, Math.min(w - 1, x)); y = Math.max(0, Math.min(h - 1, y)); const j = ((Y0 + y) * W + X0 + x) * 4; return [px[j], px[j + 1], px[j + 2]]; };
@@ -914,7 +918,7 @@ const FX_GL = { ok: false }, COMBAT = { amt: 0 }; let currentMapName = 'overworl
                 const q = f.map(i => local(i, side)), n = fN(q[0], q[1], q[2], side), pw = q.map(world), out = [Nx * side, Ny * side, 0];
                 const ux = pw[1][0] - pw[0][0], uy = pw[1][1] - pw[0][1], uz = pw[1][2] - pw[0][2], vx = pw[2][0] - pw[0][0], vy = pw[2][1] - pw[0][1], vz = pw[2][2] - pw[0][2];
                 const k = (uy * vz - uz * vy) * out[0] + (uz * vx - ux * vz) * out[1] + (ux * vy - uy * vx) * out[2], ord = k > 0 ? [0, 2, 1] : [0, 1, 2]; // a face is front when (B-A)x(C-A) points INTO it (left-handed world)
-                const nh = Math.hypot(n[0], n[1], n[2]) || 1, sideways = o.sideUV && Math.abs(n[0]) > 1.2 * Math.abs(n[2]) + 0.2 * Math.abs(n[1]), east = n[0] > 0, sh = shadeN(n, side);
+                const sideways = o.sideUV && Math.abs(n[0]) > 1.2 * Math.abs(n[2]) + 0.2 * Math.abs(n[1]), east = n[0] > 0, sh = shadeN(n, side);
                 for (const j of ord) { const i = f[j], p = P[i], t = sideways ? o.sideUV(p[0], p[1], q[j][2], east) : [(X0 + p[0]) / W + (side < 0 && o.backDU ? o.backDU : 0), (Y0 + p[1]) / H];
                     V.push(pw[j][0], pw[j][1], pw[j][2], t[0], t[1], vn ? shadeN(vn[side > 0 ? 0 : 1][i], side) : sh, em); } }
             return V;
